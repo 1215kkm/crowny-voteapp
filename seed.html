@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Crowny Seed</title>
+</head>
+<body>
+<h1>Crowny Seed Tool</h1>
+<button onclick="seedData()">Seed 1 Sample</button>
+<pre id="log"></pre>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, writeBatch, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.seedData = async function() {
+  const log = document.getElementById("log");
+  log.textContent = "Seeding...\n";
+
+  try {
+    const batch = writeBatch(db);
+    const ideaRef = doc(collection(db, "ideas"));
+    batch.set(ideaRef, {
+      title: "동네 소음 측정 & 공유 앱",
+      description: "진짜 이사할 때마다 느끼는 건데 층간소음이 어느 정도인지 미리 알 수 있으면 좋겠어요ㅋㅋ 실시간으로 소음 측정하고 동네별로 점수 매겨서 공유하는 앱이요! 이사 전에 그 동네 소음 레벨 확인하고, 거주자들 리뷰도 볼 수 있으면 대박일 듯",
+      authorUid: "seed_user_01",
+      authorName: "김지현",
+      authorPhoto: "https://ui-avatars.com/api/?name=김지현&background=6366f1&color=fff&size=128",
+      waitlistCount: 3,
+      createdAt: Timestamp.fromDate(new Date(Date.now() - 7 * 86400000))
+    });
+
+    const members = [
+      { name: "이민준", uid: "seed_wl_01" },
+      { name: "박서연", uid: "seed_wl_02" },
+      { name: "정하윤", uid: "seed_wl_03" }
+    ];
+    for (const m of members) {
+      const mRef = doc(db, "ideas", ideaRef.id, "waitlist", m.uid);
+      batch.set(mRef, {
+        displayName: m.name,
+        email: m.uid + "@example.com",
+        photoURL: "https://ui-avatars.com/api/?name=" + encodeURIComponent(m.name) + "&background=random&size=128",
+        joinedAt: Timestamp.fromDate(new Date(Date.now() - Math.random() * 5 * 86400000))
+      });
+    }
+
+    await batch.commit();
+    log.textContent += "Done! 1 idea + 3 waitlist members created.\n";
+  } catch (e) {
+    log.textContent += "Error: " + e.message + "\n";
+  }
+};
+</script>
+</body>
+</html>
