@@ -14,6 +14,9 @@ import {
   checkSubscription,
   subscribeToTotalWaitlistCount
 } from "./firestore.js";
+import { SAMPLE_IDEAS, SAMPLE_MEMBERS, SAMPLE_TOTAL } from "./sample-data.js";
+
+let usingSampleData = false;
 
 // ---- State ----
 let currentSort = "createdAt";
@@ -57,12 +60,24 @@ const submitBtn = document.getElementById("submit-btn");
 onAuthChange(handleAuthState);
 
 // Subscribe to total waitlist count
-subscribeToTotalWaitlistCount((count) => {
-  totalWaitlistCount.textContent = count.toLocaleString();
-});
+try {
+  subscribeToTotalWaitlistCount((count) => {
+    totalWaitlistCount.textContent = count.toLocaleString();
+  });
+} catch (e) {
+  console.warn("Firestore unavailable, using sample data");
+}
 
-// Start ideas subscription
+// Start ideas subscription (falls back to sample data if Firestore unavailable)
 startIdeasSubscription();
+
+// Fallback: if no data loaded within 3 seconds, show sample data
+setTimeout(() => {
+  if (currentIdeas.length === 0 && !usingSampleData) {
+    console.warn("Firestore timeout, loading sample data");
+    loadSampleData();
+  }
+}, 3000);
 
 // Sort controls
 document.querySelectorAll(".sort-btn").forEach((btn) => {
@@ -138,9 +153,27 @@ async function handleAuthState(user) {
 
 // ---- Ideas Subscription ----
 
+function loadSampleData() {
+  usingSampleData = true;
+  let ideas = [...SAMPLE_IDEAS];
+  if (currentSort === "waitlistCount") {
+    ideas.sort((a, b) => b.waitlistCount - a.waitlistCount);
+  } else {
+    ideas.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+  }
+  currentIdeas = ideas;
+  loadingState.classList.add("hidden");
+  emptyState.classList.add("hidden");
+  ideasCount.textContent = ideas.length;
+  totalWaitlistCount.textContent = SAMPLE_TOTAL.toLocaleString();
+  renderIdeas(ideas);
+  setTimeout(loadAllAvatarStacks, 500);
+}
+
 function startIdeasSubscription() {
   if (unsubIdeas) unsubIdeas();
 
+  try {
   unsubIdeas = subscribeToIdeas(currentSort, async (ideas) => {
     const isFirstLoad = currentIdeas.length === 0 && ideas.length > 0;
     const prevIdeas = currentIdeas;
@@ -174,6 +207,10 @@ function startIdeasSubscription() {
       });
     }
   });
+  } catch (e) {
+    console.warn("Firestore subscription failed, loading sample data:", e);
+    loadSampleData();
+  }
 }
 
 async function updateUserWaitlistStatus() {
@@ -328,7 +365,12 @@ async function loadWaitlistMembers(ideaId) {
   if (!container) return;
 
   try {
-    const members = await getWaitlistMembers(ideaId);
+    let members;
+    if (usingSampleData) {
+      members = SAMPLE_MEMBERS[ideaId] || [];
+    } else {
+      members = await getWaitlistMembers(ideaId);
+    }
     if (members.length === 0) {
       container.innerHTML = '<span style="font-size:0.8rem;color:#94a3b8;">아직 대기자가 없습니다</span>';
       return;
@@ -350,7 +392,12 @@ async function loadAvatarStack(ideaId) {
   if (!container) return;
 
   try {
-    const members = await getWaitlistMembers(ideaId);
+    let members;
+    if (usingSampleData) {
+      members = SAMPLE_MEMBERS[ideaId] || [];
+    } else {
+      members = await getWaitlistMembers(ideaId);
+    }
     const displayMembers = members.slice(0, 5);
     const remaining = members.length > 5 ? members.length - 5 : 0;
 
