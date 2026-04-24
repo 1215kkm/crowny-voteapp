@@ -159,7 +159,7 @@ function heroTypingPulse() {
         if (orig) a.setAttribute("dur", orig);
       });
     }
-  }, 2000);
+  }, 500);
 }
 
 // Form char counts
