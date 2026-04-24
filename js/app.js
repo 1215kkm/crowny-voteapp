@@ -103,13 +103,48 @@ document.querySelectorAll(".sort-btn").forEach((btn) => {
   });
 });
 
+// Hero typing reaction
+const heroEl = document.getElementById("hero");
+const heroNeural = document.querySelector(".hero-neural");
+let typingTimer = null;
+
+function heroTypingPulse() {
+  heroEl.classList.add("typing");
+  heroEl.classList.remove("pulse");
+  void heroEl.offsetWidth;
+  heroEl.classList.add("pulse");
+
+  // Speed up SVG animations during typing
+  if (heroNeural) {
+    heroNeural.querySelectorAll("animate, animateMotion").forEach((a) => {
+      const origDur = a.getAttribute("data-orig-dur") || a.getAttribute("dur");
+      if (!a.getAttribute("data-orig-dur")) a.setAttribute("data-orig-dur", origDur);
+      const fast = parseFloat(origDur) * 0.3;
+      a.setAttribute("dur", fast + "s");
+    });
+  }
+
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    heroEl.classList.remove("typing", "pulse");
+    if (heroNeural) {
+      heroNeural.querySelectorAll("animate, animateMotion").forEach((a) => {
+        const orig = a.getAttribute("data-orig-dur");
+        if (orig) a.setAttribute("dur", orig);
+      });
+    }
+  }, 2000);
+}
+
 // Form char counts
 ideaTitle.addEventListener("input", () => {
   titleCount.textContent = ideaTitle.value.length;
+  heroTypingPulse();
 });
 
 ideaDesc.addEventListener("input", () => {
   descCount.textContent = ideaDesc.value.length;
+  heroTypingPulse();
 });
 
 // Form submit

@@ -186,9 +186,79 @@ input, textarea {
   animation: heroGlow 8s ease-in-out infinite alternate;
 }
 
+#hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 10% 20%, rgba(129,140,248,0.6) 50%, transparent 50%),
+    radial-gradient(2px 2px at 25% 70%, rgba(192,132,252,0.5) 50%, transparent 50%),
+    radial-gradient(3px 3px at 40% 35%, rgba(99,102,241,0.7) 50%, transparent 50%),
+    radial-gradient(2px 2px at 55% 80%, rgba(167,139,250,0.4) 50%, transparent 50%),
+    radial-gradient(2px 2px at 70% 15%, rgba(129,140,248,0.5) 50%, transparent 50%),
+    radial-gradient(3px 3px at 85% 55%, rgba(192,132,252,0.6) 50%, transparent 50%),
+    radial-gradient(2px 2px at 15% 90%, rgba(99,102,241,0.4) 50%, transparent 50%),
+    radial-gradient(2px 2px at 60% 45%, rgba(167,139,250,0.5) 50%, transparent 50%),
+    radial-gradient(3px 3px at 90% 85%, rgba(129,140,248,0.6) 50%, transparent 50%),
+    radial-gradient(2px 2px at 35% 10%, rgba(192,132,252,0.4) 50%, transparent 50%),
+    radial-gradient(2px 2px at 80% 40%, rgba(99,102,241,0.5) 50%, transparent 50%),
+    radial-gradient(2px 2px at 50% 60%, rgba(167,139,250,0.6) 50%, transparent 50%);
+  animation: particleFloat 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
 @keyframes heroGlow {
   0% { transform: translate(0, 0); }
   100% { transform: translate(-5%, 5%); }
+}
+
+@keyframes particleFloat {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  33% { transform: translateY(-8px) scale(1.1); opacity: 0.9; }
+  66% { transform: translateY(5px) scale(0.95); opacity: 0.7; }
+  100% { transform: translateY(-3px) scale(1.05); opacity: 0.8; }
+}
+
+.hero-neural {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  opacity: 0.7;
+  transition: opacity 0.5s ease;
+}
+
+#hero.typing .hero-neural {
+  opacity: 1;
+}
+
+#hero.typing::before {
+  animation: heroGlow 2s ease-in-out infinite alternate;
+}
+
+#hero.typing::after {
+  animation: particleFloat 3s ease-in-out infinite alternate;
+}
+
+@keyframes heroPulse {
+  0% { box-shadow: inset 0 0 60px rgba(99,102,241,0); }
+  50% { box-shadow: inset 0 0 80px rgba(99,102,241,0.15); }
+  100% { box-shadow: inset 0 0 60px rgba(99,102,241,0); }
+}
+
+#hero.typing {
+  animation: heroPulse 1.5s ease-in-out infinite;
+}
+
+#hero.pulse {
+  animation: heroFlash 0.3s ease-out;
+}
+
+@keyframes heroFlash {
+  0% { box-shadow: inset 0 0 30px rgba(129,140,248,0); }
+  50% { box-shadow: inset 0 0 60px rgba(129,140,248,0.2); }
+  100% { box-shadow: inset 0 0 30px rgba(129,140,248,0); }
 }
 
 .hero-inner {
@@ -274,15 +344,16 @@ input, textarea {
 .section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 20px;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
 }
 
 .section-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
+  color: var(--color-text);
   display: flex;
   align-items: center;
   gap: 8px;
