@@ -14,6 +14,7 @@ import {
   checkSubscription,
   subscribeToTotalWaitlistCount
 } from "./firestore.js";
+import { isPlaceholder } from "./firebase-config.js";
 import { SAMPLE_IDEAS, SAMPLE_MEMBERS, SAMPLE_TOTAL } from "./sample-data.js";
 
 let usingSampleData = false;
@@ -24,6 +25,7 @@ let currentIdeas = [];
 let userWaitlistMap = {};
 let unsubIdeas = null;
 let expandedCardId = null;
+let pendingSubmit = false;
 
 // ---- DOM Elements ----
 const ideasContainer = document.getElementById("ideas-container");
@@ -56,28 +58,34 @@ const submitBtn = document.getElementById("submit-btn");
 
 // ---- Initialize ----
 
-// Auth state listener
-onAuthChange(handleAuthState);
-
-// Subscribe to total waitlist count
-try {
-  subscribeToTotalWaitlistCount((count) => {
-    totalWaitlistCount.textContent = count.toLocaleString();
-  });
-} catch (e) {
-  console.warn("Firestore unavailable, using sample data");
+// If Firebase is not configured, use sample data immediately
+if (isPlaceholder) {
+  usingSampleData = true;
+  loadingState.classList.add("hidden");
+  emptyState.classList.add("hidden");
+  loadSampleData();
+  // Show form always (no login required to write)
+  if (formLoginPrompt) formLoginPrompt.classList.add("hidden");
+  ideaForm.classList.remove("hidden");
+} else {
+  onAuthChange(handleAuthState);
+  try {
+    subscribeToTotalWaitlistCount((count) => {
+      totalWaitlistCount.textContent = count.toLocaleString();
+    });
+  } catch (e) { /* ignore */ }
+  startIdeasSubscription();
+  // Fallback timeout
+  setTimeout(() => {
+    if (currentIdeas.length === 0 && !usingSampleData) {
+      loadSampleData();
+    }
+  }, 3000);
 }
 
-// Start ideas subscription (falls back to sample data if Firestore unavailable)
-startIdeasSubscription();
-
-// Fallback: if no data loaded within 3 seconds, show sample data
-setTimeout(() => {
-  if (currentIdeas.length === 0 && !usingSampleData) {
-    console.warn("Firestore timeout, loading sample data");
-    loadSampleData();
-  }
-}, 3000);
+// Always show form regardless of login state
+if (formLoginPrompt) formLoginPrompt.classList.add("hidden");
+ideaForm.classList.remove("hidden");
 
 // Sort controls
 document.querySelectorAll(".sort-btn").forEach((btn) => {
@@ -87,7 +95,11 @@ document.querySelectorAll(".sort-btn").forEach((btn) => {
     currentSort = sort;
     document.querySelectorAll(".sort-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    startIdeasSubscription();
+    if (usingSampleData) {
+      loadSampleData();
+    } else {
+      startIdeasSubscription();
+    }
   });
 });
 
@@ -110,22 +122,17 @@ ideasContainer.addEventListener("click", handleIdeasClick);
 
 async function handleAuthState(user) {
   if (user) {
-    // Logged in
     loginBtn.classList.add("hidden");
     userInfo.classList.remove("hidden");
     userPhoto.src = user.photoURL || "";
     userPhoto.alt = user.displayName || "";
     userName.textContent = user.displayName || "사용자";
 
-    formLoginPrompt.classList.add("hidden");
-    ideaForm.classList.remove("hidden");
+    // Subscribe section
+    if (subscribeEmailForm) subscribeEmailForm.classList.add("hidden");
+    if (subscribeCheckboxArea) subscribeCheckboxArea.classList.remove("hidden");
+    if (subscribeEmailDisplay) subscribeEmailDisplay.textContent = user.email;
 
-    // Subscribe section: show checkbox
-    subscribeEmailForm.classList.add("hidden");
-    subscribeCheckboxArea.classList.remove("hidden");
-    subscribeEmailDisplay.textContent = user.email;
-
-    // Check if already subscribed
     try {
       const isSubscribed = await checkSubscription(user.email);
       subscribeCheck.checked = isSubscribed;
@@ -133,25 +140,33 @@ async function handleAuthState(user) {
       console.warn("Subscription check failed:", e);
     }
 
-    // Check waitlist status for current ideas
     await updateUserWaitlistStatus();
+
+    // If user just logged in and had pending submit
+    if (pendingSubmit) {
+      pendingSubmit = false;
+      const title = ideaTitle.value.trim();
+      const desc = ideaDesc.value.trim();
+      if (title && desc) {
+        const doSubmit = confirm("글을 남기겠습니까?");
+        if (doSubmit) {
+          await submitIdea(title, desc, user);
+        }
+      }
+    }
   } else {
-    // Logged out
     loginBtn.classList.remove("hidden");
     userInfo.classList.add("hidden");
 
-    formLoginPrompt.classList.remove("hidden");
-    ideaForm.classList.add("hidden");
-
-    subscribeEmailForm.classList.remove("hidden");
-    subscribeCheckboxArea.classList.add("hidden");
+    if (subscribeEmailForm) subscribeEmailForm.classList.remove("hidden");
+    if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
 
     userWaitlistMap = {};
     renderIdeas(currentIdeas);
   }
 }
 
-// ---- Ideas Subscription ----
+// ---- Sample Data ----
 
 function loadSampleData() {
   usingSampleData = true;
@@ -167,48 +182,50 @@ function loadSampleData() {
   ideasCount.textContent = ideas.length;
   totalWaitlistCount.textContent = SAMPLE_TOTAL.toLocaleString();
   renderIdeas(ideas);
-  setTimeout(loadAllAvatarStacks, 500);
+  setTimeout(loadAllAvatarStacks, 300);
 }
+
+// ---- Ideas Subscription ----
 
 function startIdeasSubscription() {
   if (unsubIdeas) unsubIdeas();
 
   try {
-  unsubIdeas = subscribeToIdeas(currentSort, async (ideas) => {
-    const isFirstLoad = currentIdeas.length === 0 && ideas.length > 0;
-    const prevIdeas = currentIdeas;
-    currentIdeas = ideas;
+    unsubIdeas = subscribeToIdeas(currentSort, async (ideas) => {
+      if (usingSampleData) return;
+      const isFirstLoad = currentIdeas.length === 0 && ideas.length > 0;
+      const prevIdeas = currentIdeas;
+      currentIdeas = ideas;
 
-    loadingState.classList.add("hidden");
+      loadingState.classList.add("hidden");
 
-    if (ideas.length === 0) {
-      emptyState.classList.remove("hidden");
-    } else {
-      emptyState.classList.add("hidden");
-    }
+      if (ideas.length === 0) {
+        loadSampleData();
+        return;
+      } else {
+        emptyState.classList.add("hidden");
+      }
 
-    ideasCount.textContent = ideas.length;
+      ideasCount.textContent = ideas.length;
 
-    // Check waitlist status for logged in user
-    const user = getCurrentUser();
-    if (user && ideas.length > 0) {
-      await updateUserWaitlistStatus();
-    }
+      const user = getCurrentUser();
+      if (user && ideas.length > 0) {
+        await updateUserWaitlistStatus();
+      }
 
-    renderIdeas(ideas);
+      renderIdeas(ideas);
 
-    // Show toast for new waitlist joins (not on first load)
-    if (!isFirstLoad && prevIdeas.length > 0) {
-      ideas.forEach((idea) => {
-        const prev = prevIdeas.find((p) => p.id === idea.id);
-        if (prev && idea.waitlistCount > prev.waitlistCount) {
-          showToast(`누군가 "${truncate(idea.title, 20)}"에 대기자로 등록했습니다!`, "info");
-        }
-      });
-    }
-  });
+      if (!isFirstLoad && prevIdeas.length > 0) {
+        ideas.forEach((idea) => {
+          const prev = prevIdeas.find((p) => p.id === idea.id);
+          if (prev && idea.waitlistCount > prev.waitlistCount) {
+            showToast(`누군가 "${truncate(idea.title, 20)}"에 대기자로 등록했습니다!`, "info");
+          }
+        });
+      }
+    });
   } catch (e) {
-    console.warn("Firestore subscription failed, loading sample data:", e);
+    console.warn("Firestore subscription failed:", e);
     loadSampleData();
   }
 }
@@ -228,7 +245,6 @@ async function updateUserWaitlistStatus() {
 // ---- Render Ideas ----
 
 function renderIdeas(ideas) {
-  // Remove existing cards (keep loading/empty states)
   ideasContainer.querySelectorAll(".idea-card").forEach((el) => el.remove());
 
   ideas.forEach((idea) => {
@@ -321,7 +337,6 @@ function createIdeaCard(idea) {
 // ---- Event Delegation ----
 
 async function handleIdeasClick(e) {
-  // Join waitlist button
   const joinBtn = e.target.closest(".btn-join-waitlist");
   if (joinBtn) {
     e.stopPropagation();
@@ -329,7 +344,6 @@ async function handleIdeasClick(e) {
     return;
   }
 
-  // Accordion toggle
   const header = e.target.closest(".idea-header");
   if (header) {
     const card = header.closest(".idea-card");
@@ -343,7 +357,6 @@ function toggleAccordion(card) {
   const body = card.querySelector(".idea-body");
   const wasExpanded = card.classList.contains("expanded");
 
-  // Close all cards
   ideasContainer.querySelectorAll(".idea-card.expanded").forEach((c) => {
     c.classList.remove("expanded");
     c.querySelector(".idea-body").style.maxHeight = "0";
@@ -379,7 +392,8 @@ async function loadWaitlistMembers(ideaId) {
     container.innerHTML = members.map((m) => `
       <div class="waitlist-member">
         ${m.photoURL ? `<img src="${escapeHtml(m.photoURL)}" alt="">` : ''}
-        ${escapeHtml(m.displayName || '익명')}
+        <span class="member-name">${escapeHtml(m.displayName || '익명')}</span>
+        ${m.type === "paid" ? '<span class="badge-paid">유료 참여</span>' : '<span class="badge-free">무료 참여</span>'}
       </div>
     `).join("");
   } catch (e) {
@@ -405,11 +419,10 @@ async function loadAvatarStack(ideaId) {
       m.photoURL ? `<img src="${escapeHtml(m.photoURL)}" alt="${escapeHtml(m.displayName || '')}">` : ''
     ).join("") + (remaining > 0 ? `<span class="avatar-more">+${remaining}</span>` : '');
   } catch (e) {
-    // Silent fail for avatar stack
+    // Silent fail
   }
 }
 
-// Load avatar stacks for all visible cards
 async function loadAllAvatarStacks() {
   for (const idea of currentIdeas) {
     loadAvatarStack(idea.id);
@@ -428,7 +441,6 @@ async function handleJoinWaitlist(btn) {
   const ideaId = btn.dataset.ideaId;
   const wasJoined = btn.classList.contains("joined");
 
-  // Optimistic UI
   btn.disabled = true;
   if (wasJoined) {
     btn.classList.remove("joined");
@@ -448,14 +460,12 @@ async function handleJoinWaitlist(btn) {
       showToast("대기자 등록이 취소되었습니다", "");
     }
 
-    // Reload members if expanded
     if (expandedCardId === ideaId) {
       loadWaitlistMembers(ideaId);
     }
     loadAvatarStack(ideaId);
   } catch (error) {
     console.error("Waitlist toggle error:", error);
-    // Rollback
     if (wasJoined) {
       btn.classList.add("joined");
       btn.textContent = "✓ 대기자 등록 완료 (취소하려면 클릭)";
@@ -474,9 +484,6 @@ async function handleJoinWaitlist(btn) {
 async function handleSubmit(e) {
   e.preventDefault();
 
-  const user = getCurrentUser();
-  if (!user) return;
-
   const title = ideaTitle.value.trim();
   const desc = ideaDesc.value.trim();
 
@@ -492,6 +499,20 @@ async function handleSubmit(e) {
     return;
   }
 
+  const user = getCurrentUser();
+  if (!user) {
+    pendingSubmit = true;
+    showToast("글을 남기려면 로그인이 필요합니다. 로그인 페이지로 이동합니다.", "info");
+    setTimeout(() => {
+      window.appAuth.loginWithGoogle();
+    }, 1000);
+    return;
+  }
+
+  await submitIdea(title, desc, user);
+}
+
+async function submitIdea(title, desc, user) {
   submitBtn.disabled = true;
   submitBtn.textContent = "제출 중...";
 
@@ -507,7 +528,7 @@ async function handleSubmit(e) {
     showToast("제출에 실패했습니다. 다시 시도해주세요.", "");
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = "제안하기";
+    submitBtn.textContent = "글남기기";
   }
 }
 
@@ -549,7 +570,7 @@ async function handleSubscribeToggle(checked) {
     }
   } catch (error) {
     console.error("Subscribe toggle error:", error);
-    subscribeCheck.checked = !checked; // rollback
+    subscribeCheck.checked = !checked;
     showToast("오류가 발생했습니다. 다시 시도해주세요.", "");
   }
 }
@@ -584,6 +605,3 @@ function truncate(str, maxLen) {
 
 // Expose to window for inline handlers
 window.app = { handleSubscribe, handleSubscribeToggle };
-
-// Load avatar stacks after initial render settles
-setTimeout(loadAllAvatarStacks, 2000);

@@ -18,8 +18,15 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const isPlaceholder = firebaseConfig.apiKey === "YOUR_API_KEY";
 
-export { app, auth, db };
+let app, auth, db;
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (e) {
+  console.warn("Firebase init failed:", e);
+}
+
+export { app, auth, db, isPlaceholder };
