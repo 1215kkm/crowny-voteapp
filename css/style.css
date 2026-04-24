@@ -302,72 +302,30 @@ input, textarea {
   line-height: 1.7;
 }
 
-/* Hero Pulse Bar */
-.hero-pulse-bar {
-  position: relative;
-  width: 280px;
-  height: 40px;
-  margin: 0 auto 20px;
-  overflow: hidden;
-  opacity: 0.3;
-  transition: opacity 0.4s ease;
+/* Equalizer */
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 48px;
+  padding: 8px 0;
+  margin-bottom: 8px;
 }
 
-#hero.typing .hero-pulse-bar {
-  opacity: 1;
-}
-
-.pulse-line {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: rgba(129,140,248,0.3);
-  transform: translateY(-50%);
-}
-
-.pulse-dot {
-  position: absolute;
-  top: 50%;
-  left: 0;
+.eq-bar {
   width: 8px;
-  height: 8px;
-  background: rgba(129,140,248,0.6);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 8px rgba(129,140,248,0.4);
-  animation: pulseIdle 4s ease-in-out infinite;
+  height: 4px;
+  min-height: 4px;
+  background: linear-gradient(180deg, #818cf8, #6366f1);
+  border-radius: 2px;
+  transition: height 0.15s ease;
+  opacity: 0.3;
 }
 
-#hero.typing .pulse-dot {
-  animation: none;
-}
-
-@keyframes pulseIdle {
-  0%, 100% { left: 30%; opacity: 0.4; }
-  50% { left: 70%; opacity: 0.6; }
-}
-
-/* Heartbeat SVG path drawn via JS */
-.pulse-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.pulse-svg path {
-  fill: none;
-  stroke: rgba(129,140,248,0.8);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 4px rgba(129,140,248,0.5));
-}
-
-#hero.typing .pulse-line {
-  background: rgba(129,140,248,0.15);
+.equalizer.active .eq-bar {
+  opacity: 1;
+  box-shadow: 0 0 6px rgba(99,102,241,0.4);
 }
 
 .hero-counter {
