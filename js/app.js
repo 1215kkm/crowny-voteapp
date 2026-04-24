@@ -103,79 +103,38 @@ document.querySelectorAll(".sort-btn").forEach((btn) => {
   });
 });
 
-// Hero typing reaction + heartbeat pulse bar
+// Hero typing reaction + equalizer
 const heroEl = document.getElementById("hero");
 const heroNeural = document.querySelector(".hero-neural");
-const pulseBar = document.getElementById("hero-pulse-bar");
+const equalizer = document.getElementById("equalizer");
+const eqBars = equalizer ? [...equalizer.querySelectorAll(".eq-bar")] : [];
 let typingTimer = null;
-let pulsePoints = [];
-let pulseSvg = null;
+let eqInterval = null;
 
-// Setup pulse bar SVG
-if (pulseBar) {
-  pulseSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  pulseSvg.setAttribute("class", "pulse-svg");
-  pulseSvg.setAttribute("viewBox", "0 0 280 40");
-  pulseSvg.setAttribute("preserveAspectRatio", "none");
-  pulseSvg.innerHTML = '<path d="M0,20 L280,20"/>';
-  pulseBar.appendChild(pulseSvg);
-  resetPulse();
+function eqBounce() {
+  eqBars.forEach((bar) => {
+    const h = 6 + Math.random() * 34;
+    bar.style.height = h + "px";
+  });
 }
 
-function resetPulse() {
-  pulsePoints = [];
-  for (let x = 0; x <= 280; x += 4) {
-    pulsePoints.push({ x, y: 20 });
-  }
-  drawPulse();
-}
-
-function drawPulse() {
-  if (!pulseSvg) return;
-  const path = pulseSvg.querySelector("path");
-  const d = pulsePoints.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join(" ");
-  path.setAttribute("d", d);
-}
-
-function addHeartbeat() {
-  // Shift all points left by 4px
-  pulsePoints.forEach(p => p.x -= 4);
-  // Remove points that went off-screen
-  pulsePoints = pulsePoints.filter(p => p.x >= 0);
-  // Add heartbeat spike at the right edge
-  const beat = [
-    { x: 252, y: 20 },
-    { x: 256, y: 20 },
-    { x: 260, y: 8 },   // spike up
-    { x: 264, y: 32 },  // spike down
-    { x: 268, y: 14 },  // small bump
-    { x: 272, y: 24 },  // small dip
-    { x: 276, y: 20 },
-    { x: 280, y: 20 }
-  ];
-  pulsePoints.push(...beat);
-  drawPulse();
-
-  // Pulse dot effect
-  const dot = pulseBar.querySelector(".pulse-dot");
-  if (dot) {
-    dot.style.left = "268px";
-    dot.style.opacity = "1";
-    dot.style.transform = "translate(-50%, -50%) scale(1.5)";
-    dot.style.background = "#818cf8";
-    dot.style.boxShadow = "0 0 16px rgba(129,140,248,0.8)";
-    setTimeout(() => {
-      dot.style.transform = "translate(-50%, -50%) scale(1)";
-      dot.style.boxShadow = "0 0 8px rgba(129,140,248,0.4)";
-    }, 150);
-  }
+function eqIdle() {
+  eqBars.forEach((bar) => {
+    bar.style.height = "4px";
+  });
 }
 
 function heroTypingPulse() {
   heroEl.classList.add("typing");
-  addHeartbeat();
 
-  // Speed up SVG animations during typing
+  if (equalizer) {
+    equalizer.classList.add("active");
+    eqBounce();
+    if (!eqInterval) {
+      eqInterval = setInterval(eqBounce, 180);
+    }
+  }
+
   if (heroNeural) {
     heroNeural.querySelectorAll("animate, animateMotion").forEach((a) => {
       const origDur = a.getAttribute("data-orig-dur") || a.getAttribute("dur");
@@ -188,14 +147,18 @@ function heroTypingPulse() {
   clearTimeout(typingTimer);
   typingTimer = setTimeout(() => {
     heroEl.classList.remove("typing");
+    if (equalizer) {
+      equalizer.classList.remove("active");
+      clearInterval(eqInterval);
+      eqInterval = null;
+      eqIdle();
+    }
     if (heroNeural) {
       heroNeural.querySelectorAll("animate, animateMotion").forEach((a) => {
         const orig = a.getAttribute("data-orig-dur");
         if (orig) a.setAttribute("dur", orig);
       });
     }
-    // Slowly flatten the pulse line
-    setTimeout(resetPulse, 1000);
   }, 2000);
 }
 
