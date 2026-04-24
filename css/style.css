@@ -622,6 +622,30 @@ input, textarea {
   object-fit: cover;
 }
 
+.member-name {
+  flex-shrink: 0;
+}
+
+.badge-paid {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.badge-free {
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
 /* Trigger messages inside card */
 .card-trigger {
   padding: 10px 14px;

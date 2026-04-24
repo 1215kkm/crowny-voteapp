@@ -35,7 +35,14 @@ function pickMembers(n) {
   for (let i = 0; i < Math.min(n, copy.length); i++) {
     const idx = Math.floor(Math.random() * copy.length);
     const name = copy.splice(idx, 1)[0];
-    res.push({ uid: "sw" + String(i+1).padStart(2,"0"), displayName: name, photoURL: av(name), email: "" });
+    const isPaid = Math.random() < 0.3;
+    res.push({
+      uid: "sw" + String(i+1).padStart(2,"0"),
+      displayName: name,
+      photoURL: av(name),
+      email: "",
+      type: isPaid ? "paid" : "free"
+    });
   }
   return res;
 }
