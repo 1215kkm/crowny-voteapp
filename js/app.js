@@ -1,5 +1,5 @@
 // ========================================
-// App Module - Main Page (메인 목록 + 글쓰기)
+// App Module - Main Page (인라인 펼치기 + 댓글)
 // ========================================
 
 import { onAuthChange, getCurrentUser } from "./auth.js";
@@ -16,6 +16,9 @@ import {
   subscribeToTotalWaitlistCount,
   getTodayPostCount,
   getUserLikedIdeas,
+  addComment,
+  subscribeToComments,
+  deleteComment,
   DAILY_POST_LIMIT,
   MAX_IMAGES,
   THRESHOLD_PAID_ALONE,
@@ -38,7 +41,10 @@ let userWaitlistMap = {};
 let userLikeMap = {};
 let unsubIdeas = null;
 let pendingSubmit = false;
-let pendingImages = []; // [{ dataUrl, sizeKb }]
+let pendingImages = [];
+let expandedCardId = null;
+const commentUnsubMap = {}; // ideaId -> unsub function
+const commentsCacheMap = {}; // ideaId -> last comments[]
 
 // ---- DOM ----
 const ideasContainer = document.getElementById("ideas-container");
@@ -71,13 +77,12 @@ const imageInput = document.getElementById("idea-image");
 const imagePreviews = document.getElementById("image-previews");
 const dailyLimitInfo = document.getElementById("daily-limit-info");
 
-// 관심 아이디어 모달
 const favBtn = document.getElementById("favorites-btn");
 const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
 
-// ---- Initialize ----
+// ---- Init ----
 
 if (!firebaseAvailable) {
   loadingState.classList.add("hidden");
@@ -125,12 +130,9 @@ const eqBars = equalizer ? [...equalizer.querySelectorAll(".eq-bar")] : [];
 let typingTimer = null;
 let eqInterval = null;
 
-function eqBounce() {
-  eqBars.forEach((bar) => { bar.style.height = (6 + Math.random() * 34) + "px"; });
-}
-function eqIdle() {
-  eqBars.forEach((bar) => { bar.style.height = "4px"; });
-}
+function eqBounce() { eqBars.forEach((b) => { b.style.height = (6 + Math.random() * 34) + "px"; }); }
+function eqIdle() { eqBars.forEach((b) => { b.style.height = "4px"; }); }
+
 function heroTypingPulse() {
   if (!heroEl) return;
   heroEl.classList.add("typing");
@@ -141,9 +143,9 @@ function heroTypingPulse() {
   }
   if (heroNeural) {
     heroNeural.querySelectorAll("animate, animateMotion").forEach((a) => {
-      const origDur = a.getAttribute("data-orig-dur") || a.getAttribute("dur");
-      if (!a.getAttribute("data-orig-dur")) a.setAttribute("data-orig-dur", origDur);
-      a.setAttribute("dur", (parseFloat(origDur) * 0.3) + "s");
+      const o = a.getAttribute("data-orig-dur") || a.getAttribute("dur");
+      if (!a.getAttribute("data-orig-dur")) a.setAttribute("data-orig-dur", o);
+      a.setAttribute("dur", (parseFloat(o) * 0.3) + "s");
     });
   }
   clearTimeout(typingTimer);
@@ -156,8 +158,8 @@ function heroTypingPulse() {
     }
     if (heroNeural) {
       heroNeural.querySelectorAll("animate, animateMotion").forEach((a) => {
-        const orig = a.getAttribute("data-orig-dur");
-        if (orig) a.setAttribute("dur", orig);
+        const o = a.getAttribute("data-orig-dur");
+        if (o) a.setAttribute("dur", o);
       });
     }
   }, 500);
@@ -182,24 +184,16 @@ if (imageAddBtn) {
     imageInput.click();
   });
 }
-if (imageInput) {
-  imageInput.addEventListener("change", handleImageSelect);
-}
+if (imageInput) imageInput.addEventListener("change", handleImageSelect);
 
 ideaForm.addEventListener("submit", handleSubmit);
 ideasContainer.addEventListener("click", handleIdeasClick);
 
 // ---- 관심 모달 ----
-if (favBtn) {
-  favBtn.addEventListener("click", openFavoritesModal);
-}
-if (favModalClose) {
-  favModalClose.addEventListener("click", closeFavoritesModal);
-}
+if (favBtn) favBtn.addEventListener("click", openFavoritesModal);
+if (favModalClose) favModalClose.addEventListener("click", closeFavoritesModal);
 if (favModal) {
-  favModal.addEventListener("click", (e) => {
-    if (e.target === favModal) closeFavoritesModal();
-  });
+  favModal.addEventListener("click", (e) => { if (e.target === favModal) closeFavoritesModal(); });
 }
 
 // ---- Auth ----
@@ -226,19 +220,15 @@ async function handleAuthState(user) {
 
     if (pendingSubmit) {
       pendingSubmit = false;
-      const title = ideaTitle.value.trim();
-      const desc = ideaDesc.value.trim();
-      if (title && desc) {
-        if (confirm("글을 남기겠습니까?")) await submitIdea(title, desc, user);
-      }
+      const t = ideaTitle.value.trim(); const d = ideaDesc.value.trim();
+      if (t && d && confirm("글을 남기겠습니까?")) await submitIdea(t, d, user);
     }
   } else {
     loginBtn.classList.remove("hidden");
     userInfo.classList.add("hidden");
     if (subscribeEmailForm) subscribeEmailForm.classList.remove("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
-    userWaitlistMap = {};
-    userLikeMap = {};
+    userWaitlistMap = {}; userLikeMap = {};
     if (dailyLimitInfo) {
       dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요. 로그인 후 글을 작성하세요.`;
     }
@@ -254,10 +244,10 @@ async function refreshDailyLimitInfo() {
     return;
   }
   try {
-    const count = await getTodayPostCount(user.uid);
-    const remaining = Math.max(0, DAILY_POST_LIMIT - count);
-    dailyLimitInfo.textContent = `오늘 작성 ${count}/${DAILY_POST_LIMIT}건 (남은 ${remaining}건) · 하루 최대 ${DAILY_POST_LIMIT}개`;
-    dailyLimitInfo.classList.toggle("limit-reached", remaining === 0);
+    const c = await getTodayPostCount(user.uid);
+    const r = Math.max(0, DAILY_POST_LIMIT - c);
+    dailyLimitInfo.textContent = `오늘 작성 ${c}/${DAILY_POST_LIMIT}건 (남은 ${r}건) · 하루 최대 ${DAILY_POST_LIMIT}개`;
+    dailyLimitInfo.classList.toggle("limit-reached", r === 0);
   } catch (e) {
     dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
   }
@@ -272,8 +262,8 @@ function startIdeasSubscription() {
       currentRealIdeas = ideas;
       loadingState.classList.add("hidden");
       emptyState.classList.add("hidden");
-      const user = getCurrentUser();
-      if (user && ideas.length > 0) await updateUserStatusMaps();
+      const u = getCurrentUser();
+      if (u && ideas.length > 0) await updateUserStatusMaps();
       renderAll();
     });
   } catch (e) {
@@ -291,8 +281,7 @@ async function updateUserStatusMaps() {
       checkUserWaitlistBatch(ids, user.uid),
       checkUserLikeBatch(ids, user.uid)
     ]);
-    userWaitlistMap = wl;
-    userLikeMap = lk;
+    userWaitlistMap = wl; userLikeMap = lk;
   } catch (e) { /* ignore */ }
 }
 
@@ -301,7 +290,6 @@ function getMergedIdeas() {
   const samples = SAMPLE_IDEAS.map((s) => ({ ...s, isSample: true }));
   const reals = currentRealIdeas.map((r) => ({ ...r, isSample: false }));
   const merged = [...reals, ...samples];
-
   if (currentSort === "waitlistCount") {
     merged.sort((a, b) => (b.waitlistCount || 0) - (a.waitlistCount || 0));
   } else {
@@ -309,7 +297,6 @@ function getMergedIdeas() {
   }
   return merged;
 }
-
 function toMillis(ts) {
   if (!ts) return 0;
   if (typeof ts.toMillis === "function") return ts.toMillis();
@@ -331,6 +318,14 @@ function renderAll() {
 function renderIdeas(ideas) {
   ideasContainer.querySelectorAll(".idea-card").forEach((el) => el.remove());
   ideas.forEach((idea) => ideasContainer.appendChild(createIdeaCard(idea)));
+  if (expandedCardId) {
+    const card = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(expandedCardId)}"]`);
+    if (card) {
+      card.classList.add("expanded");
+      const cached = commentsCacheMap[expandedCardId];
+      if (cached) renderInlineComments(card, cached);
+    }
+  }
 }
 
 function statusLabel(status) {
@@ -352,8 +347,7 @@ function createIdeaCard(idea) {
   const isHot = (idea.waitlistCount || 0) >= 10;
   const paid = idea.paidWaitlistCount || 0;
   const free = idea.freeWaitlistCount || 0;
-  const total = idea.waitlistCount || (paid + free);
-  const isJoinedTier = userWaitlistMap[idea.id] || null; // 'paid' | 'free' | null
+  const isJoinedTier = userWaitlistMap[idea.id] || null;
   const isLiked = userLikeMap[idea.id] === true;
   const status = statusLabel(idea.status || "waiting");
   const meetsThreshold = meetsDesignThreshold(paid, free);
@@ -365,14 +359,19 @@ function createIdeaCard(idea) {
     ? `<span class="card-thumb-more">+${idea.imageDataList.length - 1}</span>`
     : "";
 
+  const allImages = (idea.imageDataList || []).map((src) =>
+    `<img class="expanded-image" src="${escapeHtml(src)}" alt="">`
+  ).join("");
+
   card.innerHTML = `
-    <div class="card-row">
+    <div class="card-row card-clickable">
       <div class="card-main">
         <div class="card-line-top">
           <span class="status-badge ${status.cls}">${status.txt}</span>
           ${idea.isSample ? '<span class="badge-sample">예시</span>' : ''}
           ${isHot ? '<span class="badge-popular">HOT</span>' : ''}
           ${meetsThreshold ? '<span class="badge-threshold">설계 진입 ✓</span>' : ''}
+          <span class="expand-icon" aria-hidden="true">▾</span>
         </div>
         <h3 class="idea-title">${escapeHtml(idea.title)}</h3>
         <p class="idea-preview">${escapeHtml(truncate(idea.description, 100))}</p>
@@ -399,49 +398,250 @@ function createIdeaCard(idea) {
             ${isLiked ? '❤️' : '🤍'}
           </button>
           <button class="btn-mini btn-share" data-action="share" data-idea-id="${idea.id}" title="링크 복사">🔗</button>
-          <button class="btn-mini btn-detail" data-action="detail" data-idea-id="${idea.id}">댓글·상세</button>
         </div>
       </div>
       ${thumb ? `<div class="card-thumbs">${thumb}${moreBadge}</div>` : ''}
+    </div>
+
+    <div class="card-body">
+      <div class="card-body-inner">
+        ${allImages ? `<div class="expanded-images">${allImages}</div>` : ''}
+        <p class="expanded-desc">${escapeHtml(idea.description).replace(/\n/g, "<br>")}</p>
+        ${renderProgressBlock(paid, free, meetsThreshold)}
+
+        <section class="inline-comments">
+          <h4 class="inline-comments-title">댓글 <span class="inline-comments-count">${idea.commentCount || 0}</span></h4>
+          ${idea.isSample ? '<p class="comment-sample-note">예시 글에는 댓글을 남길 수 없어요.</p>' : `
+            <div class="inline-comment-form">
+              <textarea class="inline-comment-input" rows="2" maxlength="1000" placeholder="댓글을 남겨주세요"></textarea>
+              <button class="btn-mini btn-comment-submit" data-action="comment-submit" data-idea-id="${idea.id}">댓글 등록</button>
+            </div>
+          `}
+          <div class="inline-comments-list">
+            ${idea.isSample ? '<p class="empty-comment">예시 글입니다.</p>' : '<p class="empty-comment">댓글을 불러옵니다...</p>'}
+          </div>
+        </section>
+      </div>
     </div>
   `;
   return card;
 }
 
+function renderProgressBlock(paid, free, met) {
+  const need1 = Math.max(0, THRESHOLD_PAID_ALONE - paid);
+  const need2P = Math.max(0, THRESHOLD_PAID_MIXED - paid);
+  const need2F = Math.max(0, THRESHOLD_FREE_MIXED - free);
+  const html = met
+    ? `<div class="expanded-threshold met">🎉 <strong>설계 진입 조건 충족!</strong> 곧 제작 단계로 넘어갑니다.</div>`
+    : `<div class="expanded-threshold">
+        🎯 진입 조건: <strong>유료 ${THRESHOLD_PAID_ALONE}명</strong> 또는 <strong>유료 ${THRESHOLD_PAID_MIXED} + 무료 ${THRESHOLD_FREE_MIXED}명</strong><br>
+        현재 <strong>유료 ${paid}</strong> · <strong>무료 ${free}</strong>
+        ${need1 > 0 ? ` (유료 단독까지 ${need1}명, 혼합까지 유료 ${need2P}·무료 ${need2F}명)` : ''}
+      </div>`;
+  return html;
+}
+
 // ---- Click handler ----
 
 async function handleIdeasClick(e) {
+  // 1) 액션 버튼
   const btn = e.target.closest(".btn-mini");
   if (btn) {
     e.stopPropagation();
     const action = btn.dataset.action;
     const ideaId = btn.dataset.ideaId;
-    if (action === "paid" || action === "free") {
-      await onWaitlistClick(btn, ideaId, action);
-    } else if (action === "like") {
-      await onLikeClick(btn, ideaId);
-    } else if (action === "share") {
-      await onShareClick(ideaId);
-    } else if (action === "detail") {
-      goToIdeaDetail(ideaId);
-    }
+    if (action === "paid" || action === "free") return onWaitlistClick(btn, ideaId, action);
+    if (action === "like") return onLikeClick(btn, ideaId);
+    if (action === "share") return onShareClick(ideaId);
+    if (action === "comment-submit") return onCommentSubmit(btn, ideaId, null);
+    if (action === "reply-submit") return onCommentSubmit(btn, ideaId, btn.dataset.parent);
+    if (action === "reply-toggle") return onReplyToggle(btn);
+    if (action === "comment-delete") return onDeleteComment(ideaId, btn.dataset.commentId);
     return;
   }
 
-  // 카드 영역 다른 곳 (썸네일·본문) 클릭 → 상세로 이동
+  // 2) 텍스트영역 또는 input 클릭은 펼침 토글에 영향 없도록
+  if (e.target.closest("textarea, input")) return;
+
+  // 3) 카드 클릭 → 토글
   const card = e.target.closest(".idea-card");
-  if (card) {
-    goToIdeaDetail(card.dataset.id);
+  if (card) toggleAccordion(card);
+}
+
+function toggleAccordion(card) {
+  const ideaId = card.dataset.id;
+  const wasExpanded = card.classList.contains("expanded");
+
+  // 모두 접기
+  ideasContainer.querySelectorAll(".idea-card.expanded").forEach((c) => {
+    c.classList.remove("expanded");
+  });
+
+  // 이전 expanded 댓글 구독 해제
+  if (expandedCardId && expandedCardId !== ideaId) {
+    const u = commentUnsubMap[expandedCardId];
+    if (u) { u(); delete commentUnsubMap[expandedCardId]; }
+  }
+
+  if (!wasExpanded) {
+    card.classList.add("expanded");
+    expandedCardId = ideaId;
+    // 댓글 구독 (실제 글만)
+    if (card.dataset.sample !== "1") {
+      subscribeCommentsForCard(ideaId, card);
+    }
+  } else {
+    expandedCardId = null;
+    if (commentUnsubMap[ideaId]) {
+      commentUnsubMap[ideaId]();
+      delete commentUnsubMap[ideaId];
+    }
   }
 }
 
-function goToIdeaDetail(ideaId) {
-  if (String(ideaId).startsWith("sample_")) {
-    showToast("이 아이디어는 예시입니다. 실제 글에서만 상세 페이지가 동작합니다.", "info");
+function subscribeCommentsForCard(ideaId, card) {
+  if (commentUnsubMap[ideaId]) return;
+  try {
+    commentUnsubMap[ideaId] = subscribeToComments(ideaId, (comments) => {
+      commentsCacheMap[ideaId] = comments;
+      const c = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(ideaId)}"]`);
+      if (c) renderInlineComments(c, comments);
+    });
+  } catch (e) {
+    console.warn("comments subscription failed", e);
+  }
+}
+
+function renderInlineComments(card, comments) {
+  const list = card.querySelector(".inline-comments-list");
+  const cnt = card.querySelector(".inline-comments-count");
+  if (cnt) cnt.textContent = comments.length;
+  if (!list) return;
+
+  if (comments.length === 0) {
+    list.innerHTML = '<p class="empty-comment">첫 댓글을 남겨주세요!</p>';
     return;
   }
-  window.location.href = `idea.html?id=${encodeURIComponent(ideaId)}`;
+
+  const byParent = new Map();
+  byParent.set(null, []);
+  comments.forEach((c) => {
+    const p = c.parentId || null;
+    if (!byParent.has(p)) byParent.set(p, []);
+    byParent.get(p).push(c);
+  });
+  const top = byParent.get(null) || [];
+  const ideaId = card.dataset.id;
+
+  list.innerHTML = top.map((c) => commentInlineHtml(c, byParent.get(c.id) || [], ideaId)).join("");
 }
+
+function commentInlineHtml(c, replies, ideaId) {
+  const myUid = getCurrentUser()?.uid;
+  const canDelete = myUid && c.authorUid === myUid;
+  const repliesHtml = replies.map((r) => {
+    const canDelR = myUid && r.authorUid === myUid;
+    return `
+      <div class="comment reply">
+        <div class="comment-head">
+          ${r.authorPhoto ? `<img class="comment-avatar" src="${escapeHtml(r.authorPhoto)}">` : ''}
+          <strong>${escapeHtml(r.authorName || '익명')}</strong>
+          <span class="comment-time">${formatTime(r.createdAt)}</span>
+          ${canDelR ? `<button class="btn-mini btn-text-danger" data-action="comment-delete" data-idea-id="${ideaId}" data-comment-id="${r.id}">삭제</button>` : ''}
+        </div>
+        <div class="comment-body">${escapeHtml(r.text).replace(/\n/g, "<br>")}</div>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="comment top">
+      <div class="comment-head">
+        ${c.authorPhoto ? `<img class="comment-avatar" src="${escapeHtml(c.authorPhoto)}">` : ''}
+        <strong>${escapeHtml(c.authorName || '익명')}</strong>
+        <span class="comment-time">${formatTime(c.createdAt)}</span>
+        ${canDelete ? `<button class="btn-mini btn-text-danger" data-action="comment-delete" data-idea-id="${ideaId}" data-comment-id="${c.id}">삭제</button>` : ''}
+      </div>
+      <div class="comment-body">${escapeHtml(c.text).replace(/\n/g, "<br>")}</div>
+      <div class="comment-actions">
+        <button class="btn-mini btn-text" data-action="reply-toggle" data-parent="${c.id}">답글</button>
+      </div>
+      <div class="reply-form hidden" data-parent="${c.id}">
+        <textarea rows="2" maxlength="1000" placeholder="답글 작성..." class="reply-input"></textarea>
+        <div class="reply-form-actions">
+          <button class="btn-mini btn-text" data-action="reply-toggle" data-parent="${c.id}">취소</button>
+          <button class="btn-mini btn-comment-submit" data-action="reply-submit" data-idea-id="${ideaId}" data-parent="${c.id}">답글 등록</button>
+        </div>
+      </div>
+      ${repliesHtml ? `<div class="reply-list">${repliesHtml}</div>` : ''}
+    </div>
+  `;
+}
+
+function onReplyToggle(btn) {
+  const parentId = btn.dataset.parent;
+  const card = btn.closest(".idea-card");
+  if (!card) return;
+  const form = card.querySelector(`.reply-form[data-parent="${cssEscape(parentId)}"]`);
+  if (!form) return;
+  form.classList.toggle("hidden");
+  if (!form.classList.contains("hidden")) {
+    form.querySelector("textarea")?.focus();
+  }
+}
+
+async function onCommentSubmit(btn, ideaId, parentId) {
+  const user = getCurrentUser();
+  if (!user) {
+    showToast("댓글 작성은 로그인이 필요합니다", "info");
+    setTimeout(() => window.appAuth.loginWithGoogle(), 800);
+    return;
+  }
+  if (String(ideaId).startsWith("sample_")) {
+    showToast("예시 글에는 댓글을 남길 수 없어요.", "info");
+    return;
+  }
+  const card = btn.closest(".idea-card");
+  let text = "";
+  let textarea;
+  if (parentId) {
+    const form = card.querySelector(`.reply-form[data-parent="${cssEscape(parentId)}"]`);
+    textarea = form?.querySelector("textarea");
+    text = textarea ? textarea.value.trim() : "";
+  } else {
+    textarea = card.querySelector(".inline-comment-input");
+    text = textarea ? textarea.value.trim() : "";
+  }
+  if (!text) { showToast("내용을 입력해주세요", ""); return; }
+
+  btn.disabled = true;
+  try {
+    await addComment(ideaId, user, text, parentId);
+    if (textarea) textarea.value = "";
+    if (parentId) {
+      const form = card.querySelector(`.reply-form[data-parent="${cssEscape(parentId)}"]`);
+      form?.classList.add("hidden");
+    }
+    showToast(parentId ? "답글이 등록되었어요" : "댓글이 등록되었어요", "success");
+  } catch (e) {
+    console.error(e);
+    showToast(e.message || "댓글 등록에 실패했어요.", "");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function onDeleteComment(ideaId, commentId) {
+  if (!confirm("댓글을 삭제하시겠습니까?")) return;
+  try {
+    await deleteComment(ideaId, commentId);
+    showToast("삭제되었어요", "");
+  } catch (e) {
+    showToast("삭제에 실패했어요", "");
+  }
+}
+
+// ---- 액션 ----
 
 async function onWaitlistClick(btn, ideaId, tier) {
   if (String(ideaId).startsWith("sample_")) {
@@ -504,12 +704,15 @@ async function onLikeClick(btn, ideaId) {
 }
 
 async function onShareClick(ideaId) {
+  if (String(ideaId).startsWith("sample_")) {
+    showToast("예시 글은 공유 주소가 없습니다.", "info");
+    return;
+  }
   const url = `${window.location.origin}/idea.html?id=${encodeURIComponent(ideaId)}`;
   try {
     await navigator.clipboard.writeText(url);
     showToast("주소가 복사되었어요. 다른 곳에 붙여넣기 해주세요.", "success");
   } catch (e) {
-    // 폴백: prompt
     window.prompt("아래 주소를 복사하세요", url);
   }
 }
@@ -528,8 +731,7 @@ async function handleImageSelect(e) {
     }
     if (!file.type.startsWith("image/")) continue;
     if (file.size > 20 * 1024 * 1024) {
-      showToast("이미지가 너무 큽니다 (최대 20MB)", "");
-      continue;
+      showToast("이미지가 너무 큽니다 (최대 20MB)", ""); continue;
     }
     try {
       let dataUrl = await resizeImageToDataUrl(file, MAX_IMAGE_WIDTH, IMAGE_JPEG_QUALITY);
@@ -537,8 +739,7 @@ async function handleImageSelect(e) {
         dataUrl = await resizeImageToDataUrl(file, MAX_IMAGE_WIDTH, 0.6);
       }
       if (dataUrl.length > MAX_IMAGE_BYTES) {
-        showToast(`'${file.name}' 이미지 용량이 너무 커요. 다른 이미지를 시도해주세요.`, "");
-        continue;
+        showToast(`'${file.name}' 이미지 용량이 너무 커요.`, ""); continue;
       }
       pendingImages.push({
         dataUrl,
@@ -562,9 +763,8 @@ function renderImagePreviews() {
     </div>
   `).join("");
   imagePreviews.querySelectorAll(".thumb-remove").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const idx = parseInt(btn.dataset.idx, 10);
-      pendingImages.splice(idx, 1);
+    btn.addEventListener("click", () => {
+      pendingImages.splice(parseInt(btn.dataset.idx, 10), 1);
       renderImagePreviews();
     });
   });
@@ -575,10 +775,7 @@ function renderImagePreviews() {
   }
 }
 
-function clearImagePreviews() {
-  pendingImages = [];
-  renderImagePreviews();
-}
+function clearImagePreviews() { pendingImages = []; renderImagePreviews(); }
 
 function resizeImageToDataUrl(file, maxWidth, quality) {
   return new Promise((resolve, reject) => {
@@ -589,13 +786,11 @@ function resizeImageToDataUrl(file, maxWidth, quality) {
       img.onerror = () => reject(new Error("decode failed"));
       img.onload = () => {
         const ratio = img.width > maxWidth ? maxWidth / img.width : 1;
-        const w = Math.round(img.width * ratio);
-        const h = Math.round(img.height * ratio);
+        const w = Math.round(img.width * ratio); const h = Math.round(img.height * ratio);
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL("image/jpeg", quality));
       };
@@ -621,16 +816,14 @@ async function handleSubmit(e) {
     setTimeout(() => window.appAuth.loginWithGoogle(), 1000);
     return;
   }
-
   try {
-    const todayCount = await getTodayPostCount(user.uid);
-    if (todayCount >= DAILY_POST_LIMIT) {
+    const c = await getTodayPostCount(user.uid);
+    if (c >= DAILY_POST_LIMIT) {
       showToast(`하루에 최대 ${DAILY_POST_LIMIT}개까지만 등록할 수 있어요.`, "");
       await refreshDailyLimitInfo();
       return;
     }
   } catch (e) { /* ignore */ }
-
   await submitIdea(title, desc, user);
 }
 
@@ -648,8 +841,7 @@ async function submitIdea(title, desc, user) {
   } catch (error) {
     console.error("submit", error);
     if (error?.code === "daily-limit-exceeded") {
-      showToast(error.message, "");
-      await refreshDailyLimitInfo();
+      showToast(error.message, ""); await refreshDailyLimitInfo();
     } else {
       showToast("제출에 실패했어요. 다시 시도해주세요.", "");
     }
@@ -664,18 +856,14 @@ async function submitIdea(title, desc, user) {
 async function handleSubscribe() {
   const emailInput = document.getElementById("subscribe-email");
   const email = emailInput.value.trim();
-  if (!email || !email.includes("@")) {
-    showToast("유효한 이메일 주소를 입력해주세요", ""); emailInput.focus(); return;
-  }
+  if (!email || !email.includes("@")) { showToast("유효한 이메일 주소를 입력해주세요", ""); emailInput.focus(); return; }
   try {
     await subscribeEmail(email, "", null);
     emailInput.value = "";
     subscribeSuccess.classList.remove("hidden");
     setTimeout(() => subscribeSuccess.classList.add("hidden"), 3000);
     showToast("구독이 완료되었어요! 📧", "success");
-  } catch (error) {
-    showToast("구독에 실패했어요.", "");
-  }
+  } catch (error) { showToast("구독에 실패했어요.", ""); }
 }
 
 async function handleSubscribeToggle(checked) {
@@ -695,15 +883,12 @@ async function handleSubscribeToggle(checked) {
   }
 }
 
-// ---- 관심 아이디어 모달 ----
+// ---- 관심 모달 ----
 
 async function openFavoritesModal() {
   if (!favModal) return;
   const user = getCurrentUser();
-  if (!user) {
-    showToast("로그인 후 사용할 수 있어요", "info");
-    return;
-  }
+  if (!user) { showToast("로그인 후 사용할 수 있어요", "info"); return; }
   favModal.classList.remove("hidden");
   favModalList.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">불러오는 중...</p>';
   try {
@@ -717,10 +902,7 @@ async function openFavoritesModal() {
       return `
         <div class="fav-item">
           <a class="fav-item-main" href="idea.html?id=${encodeURIComponent(i.id)}">
-            <div class="fav-item-row">
-              <span class="status-badge ${sl.cls}">${sl.txt}</span>
-              <strong>${escapeHtml(i.title)}</strong>
-            </div>
+            <div class="fav-item-row"><span class="status-badge ${sl.cls}">${sl.txt}</span><strong>${escapeHtml(i.title)}</strong></div>
             <p class="fav-item-desc">${escapeHtml(truncate(i.description, 80))}</p>
           </a>
           <button class="fav-remove" data-id="${i.id}" title="관심 해제">×</button>
@@ -736,46 +918,98 @@ async function openFavoritesModal() {
           if (favModalList.children.length === 0) {
             favModalList.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">관심 등록한 아이디어가 없어요.</p>';
           }
-        } catch (e) {
-          showToast("해제에 실패했어요.", "");
-        } finally {
-          btn.disabled = false;
-        }
+        } catch (e) { showToast("해제에 실패했어요.", ""); }
+        finally { btn.disabled = false; }
       });
     });
   } catch (e) {
-    console.error(e);
     favModalList.innerHTML = '<p style="color:#ef4444;text-align:center;padding:20px;">불러오기에 실패했어요.</p>';
   }
 }
 
-function closeFavoritesModal() {
-  if (favModal) favModal.classList.add("hidden");
-}
+function closeFavoritesModal() { if (favModal) favModal.classList.add("hidden"); }
 
 // ---- Toast ----
 
 function showToast(message, type) {
-  const container = document.getElementById("toast-container");
-  if (!container) return;
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3000);
+  const c = document.getElementById("toast-container");
+  if (!c) return;
+  const t = document.createElement("div");
+  t.className = `toast ${type}`;
+  t.textContent = message;
+  c.appendChild(t);
+  setTimeout(() => { if (t.parentNode) t.remove(); }, 3000);
 }
 
 // ---- Utilities ----
 
 function escapeHtml(str) {
   if (!str) return "";
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
 }
-function truncate(str, maxLen) {
+function truncate(str, n) {
   if (!str) return "";
-  return str.length > maxLen ? str.substring(0, maxLen) + "..." : str;
+  return str.length > n ? str.substring(0, n) + "..." : str;
+}
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60_000) return "방금 전";
+  if (diff < 3_600_000) return Math.floor(diff / 60_000) + "분 전";
+  if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + "시간 전";
+  return d.toLocaleDateString("ko-KR");
+}
+function cssEscape(s) {
+  return String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => "\\" + c);
 }
 
 window.app = { handleSubscribe, handleSubscribeToggle };
+
+// ========================================
+// Hero Title Typing Cycle
+// ========================================
+const HERO_PHRASES = [
+  "이런 앱",
+  "지금 근처에서 같이 밥 먹을 사람 매칭 앱",
+  "사진 찍으면 SNS 감성으로 자동 편집 앱",
+  "같은 시간에 운동 파트너 연결 앱",
+  "내 옷 코디 공유 + 구매 연결 앱",
+  "취향 맞는 영상 자동 추천 앱",
+  "카페 자리·콘센트 정보 앱",
+  "약속 중간 위치 + 최적 코스 추천 앱"
+];
+
+const heroTypingEl = document.getElementById("typing-app");
+if (heroTypingEl) startHeroTypingCycle();
+
+function startHeroTypingCycle() {
+  let phraseIdx = 0;
+  let charIdx = HERO_PHRASES[0].length;
+  let mode = "hold-start";
+  const TYPE_DELAY = 70, DEL_DELAY = 35, HOLD_AFTER_TYPE = 1800, HOLD_INITIAL = 1300, PAUSE_BETWEEN = 350;
+  function render() { heroTypingEl.textContent = HERO_PHRASES[phraseIdx].substring(0, charIdx); }
+  function tick() {
+    const phrase = HERO_PHRASES[phraseIdx];
+    if (mode === "hold-start") { mode = "deleting"; setTimeout(tick, HOLD_INITIAL); return; }
+    if (mode === "deleting") {
+      charIdx--; render();
+      if (charIdx <= 0) {
+        phraseIdx = (phraseIdx + 1) % HERO_PHRASES.length;
+        if (phraseIdx === 0) phraseIdx = 1;
+        mode = "typing"; setTimeout(tick, PAUSE_BETWEEN);
+      } else setTimeout(tick, DEL_DELAY);
+      return;
+    }
+    if (mode === "typing") {
+      charIdx++; render();
+      if (charIdx >= phrase.length) { mode = "holding"; setTimeout(tick, HOLD_AFTER_TYPE); }
+      else setTimeout(tick, TYPE_DELAY);
+      return;
+    }
+    if (mode === "holding") { mode = "deleting"; setTimeout(tick, 0); return; }
+  }
+  setTimeout(tick, 100);
+}
