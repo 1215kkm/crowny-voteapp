@@ -12,20 +12,29 @@ import {
   subscribeEmail,
   unsubscribeEmail,
   checkSubscription,
-  subscribeToTotalWaitlistCount
+  subscribeToTotalWaitlistCount,
+  getTodayPostCount,
+  DAILY_POST_LIMIT
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { SAMPLE_IDEAS, SAMPLE_MEMBERS, SAMPLE_TOTAL } from "./sample-data.js";
 
-let usingSampleData = false;
+// Firebase 사용 여부 (true면 firestore에서 실시간 구독)
+let firebaseAvailable = !isPlaceholder;
+
+// ---- 이미지 리사이즈 설정 ----
+const MAX_IMAGE_WIDTH = 1400;
+const IMAGE_JPEG_QUALITY = 0.8;
+const MAX_IMAGE_BYTES = 900 * 1024; // base64 기준 900KB 상한 (Firestore 1MB 문서 한계 고려)
 
 // ---- State ----
 let currentSort = "createdAt";
-let currentIdeas = [];
+let currentRealIdeas = []; // 실제 Firestore 아이디어
 let userWaitlistMap = {};
 let unsubIdeas = null;
 let expandedCardId = null;
 let pendingSubmit = false;
+let pendingImageData = null; // 첨부된 (리사이즈 된) 이미지 base64
 
 // ---- DOM Elements ----
 const ideasContainer = document.getElementById("ideas-container");
@@ -55,39 +64,44 @@ const ideaDesc = document.getElementById("idea-desc");
 const titleCount = document.getElementById("title-count");
 const descCount = document.getElementById("desc-count");
 const submitBtn = document.getElementById("submit-btn");
+const ideaImageInput = document.getElementById("idea-image");
+const imagePreview = document.getElementById("image-preview");
+const imagePreviewImg = document.getElementById("image-preview-img");
+const imagePreviewInfo = document.getElementById("image-preview-info");
+const imageRemoveBtn = document.getElementById("image-remove-btn");
+const dailyLimitInfo = document.getElementById("daily-limit-info");
 
 // ---- Initialize ----
 
-// If Firebase is not configured, use sample data immediately
-if (isPlaceholder) {
-  usingSampleData = true;
+if (!firebaseAvailable) {
   loadingState.classList.add("hidden");
   emptyState.classList.add("hidden");
-  loadSampleData();
-  // Show form always (no login required to write)
+  renderAll();
   if (formLoginPrompt) formLoginPrompt.classList.add("hidden");
   ideaForm.classList.remove("hidden");
 } else {
   onAuthChange(handleAuthState);
   try {
     subscribeToTotalWaitlistCount((count) => {
-      totalWaitlistCount.textContent = count.toLocaleString();
+      // 실제 대기자 수 + 샘플 대기자 수
+      totalWaitlistCount.textContent = (count + SAMPLE_TOTAL).toLocaleString();
     });
   } catch (e) { /* ignore */ }
   startIdeasSubscription();
-  // Fallback timeout
+  // Fallback: 3초 안에 실제 데이터가 안 와도 샘플 + 빈 실제 리스트로 렌더
   setTimeout(() => {
-    if (currentIdeas.length === 0 && !usingSampleData) {
-      loadSampleData();
+    if (currentRealIdeas.length === 0) {
+      loadingState.classList.add("hidden");
+      renderAll();
     }
   }, 3000);
 }
 
-// Always show form regardless of login state
+// 폼은 항상 표시
 if (formLoginPrompt) formLoginPrompt.classList.add("hidden");
 ideaForm.classList.remove("hidden");
 
-// Sort controls
+// ---- Sort 컨트롤 ----
 document.querySelectorAll(".sort-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sort = btn.dataset.sort;
@@ -95,15 +109,14 @@ document.querySelectorAll(".sort-btn").forEach((btn) => {
     currentSort = sort;
     document.querySelectorAll(".sort-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    if (usingSampleData) {
-      loadSampleData();
-    } else {
+    if (firebaseAvailable) {
       startIdeasSubscription();
     }
+    renderAll();
   });
 });
 
-// Hero typing reaction + equalizer
+// ---- Hero typing reaction + equalizer ----
 const heroEl = document.getElementById("hero");
 const heroNeural = document.querySelector(".hero-neural");
 const equalizer = document.getElementById("equalizer");
@@ -162,7 +175,7 @@ function heroTypingPulse() {
   }, 500);
 }
 
-// Form char counts
+// ---- Form 입력 ----
 ideaTitle.addEventListener("input", () => {
   titleCount.textContent = ideaTitle.value.length;
   heroTypingPulse();
@@ -173,13 +186,18 @@ ideaDesc.addEventListener("input", () => {
   heroTypingPulse();
 });
 
-// Form submit
-ideaForm.addEventListener("submit", handleSubmit);
+// 이미지 첨부
+if (ideaImageInput) {
+  ideaImageInput.addEventListener("change", handleImageSelect);
+}
+if (imageRemoveBtn) {
+  imageRemoveBtn.addEventListener("click", clearImagePreview);
+}
 
-// Ideas container - event delegation
+ideaForm.addEventListener("submit", handleSubmit);
 ideasContainer.addEventListener("click", handleIdeasClick);
 
-// ---- Auth State Handler ----
+// ---- Auth State ----
 
 async function handleAuthState(user) {
   if (user) {
@@ -189,7 +207,6 @@ async function handleAuthState(user) {
     userPhoto.alt = user.displayName || "";
     userName.textContent = user.displayName || "사용자";
 
-    // Subscribe section
     if (subscribeEmailForm) subscribeEmailForm.classList.add("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.remove("hidden");
     if (subscribeEmailDisplay) subscribeEmailDisplay.textContent = user.email;
@@ -202,8 +219,8 @@ async function handleAuthState(user) {
     }
 
     await updateUserWaitlistStatus();
+    await refreshDailyLimitInfo();
 
-    // If user just logged in and had pending submit
     if (pendingSubmit) {
       pendingSubmit = false;
       const title = ideaTitle.value.trim();
@@ -223,27 +240,29 @@ async function handleAuthState(user) {
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
 
     userWaitlistMap = {};
-    renderIdeas(currentIdeas);
+    if (dailyLimitInfo) {
+      dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요. 로그인 후 글을 작성하세요.`;
+    }
+    renderAll();
   }
 }
 
-// ---- Sample Data ----
-
-function loadSampleData() {
-  usingSampleData = true;
-  let ideas = [...SAMPLE_IDEAS];
-  if (currentSort === "waitlistCount") {
-    ideas.sort((a, b) => b.waitlistCount - a.waitlistCount);
-  } else {
-    ideas.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+// ---- 일일 글 제한 표시 ----
+async function refreshDailyLimitInfo() {
+  if (!dailyLimitInfo) return;
+  const user = getCurrentUser();
+  if (!user) {
+    dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
+    return;
   }
-  currentIdeas = ideas;
-  loadingState.classList.add("hidden");
-  emptyState.classList.add("hidden");
-  ideasCount.textContent = ideas.length;
-  totalWaitlistCount.textContent = SAMPLE_TOTAL.toLocaleString();
-  renderIdeas(ideas);
-  setTimeout(loadAllAvatarStacks, 300);
+  try {
+    const count = await getTodayPostCount(user.uid);
+    const remaining = Math.max(0, DAILY_POST_LIMIT - count);
+    dailyLimitInfo.textContent = `오늘 작성 ${count}/${DAILY_POST_LIMIT}건 (남은 ${remaining}건) · 하루 최대 ${DAILY_POST_LIMIT}개`;
+    dailyLimitInfo.classList.toggle("limit-reached", remaining === 0);
+  } catch (e) {
+    dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
+  }
 }
 
 // ---- Ideas Subscription ----
@@ -253,28 +272,19 @@ function startIdeasSubscription() {
 
   try {
     unsubIdeas = subscribeToIdeas(currentSort, async (ideas) => {
-      if (usingSampleData) return;
-      const isFirstLoad = currentIdeas.length === 0 && ideas.length > 0;
-      const prevIdeas = currentIdeas;
-      currentIdeas = ideas;
+      const isFirstLoad = currentRealIdeas.length === 0 && ideas.length > 0;
+      const prevIdeas = currentRealIdeas;
+      currentRealIdeas = ideas;
 
       loadingState.classList.add("hidden");
-
-      if (ideas.length === 0) {
-        loadSampleData();
-        return;
-      } else {
-        emptyState.classList.add("hidden");
-      }
-
-      ideasCount.textContent = ideas.length;
+      emptyState.classList.add("hidden");
 
       const user = getCurrentUser();
       if (user && ideas.length > 0) {
         await updateUserWaitlistStatus();
       }
 
-      renderIdeas(ideas);
+      renderAll();
 
       if (!isFirstLoad && prevIdeas.length > 0) {
         ideas.forEach((idea) => {
@@ -287,23 +297,60 @@ function startIdeasSubscription() {
     });
   } catch (e) {
     console.warn("Firestore subscription failed:", e);
-    loadSampleData();
+    renderAll();
   }
 }
 
 async function updateUserWaitlistStatus() {
   const user = getCurrentUser();
-  if (!user || currentIdeas.length === 0) return;
+  if (!user || currentRealIdeas.length === 0) return;
 
   try {
-    const ideaIds = currentIdeas.map((i) => i.id);
+    const ideaIds = currentRealIdeas.map((i) => i.id);
     userWaitlistMap = await checkUserWaitlistBatch(ideaIds, user.uid);
   } catch (e) {
     console.warn("Waitlist status check failed:", e);
   }
 }
 
-// ---- Render Ideas ----
+// ---- 합쳐서 정렬 ----
+function getMergedIdeas() {
+  // 실제 아이디어를 우선, 그 뒤에 샘플
+  const samples = SAMPLE_IDEAS.map((s) => ({ ...s, isSample: true }));
+  const reals = currentRealIdeas.map((r) => ({ ...r, isSample: false }));
+
+  const merged = [...reals, ...samples];
+
+  if (currentSort === "waitlistCount") {
+    merged.sort((a, b) => (b.waitlistCount || 0) - (a.waitlistCount || 0));
+  } else {
+    // createdAt 정렬 - 실제 데이터의 createdAt은 Firestore Timestamp, 샘플은 toDate() 객체
+    merged.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+  }
+  return merged;
+}
+
+function toMillis(ts) {
+  if (!ts) return 0;
+  if (typeof ts.toMillis === "function") return ts.toMillis();
+  if (typeof ts.toDate === "function") return ts.toDate().getTime();
+  return 0;
+}
+
+// ---- Render ----
+
+function renderAll() {
+  const ideas = getMergedIdeas();
+  ideasCount.textContent = ideas.length;
+  loadingState.classList.add("hidden");
+  if (ideas.length === 0) {
+    emptyState.classList.remove("hidden");
+  } else {
+    emptyState.classList.add("hidden");
+  }
+  renderIdeas(ideas);
+  setTimeout(loadAllAvatarStacks, 300);
+}
 
 function renderIdeas(ideas) {
   ideasContainer.querySelectorAll(".idea-card").forEach((el) => el.remove());
@@ -316,8 +363,9 @@ function renderIdeas(ideas) {
 
 function createIdeaCard(idea) {
   const card = document.createElement("article");
-  card.className = "idea-card";
+  card.className = "idea-card" + (idea.isSample ? " sample-card" : "");
   card.dataset.id = idea.id;
+  card.dataset.sample = idea.isSample ? "1" : "0";
 
   if (expandedCardId === idea.id) {
     card.classList.add("expanded");
@@ -329,11 +377,16 @@ function createIdeaCard(idea) {
   const user = getCurrentUser();
   const progressPercent = Math.min((idea.waitlistCount / 100) * 100, 100);
 
+  const imageHtml = idea.imageData
+    ? `<div class="idea-image-wrap"><img class="idea-image" src="${escapeHtml(idea.imageData)}" alt="" loading="lazy"></div>`
+    : "";
+
   card.innerHTML = `
     <div class="idea-header">
       <div class="idea-header-top">
         <h3 class="idea-title">
           ${isHot ? '<span class="badge-popular">HOT</span> ' : ''}
+          ${idea.isSample ? '<span class="badge-sample">예시</span> ' : ''}
           ${escapeHtml(idea.title)}
         </h3>
         <span class="expand-icon">
@@ -359,6 +412,7 @@ function createIdeaCard(idea) {
     </div>
     <div class="idea-body">
       <div class="idea-body-inner">
+        ${imageHtml}
         <p class="idea-description">${escapeHtml(idea.description)}</p>
 
         <div class="progress-section">
@@ -427,20 +481,20 @@ function toggleAccordion(card) {
     card.classList.add("expanded");
     body.style.maxHeight = body.scrollHeight + "px";
     expandedCardId = ideaId;
-    loadWaitlistMembers(ideaId);
-    loadAvatarStack(ideaId);
+    loadWaitlistMembers(ideaId, card.dataset.sample === "1");
+    loadAvatarStack(ideaId, card.dataset.sample === "1");
   } else {
     expandedCardId = null;
   }
 }
 
-async function loadWaitlistMembers(ideaId) {
+async function loadWaitlistMembers(ideaId, isSample) {
   const container = document.getElementById(`members-${ideaId}`);
   if (!container) return;
 
   try {
     let members;
-    if (usingSampleData) {
+    if (isSample) {
       members = SAMPLE_MEMBERS[ideaId] || [];
     } else {
       members = await getWaitlistMembers(ideaId);
@@ -462,13 +516,13 @@ async function loadWaitlistMembers(ideaId) {
   }
 }
 
-async function loadAvatarStack(ideaId) {
+async function loadAvatarStack(ideaId, isSample) {
   const container = document.getElementById(`avatar-stack-${ideaId}`);
   if (!container) return;
 
   try {
     let members;
-    if (usingSampleData) {
+    if (isSample) {
       members = SAMPLE_MEMBERS[ideaId] || [];
     } else {
       members = await getWaitlistMembers(ideaId);
@@ -485,14 +539,23 @@ async function loadAvatarStack(ideaId) {
 }
 
 async function loadAllAvatarStacks() {
-  for (const idea of currentIdeas) {
-    loadAvatarStack(idea.id);
-  }
+  const cards = ideasContainer.querySelectorAll(".idea-card");
+  cards.forEach((card) => {
+    loadAvatarStack(card.dataset.id, card.dataset.sample === "1");
+  });
 }
 
 // ---- Join Waitlist ----
 
 async function handleJoinWaitlist(btn) {
+  const card = btn.closest(".idea-card");
+  const isSampleCard = card && card.dataset.sample === "1";
+
+  if (isSampleCard) {
+    showToast("이 아이디어는 예시입니다. 실제 등록은 사용자가 작성한 글에서만 가능합니다.", "info");
+    return;
+  }
+
   const user = getCurrentUser();
   if (!user) {
     showToast("대기자로 등록하려면 로그인이 필요합니다", "info");
@@ -522,9 +585,9 @@ async function handleJoinWaitlist(btn) {
     }
 
     if (expandedCardId === ideaId) {
-      loadWaitlistMembers(ideaId);
+      loadWaitlistMembers(ideaId, false);
     }
-    loadAvatarStack(ideaId);
+    loadAvatarStack(ideaId, false);
   } catch (error) {
     console.error("Waitlist toggle error:", error);
     if (wasJoined) {
@@ -538,6 +601,93 @@ async function handleJoinWaitlist(btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// ---- 이미지 첨부 처리 ----
+
+async function handleImageSelect(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("이미지 파일만 첨부할 수 있습니다", "");
+    ideaImageInput.value = "";
+    return;
+  }
+
+  // 원본 너무 큰 파일은 사전 차단 (20MB 초과)
+  if (file.size > 20 * 1024 * 1024) {
+    showToast("이미지가 너무 큽니다 (최대 20MB)", "");
+    ideaImageInput.value = "";
+    return;
+  }
+
+  try {
+    const dataUrl = await resizeImageToDataUrl(file, MAX_IMAGE_WIDTH, IMAGE_JPEG_QUALITY);
+    if (dataUrl.length > MAX_IMAGE_BYTES) {
+      // 더 큰 압축 시도
+      const dataUrl2 = await resizeImageToDataUrl(file, MAX_IMAGE_WIDTH, 0.6);
+      if (dataUrl2.length > MAX_IMAGE_BYTES) {
+        showToast("이미지 용량이 너무 큽니다. 다른 이미지를 선택해주세요.", "");
+        ideaImageInput.value = "";
+        return;
+      }
+      pendingImageData = dataUrl2;
+    } else {
+      pendingImageData = dataUrl;
+    }
+    showImagePreview(pendingImageData);
+  } catch (err) {
+    console.error("Image resize error:", err);
+    showToast("이미지를 처리할 수 없습니다.", "");
+    ideaImageInput.value = "";
+  }
+}
+
+function showImagePreview(dataUrl) {
+  if (!imagePreview) return;
+  imagePreview.classList.remove("hidden");
+  imagePreviewImg.src = dataUrl;
+  // 대략적 사이즈 표시 (base64 length * 3/4 ≈ 바이트)
+  const approxBytes = Math.round((dataUrl.length * 3) / 4);
+  const kb = Math.round(approxBytes / 1024);
+  imagePreviewInfo.textContent = `최대 폭 ${MAX_IMAGE_WIDTH}px로 자동 조정됨 · 약 ${kb}KB`;
+}
+
+function clearImagePreview() {
+  pendingImageData = null;
+  if (ideaImageInput) ideaImageInput.value = "";
+  if (imagePreview) imagePreview.classList.add("hidden");
+  if (imagePreviewImg) imagePreviewImg.src = "";
+  if (imagePreviewInfo) imagePreviewInfo.textContent = "";
+}
+
+function resizeImageToDataUrl(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("decode failed"));
+      img.onload = () => {
+        const ratio = img.width > maxWidth ? maxWidth / img.width : 1;
+        const w = Math.round(img.width * ratio);
+        const h = Math.round(img.height * ratio);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        // 흰 바탕 (PNG 투명 배경 → JPEG 변환 시 검정 방지)
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ---- Form Submit ----
@@ -570,6 +720,18 @@ async function handleSubmit(e) {
     return;
   }
 
+  // 일일 제한 사전 체크 (UI 빠른 피드백)
+  try {
+    const todayCount = await getTodayPostCount(user.uid);
+    if (todayCount >= DAILY_POST_LIMIT) {
+      showToast(`하루에 최대 ${DAILY_POST_LIMIT}개까지만 등록할 수 있어요. 내일 다시 시도해주세요.`, "");
+      await refreshDailyLimitInfo();
+      return;
+    }
+  } catch (e) {
+    console.warn("daily limit check failed:", e);
+  }
+
   await submitIdea(title, desc, user);
 }
 
@@ -578,15 +740,22 @@ async function submitIdea(title, desc, user) {
   submitBtn.textContent = "제출 중...";
 
   try {
-    await addIdea(title, desc, user);
+    await addIdea(title, desc, user, pendingImageData);
     ideaTitle.value = "";
     ideaDesc.value = "";
     titleCount.textContent = "0";
     descCount.textContent = "0";
+    clearImagePreview();
     showToast("아이디어가 성공적으로 제안되었습니다! 💡", "success");
+    await refreshDailyLimitInfo();
   } catch (error) {
     console.error("Submit error:", error);
-    showToast("제출에 실패했습니다. 다시 시도해주세요.", "");
+    if (error && error.code === "daily-limit-exceeded") {
+      showToast(error.message, "");
+      await refreshDailyLimitInfo();
+    } else {
+      showToast("제출에 실패했습니다. 다시 시도해주세요.", "");
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = "글남기기";
