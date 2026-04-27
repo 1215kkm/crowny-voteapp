@@ -1770,3 +1770,35 @@ input, textarea {
   .detail-title { font-size: 1.3rem; }
   .modal-window { max-height: 90vh; }
 }
+
+/* ============================================
+   Hero 타이핑 사이클
+   ============================================ */
+.typing-text {
+  display: inline-block;
+  background: linear-gradient(135deg, #a5b4fc, #f0abfc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+  min-height: 1.2em;
+  letter-spacing: -0.01em;
+}
+.typing-text::after {
+  content: "▍";
+  display: inline-block;
+  margin-left: 4px;
+  color: #a5b4fc;
+  -webkit-text-fill-color: #a5b4fc;
+  animation: hero-caret-blink 0.9s steps(1) infinite;
+  font-weight: 400;
+}
+@keyframes hero-caret-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+.hero-line2 { display: inline-block; }
+
+@media (max-width: 768px) {
+  .typing-text { font-size: 1.6rem; }
+}

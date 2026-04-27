@@ -779,3 +779,84 @@ function truncate(str, maxLen) {
 }
 
 window.app = { handleSubscribe, handleSubscribeToggle };
+
+// ========================================
+// Hero Title Typing Cycle
+// ========================================
+const HERO_PHRASES = [
+  "이런 앱",
+  "지금 근처에서 같이 밥 먹을 사람 매칭 앱",
+  "사진 찍으면 SNS 감성으로 자동 편집 앱",
+  "같은 시간에 운동 파트너 연결 앱",
+  "내 옷 코디 공유 + 구매 연결 앱",
+  "취향 맞는 영상 자동 추천 앱",
+  "카페 자리·콘센트 정보 앱",
+  "약속 중간 위치 + 최적 코스 추천 앱"
+];
+
+const heroTypingEl = document.getElementById("typing-app");
+if (heroTypingEl) {
+  startHeroTypingCycle();
+}
+
+function startHeroTypingCycle() {
+  let phraseIdx = 0;
+  let charIdx = HERO_PHRASES[0].length; // 시작 시 첫 문구 다 보임
+  let mode = "hold-start"; // hold-start → deleting → typing → holding → deleting...
+
+  const TYPE_DELAY = 70;
+  const DEL_DELAY = 35;
+  const HOLD_AFTER_TYPE = 1800;
+  const HOLD_INITIAL = 1300;
+  const PAUSE_BETWEEN = 350;
+
+  function render() {
+    heroTypingEl.textContent = HERO_PHRASES[phraseIdx].substring(0, charIdx);
+  }
+
+  function tick() {
+    const phrase = HERO_PHRASES[phraseIdx];
+
+    if (mode === "hold-start") {
+      mode = "deleting";
+      setTimeout(tick, HOLD_INITIAL);
+      return;
+    }
+
+    if (mode === "deleting") {
+      charIdx--;
+      render();
+      if (charIdx <= 0) {
+        phraseIdx = (phraseIdx + 1) % HERO_PHRASES.length;
+        // 첫 문구(이런 앱)는 뛰어넘기 - 항상 새 문구 보여주기
+        if (phraseIdx === 0) phraseIdx = 1;
+        mode = "typing";
+        setTimeout(tick, PAUSE_BETWEEN);
+      } else {
+        setTimeout(tick, DEL_DELAY);
+      }
+      return;
+    }
+
+    if (mode === "typing") {
+      charIdx++;
+      render();
+      if (charIdx >= phrase.length) {
+        mode = "holding";
+        setTimeout(tick, HOLD_AFTER_TYPE);
+      } else {
+        setTimeout(tick, TYPE_DELAY);
+      }
+      return;
+    }
+
+    if (mode === "holding") {
+      mode = "deleting";
+      setTimeout(tick, 0);
+      return;
+    }
+  }
+
+  // 처음에 "이런 앱" 그대로 잠깐 보여준 뒤 사이클 시작
+  setTimeout(tick, 100);
+}
