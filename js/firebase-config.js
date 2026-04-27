@@ -10,15 +10,16 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyA2qYgn9-sFX3k0W1kDjV9eZjgo9ozsT3Y",
+  authDomain: "crowny-appter.firebaseapp.com",
+  projectId: "crowny-appter",
+  storageBucket: "crowny-appter.firebasestorage.app",
+  messagingSenderId: "85855432249",
+  appId: "1:85855432249:web:318c24b01a9be166daa7e8",
+  measurementId: "G-86ZZWE6PJ6"
 };
 
-const isPlaceholder = firebaseConfig.apiKey === "YOUR_API_KEY";
+const isPlaceholder = false;
 
 let app, auth, db;
 try {
