@@ -3,6 +3,7 @@
 // ========================================
 
 import { auth } from "./firebase-config.js";
+import { ADMIN_EMAIL } from "./ai-config.js";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -49,3 +50,26 @@ onAuthStateChanged(auth, (user) => {
 
 // Expose to window for inline onclick handlers
 window.appAuth = { loginWithGoogle, logout };
+
+// 관리자 링크 표시/숨김
+function applyAdminUiOnce() {
+  const apply = () => {
+    const isAdmin = currentUser?.email === ADMIN_EMAIL;
+    document.querySelectorAll("[data-admin-only]").forEach((el) => {
+      el.style.display = isAdmin ? "" : "none";
+    });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", apply);
+  } else {
+    apply();
+  }
+}
+applyAdminUiOnce();
+
+// auth 변경 시 다시 적용
+authCallbacks.push(() => {
+  document.querySelectorAll("[data-admin-only]").forEach((el) => {
+    el.style.display = (currentUser?.email === ADMIN_EMAIL) ? "" : "none";
+  });
+});
