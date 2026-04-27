@@ -601,3 +601,21 @@ export async function getLatestIdeaCreatedAt() {
   });
   return ts;
 }
+
+// ---- 작성자 본인 수정/삭제 ----
+
+export async function userUpdateOwnIdea(ideaId, fields) {
+  const allowed = {};
+  ["title","description","imageDataList"].forEach((k) => {
+    if (k in fields) allowed[k] = fields[k];
+  });
+  if (Object.keys(allowed).length === 0) return;
+  const { updateDoc: _u, doc: _d } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  await _u(_d(db, "ideas", ideaId), allowed);
+}
+
+export async function userDeleteOwnIdea(ideaId) {
+  const { deleteDoc: _del, doc: _d } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  await _del(_d(db, "ideas", ideaId));
+}
+
