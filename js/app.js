@@ -374,7 +374,7 @@ function createIdeaCard(idea) {
           <span class="expand-icon" aria-hidden="true">▾</span>
         </div>
         <h3 class="idea-title">${escapeHtml(idea.title)}</h3>
-        <p class="idea-preview">${escapeHtml(truncate(idea.description, 100))}</p>
+        <p class="idea-desc">${escapeHtml(idea.description).replace(/\n/g, "<br>")}</p>
         <div class="idea-meta">
           <span class="idea-author">
             ${idea.authorPhoto ? `<img src="${escapeHtml(idea.authorPhoto)}" alt="">` : ''}
@@ -406,7 +406,6 @@ function createIdeaCard(idea) {
     <div class="card-body">
       <div class="card-body-inner">
         ${allImages ? `<div class="expanded-images">${allImages}</div>` : ''}
-        <p class="expanded-desc">${escapeHtml(idea.description).replace(/\n/g, "<br>")}</p>
         ${renderProgressBlock(paid, free, meetsThreshold)}
 
         <section class="inline-comments">
@@ -973,8 +972,8 @@ window.app = { handleSubscribe, handleSubscribeToggle };
 // ========================================
 const HERO_PHRASES = [
   "이런 앱",
-  "지금 근처에서 같이 밥 먹을 사람 매칭 앱",
-  "사진 찍으면 SNS 감성으로 자동 편집 앱",
+  "지금바로 같이 밥 먹을 사람 매칭 앱",
+  "사진찍고 SNS 감성으로 자동 편집 앱",
   "같은 시간에 운동 파트너 연결 앱",
   "내 옷 코디 공유 + 구매 연결 앱",
   "취향 맞는 영상 자동 추천 앱",
