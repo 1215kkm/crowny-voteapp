@@ -410,3 +410,194 @@ export function subscribeToTotalWaitlistCount(callback) {
     callback(total);
   });
 }
+
+// ============================================
+// 관리자 / 차단 / AI 큐 / 분석 (admin 전용)
+// ============================================
+import {
+  query as _q, where as _w, orderBy as _o, limit as _l,
+  collection as _c, getDocs as _gd, doc as _d, getDoc as _gdoc,
+  setDoc as _sd, deleteDoc as _del, updateDoc as _up, Timestamp as _Ts,
+  addDoc as _add, serverTimestamp as _st
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ---- 관리자 - 모든 글/댓글 조작 ----
+
+export async function adminUpdateIdea(ideaId, fields) {
+  const allowed = {};
+  ["title","description","status","imageDataList"].forEach((k) => {
+    if (k in fields) allowed[k] = fields[k];
+  });
+  await _up(_d(db, "ideas", ideaId), allowed);
+}
+
+export async function adminDeleteIdea(ideaId) {
+  // 댓글, 좋아요, 대기자 등 서브컬렉션은 클라이언트에서 일괄 삭제
+  const subs = ["comments","likes","waitlist"];
+  for (const sub of subs) {
+    const snap = await _gd(_c(db, "ideas", ideaId, sub));
+    for (const d of snap.docs) {
+      try { await _del(d.ref); } catch (e) { /* skip */ }
+    }
+  }
+  await _del(_d(db, "ideas", ideaId));
+}
+
+export async function adminDeleteComment(ideaId, commentId) {
+  await _del(_d(db, "ideas", ideaId, "comments", commentId));
+  try { await _up(_d(db, "ideas", ideaId), { commentCount: increment(-1) }); } catch (e) {}
+}
+
+// ---- 사용자 차단 ----
+
+export async function banUser({ uid, email, reason }) {
+  if (!uid && !email) throw new Error("uid 또는 email 필요");
+  const docId = uid || email.replace(/[^a-zA-Z0-9_-]/g, "_");
+  await _sd(_d(db, "banned_users", docId), {
+    uid: uid || null,
+    email: email || null,
+    reason: reason || "",
+    bannedAt: _st()
+  });
+}
+
+export async function unbanUser(docId) {
+  await _del(_d(db, "banned_users", docId));
+}
+
+export async function listBannedUsers() {
+  const snap = await _gd(_c(db, "banned_users"));
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+// ---- 설정 (자동 댓글/글 생성 활성화 토글) ----
+
+export async function getSettings() {
+  const snap = await _gdoc(_d(db, "settings", "admin"));
+  if (!snap.exists()) return { autoCommentEnabled: false, autoPostEnabled: false };
+  return snap.data();
+}
+
+export async function setSettings(fields) {
+  await _sd(_d(db, "settings", "admin"), fields, { merge: true });
+}
+
+// ---- 스케줄 큐 (자동 댓글) ----
+
+export async function enqueueScheduledComment({ ideaId, text, authorName, authorPhoto, authorUid, scheduledAt }) {
+  await _add(_c(db, "scheduled_comments"), {
+    ideaId,
+    text,
+    authorName: authorName || "익명",
+    authorPhoto: authorPhoto || "",
+    authorUid: authorUid || ("ai_" + Math.random().toString(36).substring(2, 10)),
+    scheduledAt: _Ts.fromDate(scheduledAt instanceof Date ? scheduledAt : new Date(scheduledAt)),
+    status: "pending",
+    createdAt: _st()
+  });
+}
+
+export async function getDuePendingScheduledComments(maxN) {
+  const nowTs = _Ts.fromDate(new Date());
+  const q = _q(
+    _c(db, "scheduled_comments"),
+    _w("status", "==", "pending"),
+    _l(maxN || 30)
+  );
+  const snap = await _gd(q);
+  const due = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    if (data.scheduledAt && data.scheduledAt.toMillis() <= nowTs.toMillis()) {
+      due.push({ id: d.id, ...data });
+    }
+  });
+  return due;
+}
+
+export async function markScheduledCommentDone(id) {
+  await _up(_d(db, "scheduled_comments", id), { status: "done", completedAt: _st() });
+}
+
+// 큐 상태 조회 (관리자 페이지용)
+export async function listScheduledComments(maxN) {
+  const q = _q(_c(db, "scheduled_comments"), _l(maxN || 50));
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+  return list;
+}
+
+export async function deleteScheduledComment(id) {
+  await _del(_d(db, "scheduled_comments", id));
+}
+
+// AI가 만든 댓글을 실제 comments 컬렉션에 등록 (관리자 권한 필요)
+export async function postAiComment(ideaId, { authorName, authorPhoto, authorUid, text }) {
+  const ref = await _add(_c(db, "ideas", ideaId, "comments"), {
+    authorUid: authorUid || ("ai_" + Math.random().toString(36).substring(2,10)),
+    authorName: authorName || "익명",
+    authorPhoto: authorPhoto || "",
+    text: String(text).substring(0, 990),
+    parentId: null,
+    isAi: true,
+    createdAt: _st()
+  });
+  try { await _up(_d(db, "ideas", ideaId), { commentCount: increment(1) }); } catch (e) {}
+  return ref.id;
+}
+
+// AI가 만든 새 글 등록 (관리자 권한 필요)
+export async function postAiIdea({ title, description, author }) {
+  const ref = await _add(_c(db, "ideas"), {
+    title: String(title).substring(0, 200),
+    description: String(description).substring(0, 4900),
+    authorUid: author?.uid || "ai_" + Math.random().toString(36).substring(2,10),
+    authorName: author?.displayName || "익명",
+    authorPhoto: author?.photoURL || "",
+    waitlistCount: 0,
+    paidWaitlistCount: 0,
+    freeWaitlistCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    status: "waiting",
+    isAi: true,
+    createdAt: _st()
+  });
+  return ref.id;
+}
+
+// ---- 분석 ----
+
+export async function fetchEventsSince(daysAgo) {
+  const cutoff = _Ts.fromDate(new Date(Date.now() - daysAgo * 86400000));
+  const q = _q(
+    _c(db, "events"),
+    _w("createdAt", ">=", cutoff),
+    _o("createdAt", "desc"),
+    _l(2000)
+  );
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+// 최신 글의 작성 시각 — 자동 글 생성 판단용
+export async function getLatestIdeaCreatedAt() {
+  const q = _q(
+    _c(db, "ideas"),
+    _o("createdAt", "desc"),
+    _l(1)
+  );
+  const snap = await _gd(q);
+  let ts = null;
+  snap.forEach((d) => {
+    const data = d.data();
+    if (data.createdAt) ts = data.createdAt.toMillis();
+  });
+  return ts;
+}

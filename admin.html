@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 | Appter</title>
+  <link rel="icon" type="image/png" href="images/logo_favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-admin">
+  <header id="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo"><img src="images/logo_text_white.png" alt="Appter" width="175"></a>
+      <nav class="primary-nav">
+        <a href="/" class="nav-link">홈</a>
+        <a href="board.html" class="nav-link">게시판</a>
+        <a href="admin.html" class="nav-link active">관리자</a>
+      </nav>
+      <div id="auth-area">
+        <button id="login-btn" class="btn-login" onclick="window.appAuth.loginWithGoogle()">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Google로 로그인
+        </button>
+        <div id="user-info" class="hidden">
+          <img id="user-photo" src="" alt="" class="user-avatar">
+          <span id="user-name"></span>
+          <button id="logout-btn" class="btn-logout" onclick="window.appAuth.logout()">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="toast-container"></div>
+
+  <main class="admin-main">
+    <div id="admin-gate" class="admin-gate">
+      <div class="admin-gate-inner">
+        <h1>관리자 페이지</h1>
+        <p id="admin-gate-msg">관리자 계정으로 로그인이 필요합니다.</p>
+      </div>
+    </div>
+
+    <div id="admin-content" class="admin-content hidden">
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="dashboard">대시보드</button>
+        <button class="admin-tab" data-tab="ideas">글 관리</button>
+        <button class="admin-tab" data-tab="ai">AI 자동화</button>
+        <button class="admin-tab" data-tab="bans">사용자 차단</button>
+      </div>
+
+      <!-- 대시보드 -->
+      <section id="tab-dashboard" class="admin-section">
+        <h2>방문 분석</h2>
+        <div class="range-controls">
+          <button class="range-btn active" data-range="1">오늘</button>
+          <button class="range-btn" data-range="3">3일</button>
+          <button class="range-btn" data-range="7">7일</button>
+          <button class="range-btn" data-range="30">30일</button>
+        </div>
+        <div id="analytics-summary" class="analytics-summary">불러오는 중...</div>
+        <h3>유입 경로</h3>
+        <div id="analytics-sources" class="analytics-table"></div>
+        <h3>일자별</h3>
+        <div id="analytics-daily" class="analytics-table"></div>
+      </section>
+
+      <!-- 글 관리 -->
+      <section id="tab-ideas" class="admin-section hidden">
+        <h2>글 / 댓글 관리</h2>
+        <p class="admin-help">글을 클릭해 펼치면 댓글 목록과 수정/삭제 버튼이 보여요.</p>
+        <div id="admin-ideas-list" class="admin-ideas-list">불러오는 중...</div>
+      </section>
+
+      <!-- AI 자동화 -->
+      <section id="tab-ai" class="admin-section hidden">
+        <h2>AI 자동화 설정</h2>
+
+        <div class="ai-status-banner" id="ai-status-banner">Gemini API 키 확인 중...</div>
+
+        <div class="ai-toggles">
+          <label class="ai-toggle">
+            <input type="checkbox" id="auto-comment-toggle">
+            <span class="ai-toggle-label">
+              <strong>자동 댓글 큐 처리 활성</strong>
+              <small>관리자 또는 방문자가 사이트에 들어올 때, 예약된 댓글을 자동 등록합니다.</small>
+            </span>
+          </label>
+          <label class="ai-toggle">
+            <input type="checkbox" id="auto-post-toggle">
+            <span class="ai-toggle-label">
+              <strong>자동 새 글 생성 활성</strong>
+              <small>최신 글이 24~48시간 동안 없으면, 관리자 페이지를 열 때 AI가 새 글을 생성합니다.</small>
+            </span>
+          </label>
+          <button id="settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
+        </div>
+
+        <h3>수동 생성</h3>
+        <div class="ai-manual-row">
+          <select id="ai-target-idea"></select>
+          <input type="number" id="ai-comment-count" min="1" max="10" value="3" style="width:80px;">
+          <button id="ai-gen-comments" class="btn-mini">선택한 글에 댓글 생성</button>
+        </div>
+        <div class="ai-manual-row" style="margin-top:8px;">
+          <input type="number" id="ai-drip-days" min="1" max="14" value="3" style="width:80px;">
+          <span class="ai-help">일에 걸쳐 분산 등록 (예약 큐로)</span>
+          <button id="ai-gen-drip" class="btn-mini">예약 댓글 생성</button>
+        </div>
+
+        <div class="ai-manual-row" style="margin-top:14px;">
+          <button id="ai-gen-idea" class="btn-mini">AI 새 글 1개 즉시 생성</button>
+        </div>
+
+        <h3>예약 큐</h3>
+        <div id="scheduled-list" class="scheduled-list">불러오는 중...</div>
+      </section>
+
+      <!-- 사용자 차단 -->
+      <section id="tab-bans" class="admin-section hidden">
+        <h2>사용자 차단</h2>
+        <div class="ban-form">
+          <input type="text" id="ban-uid" placeholder="UID (firebase auth uid)">
+          <input type="email" id="ban-email" placeholder="email (선택)">
+          <input type="text" id="ban-reason" placeholder="사유 (선택)">
+          <button id="ban-add" class="btn-mini">차단 추가</button>
+        </div>
+        <h3>차단 목록</h3>
+        <div id="banned-list" class="banned-list">불러오는 중...</div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="site-footer">
+    <p>&copy; 2026 Appter. All rights reserved.</p>
+  </footer>
+
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/firestore.js"></script>
+  <script type="module" src="js/analytics.js"></script>
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>
