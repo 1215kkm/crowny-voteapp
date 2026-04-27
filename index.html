@@ -16,13 +16,19 @@
   <header id="site-header">
     <div class="header-inner">
       <a href="/" class="logo"><img src="images/logo_text_white.png" alt="Appter" width="175"></a>
+      <nav class="primary-nav">
+        <a href="/" class="nav-link active">홈</a>
+        <a href="board.html" class="nav-link">아이디어 게시판</a>
+      </nav>
       <div id="auth-area">
         <button id="login-btn" class="btn-login" onclick="window.appAuth.loginWithGoogle()">
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
           Google로 로그인
         </button>
         <div id="user-info" class="hidden">
-          <img id="user-photo" src="" alt="" class="user-avatar">
+          <button id="favorites-btn" class="favorites-btn" title="관심 아이디어 보기">
+            <img id="user-photo" src="" alt="" class="user-avatar">
+          </button>
           <span id="user-name"></span>
           <button id="logout-btn" class="btn-logout" onclick="window.appAuth.logout()">로그아웃</button>
         </div>
@@ -32,61 +38,30 @@
 
   <!-- Hero Section -->
   <section id="hero">
-    <!-- AI Neural Network Animation -->
     <svg class="hero-neural" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice">
-      <defs>
-        <filter id="glow"><feGaussianBlur stdDeviation="2" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      <!-- Connection lines -->
+      <defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="g"/><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
       <line x1="100" y1="80" x2="300" y2="200" stroke="rgba(129,140,248,0.2)" stroke-width="1"><animate attributeName="opacity" values="0.1;0.4;0.1" dur="4s" repeatCount="indefinite"/></line>
       <line x1="300" y1="200" x2="500" y2="120" stroke="rgba(192,132,252,0.2)" stroke-width="1"><animate attributeName="opacity" values="0.15;0.5;0.15" dur="5s" repeatCount="indefinite"/></line>
       <line x1="500" y1="120" x2="700" y2="280" stroke="rgba(129,140,248,0.2)" stroke-width="1"><animate attributeName="opacity" values="0.1;0.35;0.1" dur="6s" repeatCount="indefinite"/></line>
       <line x1="200" y1="320" x2="400" y2="180" stroke="rgba(167,139,250,0.15)" stroke-width="1"><animate attributeName="opacity" values="0.1;0.3;0.1" dur="4.5s" repeatCount="indefinite"/></line>
       <line x1="400" y1="180" x2="650" y2="100" stroke="rgba(129,140,248,0.15)" stroke-width="1"><animate attributeName="opacity" values="0.15;0.4;0.15" dur="5.5s" repeatCount="indefinite"/></line>
-      <line x1="150" y1="180" x2="350" y2="320" stroke="rgba(192,132,252,0.1)" stroke-width="1"><animate attributeName="opacity" values="0.1;0.3;0.1" dur="7s" repeatCount="indefinite"/></line>
-      <line x1="550" y1="300" x2="700" y2="150" stroke="rgba(167,139,250,0.15)" stroke-width="1"><animate attributeName="opacity" values="0.1;0.35;0.1" dur="4s" repeatCount="indefinite"/></line>
-      <line x1="100" y1="280" x2="300" y2="200" stroke="rgba(129,140,248,0.1)" stroke-width="1"><animate attributeName="opacity" values="0.05;0.25;0.05" dur="6s" repeatCount="indefinite"/></line>
-      <!-- Nodes -->
       <circle cx="100" cy="80" r="4" fill="rgba(129,140,248,0.6)" filter="url(#glow)"><animate attributeName="r" values="3;5;3" dur="3s" repeatCount="indefinite"/></circle>
       <circle cx="300" cy="200" r="5" fill="rgba(192,132,252,0.7)" filter="url(#glow)"><animate attributeName="r" values="4;7;4" dur="4s" repeatCount="indefinite"/></circle>
       <circle cx="500" cy="120" r="4" fill="rgba(129,140,248,0.6)" filter="url(#glow)"><animate attributeName="r" values="3;6;3" dur="3.5s" repeatCount="indefinite"/></circle>
       <circle cx="700" cy="280" r="3" fill="rgba(167,139,250,0.5)" filter="url(#glow)"><animate attributeName="r" values="2;5;2" dur="5s" repeatCount="indefinite"/></circle>
-      <circle cx="200" cy="320" r="3" fill="rgba(192,132,252,0.5)" filter="url(#glow)"><animate attributeName="r" values="2;4;2" dur="4.5s" repeatCount="indefinite"/></circle>
       <circle cx="400" cy="180" r="6" fill="rgba(129,140,248,0.8)" filter="url(#glow)"><animate attributeName="r" values="5;8;5" dur="3s" repeatCount="indefinite"/></circle>
-      <circle cx="650" cy="100" r="3" fill="rgba(167,139,250,0.5)" filter="url(#glow)"><animate attributeName="r" values="2;5;2" dur="6s" repeatCount="indefinite"/></circle>
-      <circle cx="150" cy="180" r="3" fill="rgba(129,140,248,0.4)" filter="url(#glow)"><animate attributeName="r" values="2;4;2" dur="5s" repeatCount="indefinite"/></circle>
-      <circle cx="550" cy="300" r="4" fill="rgba(192,132,252,0.6)" filter="url(#glow)"><animate attributeName="r" values="3;5;3" dur="4s" repeatCount="indefinite"/></circle>
-      <circle cx="350" cy="320" r="3" fill="rgba(167,139,250,0.4)" filter="url(#glow)"><animate attributeName="r" values="2;4;2" dur="5.5s" repeatCount="indefinite"/></circle>
-      <!-- Data pulse traveling along lines -->
-      <circle r="2" fill="rgba(255,255,255,0.8)" filter="url(#glow)">
-        <animateMotion dur="3s" repeatCount="indefinite" path="M100,80 L300,200 L500,120 L700,280"/>
-      </circle>
-      <circle r="2" fill="rgba(192,132,252,0.9)" filter="url(#glow)">
-        <animateMotion dur="4s" repeatCount="indefinite" path="M200,320 L400,180 L650,100"/>
-      </circle>
-      <circle r="1.5" fill="rgba(255,255,255,0.7)" filter="url(#glow)">
-        <animateMotion dur="5s" repeatCount="indefinite" path="M150,180 L350,320 L550,300 L700,150"/>
-      </circle>
     </svg>
     <div class="hero-inner">
       <div class="hero-badge">비공개 베타 대기자 모집 중 &middot; 선착순 마감</div>
-      <h1 class="hero-title">
-        이런 앱이 있었으면<br>
-        <span class="hero-accent">좋겠다.</span>
-      </h1>
+      <h1 class="hero-title">이런 앱이 있었으면<br><span class="hero-accent">좋겠다.</span></h1>
       <p class="hero-subtitle">아직 세상에 없는 앱, 당신의 아이디어로 만들어집니다.</p>
-      <div class="hero-counter">
-        현재 <strong id="total-waitlist-count">0</strong>명이 대기 중
-      </div>
+      <div class="hero-counter">현재 <strong id="total-waitlist-count">0</strong>명이 대기 중</div>
     </div>
   </section>
 
-  <!-- Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- Main Content -->
   <main id="content">
-    <!-- Left: Ideas List -->
     <section id="ideas-list" class="column-left">
       <div class="section-header">
         <h2>공유된 아이디어 <span id="ideas-count" class="count-badge">0</span></h2>
@@ -96,14 +71,11 @@
         </div>
       </div>
 
-      <!-- Ideas Container -->
       <div id="ideas-container">
-        <!-- Loading State -->
         <div id="loading-state" class="state-message">
           <div class="spinner"></div>
           <p>아이디어를 불러오는 중...</p>
         </div>
-        <!-- Empty State -->
         <div id="empty-state" class="state-message hidden">
           <p class="empty-icon">💡</p>
           <p class="empty-title">아직 공유된 아이디어가 없습니다</p>
@@ -112,9 +84,7 @@
       </div>
     </section>
 
-    <!-- Right: Sticky Form -->
     <aside id="idea-form-container" class="column-right">
-      <!-- Equalizer -->
       <div class="equalizer" id="equalizer">
         <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
         <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
@@ -127,11 +97,12 @@
       </div>
       <div class="sticky-form">
         <h3 class="form-title">아이디어 쓰고 공유받기</h3>
-
-        <!-- Login prompt hidden by default, form always shown -->
         <div id="form-login-prompt" class="hidden"></div>
 
-        <!-- Form always visible -->
+        <p class="threshold-info">
+          🎯 <strong>유료 20명</strong> 또는 <strong>유료 10명 + 무료 10명</strong>이 모이면 설계에 들어갑니다.
+        </p>
+
         <form id="idea-form">
           <p id="daily-limit-info" class="daily-limit-info">하루에 최대 2개까지 등록할 수 있어요.</p>
           <div class="form-group">
@@ -144,29 +115,21 @@
             <textarea id="idea-desc" placeholder="어떤 기능이 있으면 좋겠는지, 왜 필요한지 자유롭게 적어주세요" maxlength="1000" rows="6" required></textarea>
             <span class="char-count"><span id="desc-count">0</span>/1000</span>
           </div>
-          <div class="form-group">
-            <label for="idea-image" class="image-upload-label">
-              <span class="image-upload-icon">🖼️</span>
-              <span>이미지 첨부 (선택) — 최대 폭 1400px로 자동 조정</span>
-              <input type="file" id="idea-image" accept="image/*" hidden>
-            </label>
-            <div id="image-preview" class="image-preview hidden">
-              <img id="image-preview-img" alt="첨부 이미지 미리보기">
-              <div class="image-preview-row">
-                <span id="image-preview-info" class="image-preview-info"></span>
-                <button type="button" id="image-remove-btn" class="image-remove-btn">제거</button>
-              </div>
-            </div>
+
+          <div class="form-group image-attach-row">
+            <button type="button" id="image-add-btn" class="image-add-btn" title="이미지첨부" aria-label="이미지 첨부">
+              <span class="plus-icon">+</span>
+            </button>
+            <span class="image-add-help">이미지 최대 5장 · 폭 1400px로 자동 조정</span>
+            <input type="file" id="idea-image" accept="image/*" multiple hidden>
           </div>
+          <div id="image-previews" class="image-previews"></div>
+
           <button type="submit" id="submit-btn" class="btn-submit">글남기기</button>
         </form>
 
-        <!-- Email Subscribe Section -->
         <div class="subscribe-section">
-          <div class="subscribe-divider">
-            <span>소식 받기</span>
-          </div>
-          <!-- Not logged in: email input -->
+          <div class="subscribe-divider"><span>소식 받기</span></div>
           <div id="subscribe-email-form">
             <p class="subscribe-desc">출시 소식을 가장 먼저 받아보세요</p>
             <div class="subscribe-input-group">
@@ -174,7 +137,6 @@
               <button id="subscribe-btn" class="btn-subscribe" onclick="window.app.handleSubscribe()">구독</button>
             </div>
           </div>
-          <!-- Logged in: checkbox -->
           <div id="subscribe-checkbox-area" class="hidden">
             <label class="checkbox-label">
               <input type="checkbox" id="subscribe-check" onchange="window.app.handleSubscribeToggle(this.checked)">
@@ -183,40 +145,34 @@
             </label>
             <p id="subscribe-email-display" class="subscribe-email-text"></p>
           </div>
-          <div id="subscribe-success" class="subscribe-success hidden">
-            구독이 완료되었습니다!
-          </div>
+          <div id="subscribe-success" class="subscribe-success hidden">구독이 완료되었습니다!</div>
         </div>
 
-        <!-- Psychological Trigger Messages -->
         <div class="trigger-messages">
-          <div class="trigger-item">
-            <span class="trigger-icon">🔒</span>
-            <span>비공개 베타 출시 시 대기자에게 우선 초대됩니다</span>
-          </div>
-          <div class="trigger-item">
-            <span class="trigger-icon">⏰</span>
-            <span>대기자 모집은 언제든 마감될 수 있습니다</span>
-          </div>
-          <div class="trigger-item">
-            <span class="trigger-icon">💡</span>
-            <span>당신의 아이디어가 실제 앱이 될 수 있습니다</span>
-          </div>
-          <div class="trigger-item">
-            <span class="trigger-icon">📧</span>
-            <span>출시 4주 전, 대기자에게만 먼저 알려드립니다</span>
-          </div>
+          <div class="trigger-item"><span class="trigger-icon">🔒</span><span>비공개 베타 출시 시 대기자에게 우선 초대됩니다</span></div>
+          <div class="trigger-item"><span class="trigger-icon">⏰</span><span>대기자 모집은 언제든 마감될 수 있습니다</span></div>
+          <div class="trigger-item"><span class="trigger-icon">💡</span><span>당신의 아이디어가 실제 앱이 될 수 있습니다</span></div>
+          <div class="trigger-item"><span class="trigger-icon">📧</span><span>출시 4주 전, 대기자에게만 먼저 알려드립니다</span></div>
         </div>
       </div>
     </aside>
   </main>
 
-  <!-- Footer -->
+  <!-- 관심 아이디어 모달 -->
+  <div id="favorites-modal" class="modal-backdrop hidden">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3>내 관심 아이디어 ❤️</h3>
+        <button id="favorites-modal-close" class="modal-close" aria-label="닫기">×</button>
+      </div>
+      <div id="favorites-list" class="modal-body"></div>
+    </div>
+  </div>
+
   <footer id="site-footer">
     <p>&copy; 2026 Appter. All rights reserved.</p>
   </footer>
 
-  <!-- Firebase SDK (v10 modular via CDN) -->
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/auth.js"></script>
   <script type="module" src="js/firestore.js"></script>

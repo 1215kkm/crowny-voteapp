@@ -103,8 +103,20 @@ const RAW = [
 ];
 
 // Build the final sample ideas array
+function pickStatus(wl) {
+  // wl >= 20 → 일부는 ready/building, 그 외 waiting
+  if (wl >= 18) return "building";
+  if (wl >= 14) return "ready";
+  if (wl >= 10) return "waiting";
+  if (wl <= 0) return "waiting";
+  return "waiting";
+}
+
 export const SAMPLE_IDEAS = RAW.map((r, i) => {
   const author = AUTHORS[r.a];
+  // 무료/유료 분리 - 30% 정도는 유료
+  const paid = Math.round(r.wl * 0.35);
+  const free = r.wl - paid;
   return {
     id: "sample_" + String(i+1).padStart(2,"0"),
     title: r.title,
@@ -113,9 +125,20 @@ export const SAMPLE_IDEAS = RAW.map((r, i) => {
     authorName: author.name,
     authorPhoto: av(author.name, author.bg),
     waitlistCount: r.wl,
+    paidWaitlistCount: paid,
+    freeWaitlistCount: free,
+    likeCount: Math.floor(Math.random() * Math.max(3, r.wl + 1)),
+    commentCount: Math.floor(Math.random() * 6),
+    status: pickStatus(r.wl),
     createdAt: makeDate(r.days)
   };
 });
+
+// 다양성을 위해 샘플 두어 개는 cancelled / completed 로
+if (SAMPLE_IDEAS.length >= 5) {
+  SAMPLE_IDEAS[3].status = "completed";
+  SAMPLE_IDEAS[19] && (SAMPLE_IDEAS[19].status = "cancelled");
+}
 
 // Build sample waitlist members for each idea
 export const SAMPLE_MEMBERS = {};
