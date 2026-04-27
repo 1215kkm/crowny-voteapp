@@ -1936,3 +1936,38 @@ input, textarea {
   margin-left: auto;
 }
 .btn-text-danger:hover { text-decoration: underline; }
+
+/* ============================================
+   카드 description 부드러운 확장 (요약 → 전체)
+   ============================================ */
+.idea-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+  margin-bottom: 10px;
+  /* collapsed: 3줄 클램프 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  text-overflow: ellipsis;
+  transition: -webkit-line-clamp 0.3s ease;
+}
+.idea-card.expanded .idea-desc {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+  white-space: pre-wrap;
+}
+
+/* 기존 .idea-preview 사용 흔적이 남아있어도 안전하게 */
+.idea-preview { display: none; }
+
+/* expanded-desc는 더 이상 사용 안 하지만 혹시 남아있으면 숨김 */
+.expanded-desc { display: none; }
+
+/* 카드 박스 자체에 transform·layout 변동 부드럽게 */
+.idea-card {
+  contain: layout;
+}
