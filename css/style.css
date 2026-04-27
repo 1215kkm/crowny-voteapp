@@ -311,7 +311,7 @@ input, textarea {
   gap: 3px;
   height: 48px;
   padding: 8px 0;
-  margin-bottom: 8px;
+  margin-bottom: 20px;
 }
 
 .eq-bar {
@@ -352,7 +352,7 @@ input, textarea {
    ======================================== */
 #content {
   max-width: 1200px;
-  margin: -40px auto 0;
+  margin: -50px auto 0;
   padding: 0 24px 60px;
   display: grid;
   grid-template-columns: 1fr 380px;
@@ -372,7 +372,7 @@ input, textarea {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   flex-wrap: wrap;
   gap: 16px;
 }
