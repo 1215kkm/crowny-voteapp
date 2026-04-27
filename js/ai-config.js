@@ -6,7 +6,7 @@
 // 보안: Google Cloud Console에서 HTTP referrer로 도메인 제한 권장
 // ========================================
 
-export const GEMINI_API_KEY = "PASTE_YOUR_GEMINI_API_KEY_HERE";
+export const GEMINI_API_KEY = "AIzaSyAHmwdGOBL0mZIMr4tAK1bf_jaEVu0ibZs";
 export const GEMINI_MODEL = "gemini-2.0-flash"; // 빠르고 무료 한도 큼
 
 export const ADMIN_EMAIL = "rute20002@gmail.com";
