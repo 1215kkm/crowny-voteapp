@@ -229,27 +229,26 @@ async function handleAuthState(user) {
     if (subscribeEmailForm) subscribeEmailForm.classList.remove("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
     userWaitlistMap = {}; userLikeMap = {};
-    if (dailyLimitInfo) {
-      dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요. 로그인 후 글을 작성하세요.`;
-    }
+    if (submitBtn) submitBtn.textContent = `글 남기기 (오늘 0/${DAILY_POST_LIMIT})`;
     renderAll();
   }
 }
 
 async function refreshDailyLimitInfo() {
-  if (!dailyLimitInfo) return;
+  // submit 버튼 텍스트에 오늘 작성 카운트 표시
   const user = getCurrentUser();
   if (!user) {
-    dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
+    if (submitBtn) submitBtn.textContent = `글 남기기 (오늘 0/${DAILY_POST_LIMIT})`;
     return;
   }
   try {
     const c = await getTodayPostCount(user.uid);
-    const r = Math.max(0, DAILY_POST_LIMIT - c);
-    dailyLimitInfo.textContent = `오늘 작성 ${c}/${DAILY_POST_LIMIT}건 (남은 ${r}건) · 하루 최대 ${DAILY_POST_LIMIT}개`;
-    dailyLimitInfo.classList.toggle("limit-reached", r === 0);
+    if (submitBtn) {
+      submitBtn.textContent = `글 남기기 (오늘 ${c}/${DAILY_POST_LIMIT})`;
+      submitBtn.disabled = c >= DAILY_POST_LIMIT;
+    }
   } catch (e) {
-    dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
+    if (submitBtn) submitBtn.textContent = `글 남기기 (오늘 0/${DAILY_POST_LIMIT})`;
   }
 }
 
@@ -846,7 +845,7 @@ async function submitIdea(title, desc, user) {
     }
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = "글남기기";
+    // 버튼 텍스트는 refreshDailyLimitInfo 가 갱신
   }
 }
 
