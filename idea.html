@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>아이디어 상세 | Appter</title>
+  <link rel="icon" type="image/png" href="images/logo_favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-detail">
+  <header id="site-header">
+    <div class="header-inner">
+      <a href="/" class="logo"><img src="images/logo_text_white.png" alt="Appter" width="175"></a>
+      <nav class="primary-nav">
+        <a href="/" class="nav-link">홈</a>
+        <a href="board.html" class="nav-link">아이디어 게시판</a>
+      </nav>
+      <div id="auth-area">
+        <button id="login-btn" class="btn-login" onclick="window.appAuth.loginWithGoogle()">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Google로 로그인
+        </button>
+        <div id="user-info" class="hidden">
+          <img id="user-photo" src="" alt="" class="user-avatar">
+          <span id="user-name"></span>
+          <button id="logout-btn" class="btn-logout" onclick="window.appAuth.logout()">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="toast-container"></div>
+
+  <main class="detail-main">
+    <div class="detail-back">
+      <a href="board.html">← 게시판으로</a>
+    </div>
+
+    <article id="detail-article" class="detail-article">
+      <div id="detail-loading" class="state-message"><div class="spinner"></div><p>불러오는 중...</p></div>
+    </article>
+
+    <section id="detail-actions" class="detail-actions hidden">
+      <div class="detail-action-row">
+        <button id="btn-paid" class="btn-mini btn-paid"><span>💎 유료라도 사용</span></button>
+        <button id="btn-free" class="btn-mini btn-free"><span>👥 무료라면 사용</span></button>
+        <button id="btn-like" class="btn-mini btn-like" title="관심"><span>🤍</span></button>
+        <button id="btn-share" class="btn-mini btn-share" title="링크 복사">🔗 공유</button>
+      </div>
+      <p class="detail-threshold" id="threshold-msg"></p>
+      <div id="status-controls" class="status-controls hidden">
+        <span class="status-controls-label">상태 변경 (작성자 전용):</span>
+        <select id="status-select">
+          <option value="waiting">대기 중</option>
+          <option value="ready">필요인원 채움</option>
+          <option value="building">제작 중</option>
+          <option value="completed">출시 완료</option>
+          <option value="cancelled">취소</option>
+        </select>
+        <button id="status-save" class="btn-mini">저장</button>
+      </div>
+    </section>
+
+    <section id="comments-section" class="comments-section hidden">
+      <h3>댓글 <span id="comments-count">0</span></h3>
+      <div id="comment-form-area" class="comment-form-area">
+        <textarea id="comment-input" rows="3" placeholder="댓글을 남겨주세요" maxlength="1000"></textarea>
+        <button id="comment-submit" class="btn-mini btn-comment-submit">댓글 등록</button>
+      </div>
+      <div id="comments-list" class="comments-list"></div>
+    </section>
+  </main>
+
+  <footer id="site-footer">
+    <p>&copy; 2026 Appter. All rights reserved.</p>
+  </footer>
+
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/firestore.js"></script>
+  <script type="module" src="js/idea-detail.js"></script>
+</body>
+</html>

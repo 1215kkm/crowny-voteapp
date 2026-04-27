@@ -1,13 +1,18 @@
 rules_version = '2';
 
 // ============================================
-// Crowny VoteApp - Production Firestore Rules
+// Crowny VoteApp - Firestore Rules (게시판 + 댓글 + 좋아요 + 무료/유료 대기자 + 상태)
 // ============================================
-// 데이터 모델 (js/firestore.js 참고)
-//   /ideas/{ideaId}                     - 아이디어 문서 (공개 읽기)
-//   /ideas/{ideaId}/waitlist/{uid}      - 대기자 (본인만 가입/탈퇴)
-//   /subscribers/{email}                - 이메일 구독 (본인만 관리)
-//   /mail/{mailId}                      - Trigger Email Extension 큐
+// 데이터 모델
+//   /ideas/{ideaId}                       - 아이디어 (공개 읽기)
+//     fields: title, description, authorUid, authorName, authorPhoto,
+//             waitlistCount, paidWaitlistCount, freeWaitlistCount,
+//             likeCount, commentCount, status, createdAt, imageDataList?
+//   /ideas/{ideaId}/waitlist/{uid}        - 대기자 (본인만, tier='free'|'paid')
+//   /ideas/{ideaId}/likes/{uid}           - 관심 (본인만)
+//   /ideas/{ideaId}/comments/{commentId}  - 댓글/답글 (parentId)
+//   /subscribers/{email}                  - 이메일 구독
+//   /mail/{mailId}                        - Trigger Email
 // ============================================
 
 service cloud.firestore {
@@ -15,11 +20,9 @@ service cloud.firestore {
 
     // ---- Ideas ----
     match /ideas/{ideaId} {
-      // 누구나 아이디어 목록을 볼 수 있음
       allow read: if true;
 
-      // 로그인한 사용자가 자기 자신을 작성자로 해서 생성
-      // imageData (선택): base64 이미지 (최대 약 900KB)
+      // 작성: 로그인, 자기 자신을 작성자로, 카운트 0 시작, 상태 waiting
       allow create: if request.auth != null
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.title is string
@@ -28,59 +31,94 @@ service cloud.firestore {
         && request.resource.data.description is string
         && request.resource.data.description.size() <= 5000
         && request.resource.data.waitlistCount == 0
-        && (!('imageData' in request.resource.data)
-            || (request.resource.data.imageData is string
-                && request.resource.data.imageData.size() <= 950000));
+        && request.resource.data.paidWaitlistCount == 0
+        && request.resource.data.freeWaitlistCount == 0
+        && request.resource.data.likeCount == 0
+        && request.resource.data.commentCount == 0
+        && request.resource.data.status == "waiting"
+        && (!('imageDataList' in request.resource.data)
+            || (request.resource.data.imageDataList is list
+                && request.resource.data.imageDataList.size() <= 5));
 
-      // 업데이트는 waitlistCount 필드만 (대기자 가입/탈퇴 트랜잭션)
+      // 업데이트:
+      //  (1) 카운트 필드만 변경 (트랜잭션) - 인증된 사용자
+      //  (2) 작성자가 status 변경
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['waitlistCount']);
+        && (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['waitlistCount','paidWaitlistCount','freeWaitlistCount','likeCount','commentCount'])
+          ||
+          ( resource.data.authorUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status in ['waiting','ready','building','completed','cancelled']
+          )
+        );
 
-      // 클라이언트에서 직접 삭제는 금지
       allow delete: if false;
 
-      // ---- Waitlist 서브컬렉션 ----
+      // ---- Waitlist 서브컬렉션 (free/paid) ----
       match /waitlist/{userId} {
-        // 대기자 목록은 공개
         allow read: if true;
 
-        // 본인만 자기 자신을 가입/탈퇴 가능
         allow create: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.tier in ['free','paid'];
+
+        allow update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.tier in ['free','paid'];
+
+        allow delete: if request.auth != null
           && request.auth.uid == userId;
+      }
+
+      // ---- Likes 서브컬렉션 ----
+      match /likes/{userId} {
+        allow read: if true;
+        allow create: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.uid == userId;
         allow delete: if request.auth != null
           && request.auth.uid == userId;
         allow update: if false;
       }
+
+      // ---- Comments 서브컬렉션 ----
+      match /comments/{commentId} {
+        allow read: if true;
+
+        allow create: if request.auth != null
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+
+        // 댓글은 작성자 본인만 삭제
+        allow delete: if request.auth != null
+          && resource.data.authorUid == request.auth.uid;
+
+        allow update: if false;
+      }
     }
 
-    // ---- Subscribers (문서 ID = 이메일) ----
+    // ---- Subscribers ----
     match /subscribers/{email} {
-      // 본인 구독 정보만 읽기/쓰기 가능
-      allow read: if request.auth != null
-        && request.auth.token.email == email;
-
+      allow read: if request.auth != null && request.auth.token.email == email;
       allow create, update: if request.auth != null
         && request.auth.token.email == email
         && request.resource.data.email == email;
-
-      allow delete: if request.auth != null
-        && request.auth.token.email == email;
+      allow delete: if request.auth != null && request.auth.token.email == email;
     }
 
-    // ---- Mail (Firebase Trigger Email Extension) ----
+    // ---- Mail ----
     match /mail/{mailId} {
-      // 큐는 클라이언트에서 읽으면 안 됨
       allow read: if false;
-
-      // 본인 이메일 주소로만 보낼 수 있음
       allow create: if request.auth != null
         && request.resource.data.to is string
         && request.resource.data.to == request.auth.token.email;
-
       allow update, delete: if false;
     }
 
-    // 그 외 모든 문서 차단
     match /{document=**} {
       allow read, write: if false;
     }

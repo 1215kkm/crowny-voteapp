@@ -1,5 +1,5 @@
 // ========================================
-// Firestore Module - Ideas, Waitlist, Subscriptions, Email
+// Firestore Module - Ideas, Waitlist, Comments, Likes, Status
 // ========================================
 
 import { db } from "./firebase-config.js";
@@ -10,6 +10,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  updateDoc,
   deleteDoc,
   query,
   where,
@@ -25,14 +26,37 @@ import {
 // 사용자가 하루에 쓸 수 있는 최대 글 수
 export const DAILY_POST_LIMIT = 2;
 
+// 이미지 첨부 한도
+export const MAX_IMAGES = 5;
+
+// 진행 단계 상태값
+export const IDEA_STATUS = {
+  WAITING: "waiting",       // 대기 중 (모집 중)
+  READY: "ready",           // 필요 인원 채움 (설계 진입)
+  BUILDING: "building",     // 제작 중
+  COMPLETED: "completed",   // 출시 완료
+  CANCELLED: "cancelled"    // 취소
+};
+
+// 설계 진입 임계값
+export const THRESHOLD_PAID_ALONE = 20;
+export const THRESHOLD_PAID_MIXED = 10;
+export const THRESHOLD_FREE_MIXED = 10;
+
+export function meetsDesignThreshold(paidCount, freeCount) {
+  if (paidCount >= THRESHOLD_PAID_ALONE) return true;
+  if (paidCount >= THRESHOLD_PAID_MIXED && freeCount >= THRESHOLD_FREE_MIXED) return true;
+  return false;
+}
+
 // ---- Ideas ----
 
-export function subscribeToIdeas(sortField, callback) {
-  const q = query(
-    collection(db, "ideas"),
-    orderBy(sortField, "desc"),
-    limit(50)
-  );
+export function subscribeToIdeas(sortField, callback, statusFilter) {
+  const constraints = [orderBy(sortField, "desc"), limit(50)];
+  if (statusFilter) {
+    constraints.unshift(where("status", "==", statusFilter));
+  }
+  const q = query(collection(db, "ideas"), ...constraints);
 
   return onSnapshot(q, (snapshot) => {
     const ideas = [];
@@ -45,18 +69,30 @@ export function subscribeToIdeas(sortField, callback) {
   });
 }
 
-// 오늘 자정(현지시각) Date 반환
+export async function getIdea(ideaId) {
+  const ref = doc(db, "ideas", ideaId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+export function subscribeToIdea(ideaId, callback) {
+  const ref = doc(db, "ideas", ideaId);
+  return onSnapshot(ref, (snap) => {
+    if (snap.exists()) callback({ id: snap.id, ...snap.data() });
+    else callback(null);
+  });
+}
+
 function startOfTodayLocal() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-// 사용자가 오늘 작성한 글 개수 조회
 export async function getTodayPostCount(uid) {
   if (!uid) return 0;
   const startTs = Timestamp.fromDate(startOfTodayLocal());
-  // 인덱스 회피 위해 authorUid 만으로 필터, createdAt은 클라이언트에서 비교
   const q = query(
     collection(db, "ideas"),
     where("authorUid", "==", uid),
@@ -72,8 +108,7 @@ export async function getTodayPostCount(uid) {
   return count;
 }
 
-export async function addIdea(title, description, user, imageData) {
-  // 일일 글쓰기 제한 체크
+export async function addIdea(title, description, user, imageDataList) {
   const todayCount = await getTodayPostCount(user.uid);
   if (todayCount >= DAILY_POST_LIMIT) {
     const err = new Error(`하루에 최대 ${DAILY_POST_LIMIT}개까지만 등록할 수 있습니다.`);
@@ -81,27 +116,44 @@ export async function addIdea(title, description, user, imageData) {
     throw err;
   }
 
+  const images = Array.isArray(imageDataList)
+    ? imageDataList.filter((s) => typeof s === "string" && s.length > 0).slice(0, MAX_IMAGES)
+    : [];
+
   const payload = {
     title,
     description,
     authorUid: user.uid,
     authorName: user.displayName || "익명",
     authorPhoto: user.photoURL || "",
-    waitlistCount: 0,
+    waitlistCount: 0,           // 호환을 위해 유지
+    paidWaitlistCount: 0,
+    freeWaitlistCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    status: IDEA_STATUS.WAITING,
     createdAt: serverTimestamp()
   };
 
-  if (imageData && typeof imageData === "string" && imageData.length > 0) {
-    payload.imageData = imageData;
+  if (images.length > 0) {
+    payload.imageDataList = images;
   }
 
   const docRef = await addDoc(collection(db, "ideas"), payload);
   return docRef.id;
 }
 
-// ---- Waitlist ----
+// 작성자만 자신의 글 상태 변경
+export async function updateIdeaStatus(ideaId, newStatus) {
+  const ref = doc(db, "ideas", ideaId);
+  await updateDoc(ref, { status: newStatus });
+}
 
-export async function toggleWaitlist(ideaId, user) {
+// ---- Waitlist (free / paid) ----
+
+export async function toggleWaitlist(ideaId, user, tier) {
+  if (tier !== "paid" && tier !== "free") tier = "free";
+
   const ideaRef = doc(db, "ideas", ideaId);
   const waitlistRef = doc(db, "ideas", ideaId, "waitlist", user.uid);
 
@@ -109,25 +161,47 @@ export async function toggleWaitlist(ideaId, user) {
     const waitlistDoc = await transaction.get(waitlistRef);
 
     if (waitlistDoc.exists()) {
-      // Remove from waitlist
-      transaction.delete(waitlistRef);
-      transaction.update(ideaRef, { waitlistCount: increment(-1) });
-      return { joined: false };
+      const prevTier = waitlistDoc.data().tier === "paid" ? "paid" : "free";
+      if (prevTier === tier) {
+        // 같은 티어 다시 누름 → 탈퇴
+        transaction.delete(waitlistRef);
+        const updates = { waitlistCount: increment(-1) };
+        if (prevTier === "paid") updates.paidWaitlistCount = increment(-1);
+        else updates.freeWaitlistCount = increment(-1);
+        transaction.update(ideaRef, updates);
+        return { joined: false, tier: null };
+      } else {
+        // 티어 전환
+        transaction.update(waitlistRef, { tier, switchedAt: serverTimestamp() });
+        const updates = {};
+        if (prevTier === "paid") {
+          updates.paidWaitlistCount = increment(-1);
+          updates.freeWaitlistCount = increment(1);
+        } else {
+          updates.freeWaitlistCount = increment(-1);
+          updates.paidWaitlistCount = increment(1);
+        }
+        transaction.update(ideaRef, updates);
+        return { joined: true, tier, switched: true };
+      }
     } else {
-      // Add to waitlist
+      // 신규 가입
       transaction.set(waitlistRef, {
         displayName: user.displayName || "익명",
         email: user.email || "",
         photoURL: user.photoURL || "",
+        tier,
         joinedAt: serverTimestamp()
       });
-      transaction.update(ideaRef, { waitlistCount: increment(1) });
-      return { joined: true };
+      const updates = { waitlistCount: increment(1) };
+      if (tier === "paid") updates.paidWaitlistCount = increment(1);
+      else updates.freeWaitlistCount = increment(1);
+      transaction.update(ideaRef, updates);
+      return { joined: true, tier, switched: false };
     }
   });
 
-  // Send welcome email if joined
-  if (result.joined && user.email) {
+  if (result.joined && !result.switched && user.email) {
     await sendWelcomeEmail(user.email, user.displayName, ideaId);
   }
 
@@ -138,7 +212,7 @@ export async function getWaitlistMembers(ideaId) {
   const q = query(
     collection(db, "ideas", ideaId, "waitlist"),
     orderBy("joinedAt", "desc"),
-    limit(20)
+    limit(50)
   );
   const snapshot = await getDocs(q);
   const members = [];
@@ -149,9 +223,10 @@ export async function getWaitlistMembers(ideaId) {
 }
 
 export async function checkUserWaitlist(ideaId, uid) {
-  const waitlistRef = doc(db, "ideas", ideaId, "waitlist", uid);
-  const waitlistDoc = await getDoc(waitlistRef);
-  return waitlistDoc.exists();
+  const ref = doc(db, "ideas", ideaId, "waitlist", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return snap.data().tier === "paid" ? "paid" : "free";
 }
 
 export async function checkUserWaitlistBatch(ideaIds, uid) {
@@ -161,6 +236,115 @@ export async function checkUserWaitlistBatch(ideaIds, uid) {
   });
   await Promise.all(checks);
   return results;
+}
+
+// ---- Comments ----
+
+export async function addComment(ideaId, user, text, parentId) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) throw new Error("댓글 내용을 입력해주세요");
+  if (trimmed.length > 1000) throw new Error("댓글은 1000자까지 작성할 수 있어요");
+
+  const data = {
+    authorUid: user.uid,
+    authorName: user.displayName || "익명",
+    authorPhoto: user.photoURL || "",
+    text: trimmed,
+    parentId: parentId || null,
+    createdAt: serverTimestamp()
+  };
+
+  const ref = await addDoc(collection(db, "ideas", ideaId, "comments"), data);
+
+  // 카운트 증가
+  try {
+    await updateDoc(doc(db, "ideas", ideaId), { commentCount: increment(1) });
+  } catch (e) { /* permission 무시 가능 */ }
+
+  return ref.id;
+}
+
+export function subscribeToComments(ideaId, callback) {
+  const q = query(
+    collection(db, "ideas", ideaId, "comments"),
+    orderBy("createdAt", "asc"),
+    limit(200)
+  );
+  return onSnapshot(q, (snap) => {
+    const list = [];
+    snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
+    callback(list);
+  });
+}
+
+export async function deleteComment(ideaId, commentId) {
+  await deleteDoc(doc(db, "ideas", ideaId, "comments", commentId));
+  try {
+    await updateDoc(doc(db, "ideas", ideaId), { commentCount: increment(-1) });
+  } catch (e) { /* ignore */ }
+}
+
+// ---- Likes (관심) ----
+
+export async function toggleLike(ideaId, user) {
+  const likeRef = doc(db, "ideas", ideaId, "likes", user.uid);
+  const ideaRef = doc(db, "ideas", ideaId);
+
+  return await runTransaction(db, async (transaction) => {
+    const likeDoc = await transaction.get(likeRef);
+    if (likeDoc.exists()) {
+      transaction.delete(likeRef);
+      transaction.update(ideaRef, { likeCount: increment(-1) });
+      return { liked: false };
+    } else {
+      transaction.set(likeRef, {
+        uid: user.uid,
+        displayName: user.displayName || "익명",
+        likedAt: serverTimestamp()
+      });
+      transaction.update(ideaRef, { likeCount: increment(1) });
+      return { liked: true };
+    }
+  });
+}
+
+export async function checkUserLike(ideaId, uid) {
+  const snap = await getDoc(doc(db, "ideas", ideaId, "likes", uid));
+  return snap.exists();
+}
+
+export async function checkUserLikeBatch(ideaIds, uid) {
+  const results = {};
+  const checks = ideaIds.map(async (id) => {
+    results[id] = await checkUserLike(id, uid);
+  });
+  await Promise.all(checks);
+  return results;
+}
+
+// 사용자가 관심 등록한 모든 아이디어 ID (그리고 관련 idea 정보)
+export async function getUserLikedIdeas(uid) {
+  // 콜렉션 그룹 쿼리 사용
+  const { collectionGroup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  const cg = collectionGroup(db, "likes");
+  const q = query(cg, where("uid", "==", uid), limit(100));
+  const snap = await getDocs(q);
+  const ideaIds = [];
+  snap.forEach((docSnap) => {
+    // 부모 경로: ideas/{ideaId}/likes/{uid}
+    const parts = docSnap.ref.path.split("/");
+    const ideaId = parts[1];
+    ideaIds.push(ideaId);
+  });
+  // idea 데이터 가져오기
+  const ideas = [];
+  await Promise.all(ideaIds.map(async (id) => {
+    const ideaSnap = await getDoc(doc(db, "ideas", id));
+    if (ideaSnap.exists()) {
+      ideas.push({ id, ...ideaSnap.data() });
+    }
+  }));
+  return ideas;
 }
 
 // ---- Subscribers ----
@@ -187,7 +371,7 @@ export async function checkSubscription(email) {
   return subscriberDoc.exists();
 }
 
-// ---- Email (Trigger Email Extension) ----
+// ---- Email ----
 
 async function sendWelcomeEmail(toEmail, displayName, ideaId) {
   try {
@@ -202,24 +386,13 @@ async function sendWelcomeEmail(toEmail, displayName, ideaId) {
               대기자 명단에 성공적으로 등록되었습니다.<br>
               비공개 베타 출시 시 가장 먼저 초대해 드리겠습니다.
             </p>
-            <div style="margin: 30px 0; padding: 20px; background: #f8fafc; border-radius: 12px; text-align: center;">
-              <p style="color: #6366f1; font-weight: 600; font-size: 1.1rem;">
-                대기자에게만 우선 초대됩니다
-              </p>
-              <p style="color: #94a3b8; font-size: 0.9rem;">
-                출시 4주 전, 대기자에게만 먼저 알려드립니다.
-              </p>
-            </div>
-            <p style="color: #94a3b8; font-size: 0.8rem;">
-              &copy; 2026 Crowny. All rights reserved.
-            </p>
+            <p style="color: #94a3b8; font-size: 0.8rem;">&copy; 2026 Crowny. All rights reserved.</p>
           </div>
         `
       },
       createdAt: serverTimestamp()
     });
   } catch (error) {
-    // Email sending is non-critical, don't break the flow
     console.warn("Welcome email trigger failed:", error);
   }
 }
