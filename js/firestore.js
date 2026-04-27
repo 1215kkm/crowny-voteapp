@@ -288,18 +288,24 @@ export async function deleteComment(ideaId, commentId) {
 
 export async function toggleLike(ideaId, user) {
   const likeRef = doc(db, "ideas", ideaId, "likes", user.uid);
+  const userLikeRef = doc(db, "users", user.uid, "likes", ideaId);
   const ideaRef = doc(db, "ideas", ideaId);
 
   return await runTransaction(db, async (transaction) => {
     const likeDoc = await transaction.get(likeRef);
     if (likeDoc.exists()) {
       transaction.delete(likeRef);
+      transaction.delete(userLikeRef);
       transaction.update(ideaRef, { likeCount: increment(-1) });
       return { liked: false };
     } else {
       transaction.set(likeRef, {
         uid: user.uid,
         displayName: user.displayName || "익명",
+        likedAt: serverTimestamp()
+      });
+      transaction.set(userLikeRef, {
+        ideaId,
         likedAt: serverTimestamp()
       });
       transaction.update(ideaRef, { likeCount: increment(1) });
@@ -322,27 +328,20 @@ export async function checkUserLikeBatch(ideaIds, uid) {
   return results;
 }
 
-// 사용자가 관심 등록한 모든 아이디어 ID (그리고 관련 idea 정보)
+// 사용자가 관심 등록한 모든 아이디어 (users/{uid}/likes 미러 컬렉션 사용)
 export async function getUserLikedIdeas(uid) {
-  // 콜렉션 그룹 쿼리 사용
-  const { collectionGroup } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-  const cg = collectionGroup(db, "likes");
-  const q = query(cg, where("uid", "==", uid), limit(100));
+  const q = query(
+    collection(db, "users", uid, "likes"),
+    orderBy("likedAt", "desc"),
+    limit(100)
+  );
   const snap = await getDocs(q);
   const ideaIds = [];
-  snap.forEach((docSnap) => {
-    // 부모 경로: ideas/{ideaId}/likes/{uid}
-    const parts = docSnap.ref.path.split("/");
-    const ideaId = parts[1];
-    ideaIds.push(ideaId);
-  });
-  // idea 데이터 가져오기
+  snap.forEach((docSnap) => ideaIds.push(docSnap.id));
   const ideas = [];
   await Promise.all(ideaIds.map(async (id) => {
     const ideaSnap = await getDoc(doc(db, "ideas", id));
-    if (ideaSnap.exists()) {
-      ideas.push({ id, ...ideaSnap.data() });
-    }
+    if (ideaSnap.exists()) ideas.push({ id, ...ideaSnap.data() });
   }));
   return ideas;
 }

@@ -1043,13 +1043,13 @@ window.app = { handleSubscribe, handleSubscribeToggle };
 // ========================================
 const HERO_PHRASES = [
   "이런 앱",
-  "지금바로 같이 밥 먹을 사람 매칭 앱",
-  "사진찍고 SNS 감성으로 자동 편집 앱",
+  "지금 같이 밥 먹을 사람 매칭 앱",
+  "사진 SNS 감성으로 자동 편집 앱",
   "같은 시간에 운동 파트너 연결 앱",
   "내 옷 코디 공유 + 구매 연결 앱",
   "취향 맞는 영상 자동 추천 앱",
   "카페 자리·콘센트 정보 앱",
-  "약속 중간 위치 + 최적 코스 추천 앱"
+  "약속 중간 + 최적 코스 추천 앱"
 ];
 
 const heroTypingEl = document.getElementById("typing-app");

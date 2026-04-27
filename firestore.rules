@@ -144,6 +144,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ---- 사용자별 관심 미러 컬렉션 ----
+    match /users/{uid}/likes/{ideaId} {
+      // 본인만 읽고 쓰기
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow delete: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow update: if false;
+    }
+
     // ---- 분석 이벤트 ----
     match /events/{id} {
       // 누구나 자기 방문 기록 추가 가능 (검증 최소화)
