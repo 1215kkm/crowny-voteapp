@@ -44,17 +44,29 @@ service cloud.firestore {
           request.auth != null
           && !isBanned()
           && (
+            // 카운트 필드 트랜잭션 갱신 (모든 인증 사용자)
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['waitlistCount','paidWaitlistCount','freeWaitlistCount','likeCount','commentCount'])
             ||
+            // 작성자 본인이 자신의 글 내용 수정 (제목/설명/이미지)
             ( resource.data.authorUid == request.auth.uid
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-              && request.resource.data.status in ['waiting','ready','building','completed','cancelled']
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['title','description','imageDataList'])
+              && request.resource.data.title is string
+              && request.resource.data.title.size() > 0
+              && request.resource.data.title.size() <= 200
+              && request.resource.data.description is string
+              && request.resource.data.description.size() <= 5000
+              && (!('imageDataList' in request.resource.data)
+                  || (request.resource.data.imageDataList is list
+                      && request.resource.data.imageDataList.size() <= 5))
             )
           )
         );
 
-      allow delete: if isAdmin();
+      // 작성자 본인 또는 관리자만 삭제 가능
+      allow delete: if isAdmin()
+        || (request.auth != null && resource.data.authorUid == request.auth.uid);
 
       match /waitlist/{userId} {
         allow read: if true;

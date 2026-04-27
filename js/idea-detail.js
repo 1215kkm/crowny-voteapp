@@ -12,7 +12,6 @@ import {
   addComment,
   subscribeToComments,
   deleteComment,
-  updateIdeaStatus,
   meetsDesignThreshold,
   THRESHOLD_PAID_ALONE,
   THRESHOLD_PAID_MIXED,
@@ -36,10 +35,6 @@ const btnFree = document.getElementById("btn-free");
 const btnLike = document.getElementById("btn-like");
 const btnShare = document.getElementById("btn-share");
 const thresholdMsg = document.getElementById("threshold-msg");
-const statusControls = document.getElementById("status-controls");
-const statusSelect = document.getElementById("status-select");
-const statusSave = document.getElementById("status-save");
-
 const loginBtn = document.getElementById("login-btn");
 const userInfo = document.getElementById("user-info");
 const userPhoto = document.getElementById("user-photo");
@@ -82,7 +77,6 @@ function init() {
       updateActionButtons();
     }
     updateThresholdMessage();
-    updateStatusControls();
   });
 
   unsubComments = subscribeToComments(ideaId, (comments) => {
@@ -95,7 +89,6 @@ function init() {
   btnLike.addEventListener("click", onLike);
   btnShare.addEventListener("click", onShare);
   commentSubmit.addEventListener("click", () => onCommentSubmit(null));
-  statusSave.addEventListener("click", onStatusSave);
 }
 
 async function handleAuth(user) {
@@ -109,15 +102,13 @@ async function handleAuth(user) {
       myWaitlistTier = await checkUserWaitlist(ideaId, user.uid);
       myLiked = await checkUserLike(ideaId, user.uid);
       updateActionButtons();
-      updateStatusControls();
-    }
+      }
   } else {
     loginBtn.classList.remove("hidden");
     userInfo.classList.add("hidden");
     myWaitlistTier = null;
     myLiked = false;
     updateActionButtons();
-    updateStatusControls();
   }
 }
 
@@ -191,11 +182,6 @@ function updateThresholdMessage() {
   }
 }
 
-function updateStatusControls() {
-  if (!currentIdea || !currentUser) {
-    statusControls.classList.add("hidden");
-    return;
-  }
   if (currentIdea.authorUid === currentUser.uid) {
     statusControls.classList.remove("hidden");
     statusSelect.value = currentIdea.status || "waiting";
@@ -383,16 +369,6 @@ async function onShare() {
   }
 }
 
-async function onStatusSave() {
-  if (!currentUser || !currentIdea || currentUser.uid !== currentIdea.authorUid) return;
-  const newStatus = statusSelect.value;
-  try {
-    await updateIdeaStatus(ideaId, newStatus);
-    showToast("상태가 변경되었어요", "success");
-  } catch (e) {
-    showToast("상태 변경에 실패했어요", "");
-  }
-}
 
 // ---- Helpers ----
 

@@ -24,7 +24,9 @@ import {
   THRESHOLD_PAID_ALONE,
   THRESHOLD_PAID_MIXED,
   THRESHOLD_FREE_MIXED,
-  meetsDesignThreshold
+  meetsDesignThreshold,
+  userUpdateOwnIdea,
+  userDeleteOwnIdea
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { SAMPLE_IDEAS, SAMPLE_TOTAL } from "./sample-data.js";
@@ -229,27 +231,26 @@ async function handleAuthState(user) {
     if (subscribeEmailForm) subscribeEmailForm.classList.remove("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
     userWaitlistMap = {}; userLikeMap = {};
-    if (dailyLimitInfo) {
-      dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요. 로그인 후 글을 작성하세요.`;
-    }
+    if (submitBtn) submitBtn.textContent = `글 남기기 (오늘 0/${DAILY_POST_LIMIT})`;
     renderAll();
   }
 }
 
 async function refreshDailyLimitInfo() {
-  if (!dailyLimitInfo) return;
+  // submit 버튼 텍스트에 오늘 작성 카운트 표시
   const user = getCurrentUser();
   if (!user) {
-    dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
+    if (submitBtn) submitBtn.textContent = `글 남기기 (오늘 0/${DAILY_POST_LIMIT})`;
     return;
   }
   try {
     const c = await getTodayPostCount(user.uid);
-    const r = Math.max(0, DAILY_POST_LIMIT - c);
-    dailyLimitInfo.textContent = `오늘 작성 ${c}/${DAILY_POST_LIMIT}건 (남은 ${r}건) · 하루 최대 ${DAILY_POST_LIMIT}개`;
-    dailyLimitInfo.classList.toggle("limit-reached", r === 0);
+    if (submitBtn) {
+      submitBtn.textContent = `글 남기기 (오늘 ${c}/${DAILY_POST_LIMIT})`;
+      submitBtn.disabled = c >= DAILY_POST_LIMIT;
+    }
   } catch (e) {
-    dailyLimitInfo.textContent = `하루에 최대 ${DAILY_POST_LIMIT}개까지 등록할 수 있어요.`;
+    if (submitBtn) submitBtn.textContent = `글 남기기 (오늘 0/${DAILY_POST_LIMIT})`;
   }
 }
 
@@ -408,6 +409,21 @@ function createIdeaCard(idea) {
         ${allImages ? `<div class="expanded-images">${allImages}</div>` : ''}
         ${renderProgressBlock(paid, free, meetsThreshold)}
 
+        ${(!idea.isSample && getCurrentUser()?.uid === idea.authorUid) ? `
+          <div class="owner-actions">
+            <button class="btn-mini btn-text" data-action="owner-edit" data-idea-id="${idea.id}">✏️ 수정</button>
+            <button class="btn-mini btn-text-danger" data-action="owner-delete" data-idea-id="${idea.id}">🗑️ 삭제</button>
+          </div>
+          <div class="owner-edit-form hidden" data-edit="${idea.id}">
+            <input type="text" class="adm-input" data-edit-field="title" value="${escapeHtml(idea.title)}" maxlength="100">
+            <textarea class="adm-input" data-edit-field="description" rows="6" maxlength="1000">${escapeHtml(idea.description || '')}</textarea>
+            <div class="owner-edit-actions">
+              <button class="btn-mini btn-text" data-action="owner-edit-cancel" data-idea-id="${idea.id}">취소</button>
+              <button class="btn-mini btn-comment-submit" data-action="owner-edit-save" data-idea-id="${idea.id}">저장</button>
+            </div>
+          </div>
+        ` : ''}
+
         <section class="inline-comments">
           <h4 class="inline-comments-title">댓글 <span class="inline-comments-count">${idea.commentCount || 0}</span></h4>
           ${idea.isSample ? '<p class="comment-sample-note">예시 글에는 댓글을 남길 수 없어요.</p>' : `
@@ -456,6 +472,10 @@ async function handleIdeasClick(e) {
     if (action === "reply-submit") return onCommentSubmit(btn, ideaId, btn.dataset.parent);
     if (action === "reply-toggle") return onReplyToggle(btn);
     if (action === "comment-delete") return onDeleteComment(ideaId, btn.dataset.commentId);
+    if (action === "owner-edit") return onOwnerEditToggle(btn, ideaId, true);
+    if (action === "owner-edit-cancel") return onOwnerEditToggle(btn, ideaId, false);
+    if (action === "owner-edit-save") return onOwnerEditSave(btn, ideaId);
+    if (action === "owner-delete") return onOwnerDelete(btn, ideaId);
     return;
   }
 
@@ -846,7 +866,7 @@ async function submitIdea(title, desc, user) {
     }
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = "글남기기";
+    // 버튼 텍스트는 refreshDailyLimitInfo 가 갱신
   }
 }
 
@@ -927,6 +947,57 @@ async function openFavoritesModal() {
 }
 
 function closeFavoritesModal() { if (favModal) favModal.classList.add("hidden"); }
+
+
+
+// ---- 작성자 본인 수정/삭제 ----
+
+function onOwnerEditToggle(btn, ideaId, open) {
+  const card = btn.closest(".idea-card");
+  const form = card?.querySelector(`.owner-edit-form[data-edit="${cssEscape(ideaId)}"]`);
+  if (!form) return;
+  if (open) {
+    form.classList.remove("hidden");
+    form.querySelector('[data-edit-field="title"]')?.focus();
+  } else {
+    form.classList.add("hidden");
+  }
+}
+
+async function onOwnerEditSave(btn, ideaId) {
+  const card = btn.closest(".idea-card");
+  const form = card?.querySelector(`.owner-edit-form[data-edit="${cssEscape(ideaId)}"]`);
+  if (!form) return;
+  const title = form.querySelector('[data-edit-field="title"]').value.trim();
+  const desc = form.querySelector('[data-edit-field="description"]').value.trim();
+  if (title.length < 2) { showToast("제목을 2자 이상 입력해주세요", ""); return; }
+  if (desc.length < 10) { showToast("설명을 10자 이상 입력해주세요", ""); return; }
+  btn.disabled = true;
+  try {
+    await userUpdateOwnIdea(ideaId, { title, description: desc });
+    showToast("수정 완료", "success");
+    form.classList.add("hidden");
+  } catch (e) {
+    console.error(e);
+    showToast("수정 실패: " + (e.message || ""), "");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function onOwnerDelete(btn, ideaId) {
+  if (!confirm("이 글을 삭제할까요? 댓글/대기자/관심도 함께 사라집니다.")) return;
+  btn.disabled = true;
+  try {
+    await userDeleteOwnIdea(ideaId);
+    showToast("삭제됐어요", "");
+  } catch (e) {
+    console.error(e);
+    showToast("삭제 실패: " + (e.message || ""), "");
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // ---- Toast ----
 
