@@ -34,34 +34,39 @@ tabs.forEach((tab) => {
     tabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     currentTab = tab.dataset.tab;
-    startSubscription();
+    renderList();
   });
 });
 
+// 즉시 샘플 노출 + 백그라운드로 firestore 구독
+renderList();
 startSubscription();
 
 function startSubscription() {
   if (unsubIdeas) unsubIdeas();
   try {
+    // 서버측 status 필터 없이 모든 아이디어를 받아서 클라이언트에서 분류
     unsubIdeas = subscribeToIdeas("createdAt", (ideas) => {
       currentRealIdeas = ideas;
       renderList();
-    }, currentTab);
+    });
   } catch (e) {
     console.warn("board subscription failed", e);
-    renderList();
   }
 }
 
 function renderList() {
-  // 실제 데이터 + 샘플 (해당 탭 status에 맞는 것만)
+  // 샘플 글 - 현재 탭에 맞는 status 만
   const samples = SAMPLE_IDEAS
     .filter((s) => (s.status || "waiting") === currentTab)
     .map((s) => ({ ...s, isSample: true }));
-  const reals = currentRealIdeas.map((r) => ({ ...r, isSample: false }));
+  // 실제 아이디어도 클라이언트에서 분류
+  const reals = currentRealIdeas
+    .filter((r) => (r.status || "waiting") === currentTab)
+    .map((r) => ({ ...r, isSample: false }));
   const merged = [...reals, ...samples];
 
-  // 정렬: 인기 → 최신
+  // 인기순(대기자 수)로 정렬
   merged.sort((a, b) => (b.waitlistCount || 0) - (a.waitlistCount || 0));
 
   if (merged.length === 0) {

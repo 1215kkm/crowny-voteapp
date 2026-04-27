@@ -134,11 +134,36 @@ export const SAMPLE_IDEAS = RAW.map((r, i) => {
   };
 });
 
-// 다양성을 위해 샘플 두어 개는 cancelled / completed 로
-if (SAMPLE_IDEAS.length >= 5) {
-  SAMPLE_IDEAS[3].status = "completed";
-  SAMPLE_IDEAS[19] && (SAMPLE_IDEAS[19].status = "cancelled");
-}
+// 모든 탭에 다양한 샘플이 분포되도록 일부 항목 status 강제 분배
+const STATUS_OVERRIDES = [
+  { i: 0,  s: "ready" },
+  { i: 1,  s: "building" },
+  { i: 2,  s: "ready" },
+  { i: 3,  s: "completed" },
+  { i: 4,  s: "building" },
+  { i: 5,  s: "completed" },
+  { i: 6,  s: "ready" },
+  { i: 7,  s: "cancelled" },
+  { i: 8,  s: "waiting" },
+  { i: 9,  s: "waiting" },
+  { i: 10, s: "building" },
+  { i: 11, s: "waiting" },
+  { i: 12, s: "cancelled" },
+  { i: 13, s: "ready" },
+  { i: 14, s: "waiting" },
+  { i: 15, s: "completed" },
+  { i: 16, s: "building" },
+  { i: 17, s: "waiting" },
+  { i: 18, s: "cancelled" },
+  { i: 19, s: "waiting" },
+  { i: 20, s: "ready" },
+  { i: 21, s: "waiting" },
+  { i: 22, s: "cancelled" },
+  { i: 23, s: "waiting" }
+];
+STATUS_OVERRIDES.forEach((o) => {
+  if (SAMPLE_IDEAS[o.i]) SAMPLE_IDEAS[o.i].status = o.s;
+});
 
 // Build sample waitlist members for each idea
 export const SAMPLE_MEMBERS = {};
