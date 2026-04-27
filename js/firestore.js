@@ -12,13 +12,18 @@ import {
   setDoc,
   deleteDoc,
   query,
+  where,
   orderBy,
   onSnapshot,
   serverTimestamp,
   runTransaction,
   increment,
-  limit
+  limit,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// 사용자가 하루에 쓸 수 있는 최대 글 수
+export const DAILY_POST_LIMIT = 2;
 
 // ---- Ideas ----
 
@@ -40,8 +45,43 @@ export function subscribeToIdeas(sortField, callback) {
   });
 }
 
-export async function addIdea(title, description, user) {
-  const docRef = await addDoc(collection(db, "ideas"), {
+// 오늘 자정(현지시각) Date 반환
+function startOfTodayLocal() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// 사용자가 오늘 작성한 글 개수 조회
+export async function getTodayPostCount(uid) {
+  if (!uid) return 0;
+  const startTs = Timestamp.fromDate(startOfTodayLocal());
+  // 인덱스 회피 위해 authorUid 만으로 필터, createdAt은 클라이언트에서 비교
+  const q = query(
+    collection(db, "ideas"),
+    where("authorUid", "==", uid),
+    limit(50)
+  );
+  const snap = await getDocs(q);
+  let count = 0;
+  snap.forEach((docSnap) => {
+    const data = docSnap.data();
+    const created = data.createdAt && data.createdAt.toMillis ? data.createdAt.toMillis() : 0;
+    if (created >= startTs.toMillis()) count++;
+  });
+  return count;
+}
+
+export async function addIdea(title, description, user, imageData) {
+  // 일일 글쓰기 제한 체크
+  const todayCount = await getTodayPostCount(user.uid);
+  if (todayCount >= DAILY_POST_LIMIT) {
+    const err = new Error(`하루에 최대 ${DAILY_POST_LIMIT}개까지만 등록할 수 있습니다.`);
+    err.code = "daily-limit-exceeded";
+    throw err;
+  }
+
+  const payload = {
     title,
     description,
     authorUid: user.uid,
@@ -49,7 +89,13 @@ export async function addIdea(title, description, user) {
     authorPhoto: user.photoURL || "",
     waitlistCount: 0,
     createdAt: serverTimestamp()
-  });
+  };
+
+  if (imageData && typeof imageData === "string" && imageData.length > 0) {
+    payload.imageData = imageData;
+  }
+
+  const docRef = await addDoc(collection(db, "ideas"), payload);
   return docRef.id;
 }
 

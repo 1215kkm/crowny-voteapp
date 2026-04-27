@@ -1206,3 +1206,128 @@ input, textarea {
     padding: 20px;
   }
 }
+
+/* ========================================
+   추가: 일일 제한 안내 / 이미지 업로드 / 샘플 배지
+   ======================================== */
+.daily-limit-info {
+  background: linear-gradient(135deg, #eef2ff, #f3e8ff);
+  color: #4338ca;
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #c7d2fe;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+.daily-limit-info.limit-reached {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.image-upload-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  transition: var(--transition);
+  background: #fafbff;
+}
+.image-upload-label:hover {
+  border-color: var(--color-accent-start);
+  color: var(--color-accent-start);
+  background: #f0f3ff;
+}
+.image-upload-icon {
+  font-size: 1.1rem;
+}
+
+.image-preview {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #f8fafc;
+}
+.image-preview img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-sm);
+}
+.image-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 10px;
+}
+.image-preview-info {
+  font-size: 0.78rem;
+  color: var(--color-text-light);
+}
+.image-remove-btn {
+  background: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.image-remove-btn:hover {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+/* 카드 안 첨부 이미지 */
+.idea-image-wrap {
+  margin: 0 0 14px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #f1f5f9;
+}
+.idea-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 샘플(예시) 배지 */
+.badge-sample {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+  margin-right: 4px;
+  letter-spacing: 0.02em;
+}
+.idea-card.sample-card {
+  border-style: dashed;
+  border-color: #c7d2fe;
+}
+.idea-card.sample-card .btn-join-waitlist {
+  opacity: 0.65;
+}
+
+/* ========================================
+   모바일 공유된 아이디어 헤더 어두운색
+   ======================================== */
+@media (max-width: 768px) {
+  .section-header h2 {
+    color: #1e293b;
+  }
+  .section-header h2 .count-badge {
+    color: #ffffff; /* 그라디언트 배경 위 글자는 그대로 흰색 유지 */
+  }
+}

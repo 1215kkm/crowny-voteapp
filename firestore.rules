@@ -19,6 +19,7 @@ service cloud.firestore {
       allow read: if true;
 
       // 로그인한 사용자가 자기 자신을 작성자로 해서 생성
+      // imageData (선택): base64 이미지 (최대 약 900KB)
       allow create: if request.auth != null
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.title is string
@@ -26,7 +27,10 @@ service cloud.firestore {
         && request.resource.data.title.size() <= 200
         && request.resource.data.description is string
         && request.resource.data.description.size() <= 5000
-        && request.resource.data.waitlistCount == 0;
+        && request.resource.data.waitlistCount == 0
+        && (!('imageData' in request.resource.data)
+            || (request.resource.data.imageData is string
+                && request.resource.data.imageData.size() <= 950000));
 
       // 업데이트는 waitlistCount 필드만 (대기자 가입/탈퇴 트랜잭션)
       allow update: if request.auth != null
