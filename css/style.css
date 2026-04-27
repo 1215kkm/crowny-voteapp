@@ -555,6 +555,10 @@ input, textarea {
   overflow: hidden;
 }
 
+.idea-card.expanded .idea-preview {
+  display: none;
+}
+
 /* Waitlist info in card header */
 .waitlist-info {
   display: flex;
