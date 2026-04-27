@@ -1,0 +1,84 @@
+rules_version = '2';
+
+// ============================================
+// Crowny VoteApp - Production Firestore Rules
+// ============================================
+// 데이터 모델 (js/firestore.js 참고)
+//   /ideas/{ideaId}                     - 아이디어 문서 (공개 읽기)
+//   /ideas/{ideaId}/waitlist/{uid}      - 대기자 (본인만 가입/탈퇴)
+//   /subscribers/{email}                - 이메일 구독 (본인만 관리)
+//   /mail/{mailId}                      - Trigger Email Extension 큐
+// ============================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Ideas ----
+    match /ideas/{ideaId} {
+      // 누구나 아이디어 목록을 볼 수 있음
+      allow read: if true;
+
+      // 로그인한 사용자가 자기 자신을 작성자로 해서 생성
+      allow create: if request.auth != null
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 5000
+        && request.resource.data.waitlistCount == 0;
+
+      // 업데이트는 waitlistCount 필드만 (대기자 가입/탈퇴 트랜잭션)
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['waitlistCount']);
+
+      // 클라이언트에서 직접 삭제는 금지
+      allow delete: if false;
+
+      // ---- Waitlist 서브컬렉션 ----
+      match /waitlist/{userId} {
+        // 대기자 목록은 공개
+        allow read: if true;
+
+        // 본인만 자기 자신을 가입/탈퇴 가능
+        allow create: if request.auth != null
+          && request.auth.uid == userId;
+        allow delete: if request.auth != null
+          && request.auth.uid == userId;
+        allow update: if false;
+      }
+    }
+
+    // ---- Subscribers (문서 ID = 이메일) ----
+    match /subscribers/{email} {
+      // 본인 구독 정보만 읽기/쓰기 가능
+      allow read: if request.auth != null
+        && request.auth.token.email == email;
+
+      allow create, update: if request.auth != null
+        && request.auth.token.email == email
+        && request.resource.data.email == email;
+
+      allow delete: if request.auth != null
+        && request.auth.token.email == email;
+    }
+
+    // ---- Mail (Firebase Trigger Email Extension) ----
+    match /mail/{mailId} {
+      // 큐는 클라이언트에서 읽으면 안 됨
+      allow read: if false;
+
+      // 본인 이메일 주소로만 보낼 수 있음
+      allow create: if request.auth != null
+        && request.resource.data.to is string
+        && request.resource.data.to == request.auth.token.email;
+
+      allow update, delete: if false;
+    }
+
+    // 그 외 모든 문서 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
