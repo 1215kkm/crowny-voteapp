@@ -97,12 +97,13 @@ input, textarea {
 }
 
 .logo {
-  font-size: 1.5rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  display: inline-flex;
+  align-items: center;
+}
+
+.logo img {
+  display: block;
+  height: auto;
 }
 
 #auth-area {
