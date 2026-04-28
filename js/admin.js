@@ -402,7 +402,7 @@ function setupAiButtons() {
       console.error(e);
       showToast("실패: " + e.message, "");
     } finally {
-      aiGenComments.disabled = false;
+      throttleBtn(aiGenComments, 30000);
     }
   });
 
@@ -448,7 +448,7 @@ function setupAiButtons() {
       console.error(e);
       showToast("실패: " + e.message, "");
     } finally {
-      aiGenDrip.disabled = false;
+      throttleBtn(aiGenDrip, 30000);
     }
   });
 
@@ -464,7 +464,7 @@ function setupAiButtons() {
       console.error(e);
       showToast("실패: " + e.message, "");
     } finally {
-      aiGenIdea.disabled = false;
+      throttleBtn(aiGenIdea, 30000);
     }
   });
 }
@@ -625,6 +625,25 @@ async function loadBannedList() {
   } catch (e) {
     bannedListEl.innerHTML = '<p class="empty">목록을 불러오지 못했어요.</p>';
   }
+}
+
+
+// 버튼 30초 throttle
+function throttleBtn(btn, ms) {
+  if (!btn) return;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  let remain = Math.ceil(ms / 1000);
+  const updateText = () => { btn.textContent = `${orig} (${remain}s)`; };
+  updateText();
+  const id = setInterval(() => {
+    remain--;
+    if (remain <= 0) {
+      clearInterval(id);
+      btn.disabled = false;
+      btn.textContent = orig;
+    } else updateText();
+  }, 1000);
 }
 
 // ---- Helpers ----
