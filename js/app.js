@@ -388,6 +388,7 @@ function createIdeaCard(idea) {
             <span class="cnt-comment" title="댓글">💬 ${idea.commentCount || 0}</span>
           </span>
         </div>
+        ${renderMiniProgress(paid, free, meetsThreshold)}
         <div class="card-actions">
           <button class="btn-mini btn-paid ${isJoinedTier === 'paid' ? 'active' : ''}" data-action="paid" data-idea-id="${idea.id}">
             ${isJoinedTier === 'paid' ? '✓ 유료대기 중' : '💎 유료라도 사용'}
@@ -440,6 +441,41 @@ function createIdeaCard(idea) {
     </div>
   `;
   return card;
+}
+
+function thresholdProgress(paid, free) {
+  // 두 경로 중 더 가까운 것의 진행률
+  const pathA = Math.min(paid / 20, 1);
+  const pathB = (Math.min(paid, 10) + Math.min(free, 10)) / 20;
+  const ratio = Math.max(pathA, pathB);
+  // 어느 경로가 더 가까운지 + 남은 인원
+  let label;
+  if (ratio >= 1) {
+    label = "설계 진입 조건 충족!";
+  } else if (pathA >= pathB) {
+    label = `유료 ${20 - paid}명 더 필요 (단독 경로)`;
+  } else {
+    const np = Math.max(0, 10 - paid);
+    const nf = Math.max(0, 10 - free);
+    if (np && nf) label = `유료 ${np}명, 무료 ${nf}명 더 필요`;
+    else if (np) label = `유료 ${np}명 더 필요`;
+    else label = `무료 ${nf}명 더 필요`;
+  }
+  return { ratio, percent: Math.round(ratio * 100), label };
+}
+
+function renderMiniProgress(paid, free, met) {
+  const p = thresholdProgress(paid, free);
+  return `
+    <div class="mini-progress">
+      <div class="mini-progress-bar ${met ? 'done' : ''}">
+        <div class="mini-progress-fill" style="width:${p.percent}%;"></div>
+      </div>
+      <div class="mini-progress-row">
+        <span class="mini-progress-label">${p.percent}% — ${p.label}</span>
+      </div>
+    </div>
+  `;
 }
 
 function renderProgressBlock(paid, free, met) {

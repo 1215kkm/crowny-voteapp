@@ -27,7 +27,6 @@
         <div id="user-info" class="hidden">
           <img id="user-photo" src="" alt="" class="user-avatar">
           <span id="user-name"></span>
-          <a href="admin.html" class="btn-admin-link" data-admin-only title="관리자 페이지">⚙ 관리자</a>
           <button id="logout-btn" class="btn-logout" onclick="window.appAuth.logout()">로그아웃</button>
         </div>
       </div>
@@ -48,7 +47,10 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="dashboard">대시보드</button>
         <button class="admin-tab" data-tab="ideas">글 관리</button>
+        <button class="admin-tab" data-tab="personas">가상 인물</button>
         <button class="admin-tab" data-tab="ai">AI 자동화</button>
+        <button class="admin-tab" data-tab="members">회원 관리</button>
+        <button class="admin-tab" data-tab="emails">메일 리스트</button>
         <button class="admin-tab" data-tab="bans">사용자 차단</button>
       </div>
 
@@ -75,6 +77,44 @@
         <div id="admin-ideas-list" class="admin-ideas-list">불러오는 중...</div>
       </section>
 
+      <!-- 가상 인물 -->
+      <section id="tab-personas" class="admin-section hidden">
+        <h2>가상 인물 관리</h2>
+        <p class="admin-help">관리자가 댓글/좋아요/글 작성 시 선택할 수 있는 가상 인물 풀입니다. 처음 진입 시 기본 3명이 자동 생성됩니다.</p>
+        <div id="personas-list" class="personas-list">불러오는 중...</div>
+
+        <h3>새 인물 추가</h3>
+        <form id="persona-form" class="persona-form">
+          <div class="persona-form-row">
+            <input id="p-name" placeholder="이름 *" maxlength="50" required>
+            <input id="p-age" type="number" placeholder="나이" min="10" max="99" style="width:80px">
+            <select id="p-gender">
+              <option value="여">여</option>
+              <option value="남">남</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div class="persona-form-row">
+            <input id="p-job" placeholder="직업" maxlength="100">
+            <input id="p-personality" placeholder="성격 (예: 신중한, 호탕한, 웃음많은)" maxlength="100">
+          </div>
+          <textarea id="p-speech" placeholder="말투 설명 (예: 차분한 존댓말, 직설적 반말 섞임 등)" rows="2" maxlength="500"></textarea>
+          <textarea id="p-bio" placeholder="추가 소개 (선택)" rows="2" maxlength="500"></textarea>
+          <button type="submit" class="btn-mini btn-comment-submit">인물 추가</button>
+        </form>
+      </section>
+
+      <!-- 회원 관리 -->
+      <section id="tab-members" class="admin-section hidden">
+        <h2>회원 관리</h2>
+        <p class="admin-help">실제 사용자 + 가상 인물 모두 표시. 클릭하면 활동 내역 펼쳐집니다.</p>
+        <div class="member-search-row">
+          <input id="member-search" placeholder="이름 또는 UID 검색">
+          <button id="member-refresh" class="btn-mini">목록 새로고침</button>
+        </div>
+        <div id="members-list" class="members-list">불러오는 중...</div>
+      </section>
+
       <!-- AI 자동화 -->
       <section id="tab-ai" class="admin-section hidden">
         <h2>AI 자동화 설정</h2>
@@ -96,11 +136,23 @@
               <small>최신 글이 24~48시간 동안 없으면, 관리자 페이지를 열 때 AI가 새 글을 생성합니다.</small>
             </span>
           </label>
+          <label class="ai-toggle">
+            <input type="checkbox" id="auto-like-toggle">
+            <span class="ai-toggle-label">
+              <strong>자동 좋아요(관심) 활성</strong>
+              <small>가상 인물들이 일정 간격으로 랜덤한 글에 관심(❤️)을 누릅니다. 댓글/글 생성 안 함.</small>
+            </span>
+          </label>
           <button id="settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
         </div>
 
         <h3>수동 생성</h3>
         <div class="ai-manual-row">
+          <span class="ai-help">작성자(인물):</span>
+          <select id="ai-persona-select"></select>
+          <span class="ai-help">— 비워두면 익명 가상 사용자</span>
+        </div>
+        <div class="ai-manual-row" style="margin-top:8px;">
           <select id="ai-target-idea"></select>
           <input type="number" id="ai-comment-count" min="1" max="10" value="3" style="width:80px;">
           <button id="ai-gen-comments" class="btn-mini">선택한 글에 댓글 생성</button>
@@ -117,6 +169,25 @@
 
         <h3>예약 큐</h3>
         <div id="scheduled-list" class="scheduled-list">불러오는 중...</div>
+      </section>
+
+      <!-- 메일 리스트 (수동 발송용) -->
+      <section id="tab-emails" class="admin-section hidden">
+        <h2>메일 리스트 — 수동 발송용</h2>
+        <p class="admin-help">
+          출시 소식 구독자 + 각 아이디어에 "유료/무료 사용" 체크한 사람들의 이메일을 모았습니다.
+          이메일 주소를 복사해 메일 클라이언트(예: 지메일)에서 붙여넣고 직접 발송하세요.
+        </p>
+
+        <div class="email-actions">
+          <button id="emails-refresh" class="btn-mini">목록 새로고침</button>
+        </div>
+
+        <h3>📧 출시 소식 구독자 (전체)</h3>
+        <div id="emails-subscribers" class="email-block">불러오는 중...</div>
+
+        <h3>📌 아이디어별 대기자 (유료 + 무료)</h3>
+        <div id="emails-by-idea" class="email-block">불러오는 중...</div>
       </section>
 
       <!-- 사용자 차단 -->

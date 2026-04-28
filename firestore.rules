@@ -144,6 +144,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ---- 가상 인물 (관리자만) ----
+    match /personas/{personaId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     // ---- 사용자별 관심 미러 컬렉션 ----
     match /users/{uid}/likes/{ideaId} {
       // 본인만 읽고 쓰기
