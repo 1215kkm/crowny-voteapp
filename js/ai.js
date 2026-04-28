@@ -52,8 +52,11 @@ async function callGemini(prompt, maxTokens) {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0.95,
-      maxOutputTokens: maxTokens || 1024,
-      responseMimeType: "application/json"
+      maxOutputTokens: maxTokens || 4096,
+      responseMimeType: "application/json",
+      // gemini-2.5 시리즈는 기본적으로 "thinking 모드" 라 답변 전에 많은 토큰을 추론에 씀.
+      // 우리가 짧은 JSON만 필요하므로 thinking 비활성화로 토큰 절약 + 응답 잘림 방지
+      thinkingConfig: { thinkingBudget: 0 }
     }
   };
   const res = await fetch(url, {
@@ -66,7 +69,12 @@ async function callGemini(prompt, maxTokens) {
     throw new Error(`Gemini API 오류 ${res.status}: ${err.substring(0, 200)}`);
   }
   const data = await res.json();
+  // 응답 종료 사유 확인 (MAX_TOKENS면 잘린 거)
+  const finishReason = data?.candidates?.[0]?.finishReason;
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  if (finishReason === "MAX_TOKENS") {
+    console.warn("[Gemini] response truncated due to MAX_TOKENS, text:", text.substring(0, 200));
+  }
   return text;
 }
 
@@ -94,7 +102,7 @@ export async function generateCommentsForIdea(ideaTitle, ideaDescription, count)
   ]
 }`;
 
-  const text = await callGemini(prompt, 1024);
+  const text = await callGemini(prompt);
   let json;
   try { json = JSON.parse(text); } catch (e) {
     // JSON 파싱 실패 시 fallback: 최소 1개라도 추출
@@ -130,11 +138,11 @@ export async function generateNewIdea() {
   "description": "왜 필요한지, 어떤 기능이 있으면 좋겠는지 자유롭게 (200~500자)"
 }`;
 
-  const text = await callGemini(prompt, 800);
+  const text = await callGemini(prompt);
   let json;
   try { json = JSON.parse(text); }
   catch (e) {
-    throw new Error("AI 응답 파싱 실패: " + text.substring(0, 100));
+    throw new Error("AI 응답 파싱 실패. 응답: " + text.substring(0, 300));
   }
   const author = pickFakeAuthor();
   return {
