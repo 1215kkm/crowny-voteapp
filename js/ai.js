@@ -153,3 +153,85 @@ export async function generateNewIdea() {
 }
 
 export { isKeyValid as isAiKeyValid };
+
+// ============================================
+// Persona 기반 생성 (인물의 말투·성격대로)
+// ============================================
+
+function personaContextBlock(persona) {
+  if (!persona) return "";
+  return `
+[너는 다음 인물이 되어 응답해]
+이름: ${persona.name}
+나이: ${persona.age}
+성별: ${persona.gender}
+직업: ${persona.job}
+성격: ${persona.personality}
+말투: ${persona.speechStyle}
+소개: ${persona.bio || ""}
+
+이 인물의 시점·말투·성격으로 응답해야 함. 한국어 인터넷 댓글 톤. 욕설 금지.
+`;
+}
+
+// 단일 인물로 댓글 1개 작성
+export async function generateOneCommentAsPersona(ideaTitle, ideaDescription, persona) {
+  const prompt = `${personaContextBlock(persona)}
+
+[아이디어 글]
+제목: ${ideaTitle}
+설명: ${ideaDescription}
+
+[작업]
+이 아이디어 글에 대해 너(${persona.name}) 의 입장에서 댓글 1개를 자연스럽게 작성.
+1~3 문장 (40~150자). 어조는 너의 성격·말투에 맞게.
+질문/동의/우려/제안/의향 중 자연스러운 거.
+
+[출력 형식]
+{ "text": "댓글 내용" }`;
+
+  const text = await callGemini(prompt);
+  let json;
+  try { json = JSON.parse(text); }
+  catch (e) { json = { text: text.substring(0, 200) }; }
+  return {
+    text: String(json.text || "").substring(0, 990),
+    authorUid: persona.fakeUid || ("p_" + persona.id),
+    authorName: persona.name,
+    authorPhoto: persona.photoURL
+  };
+}
+
+// 단일 인물로 새 글 1개 작성
+export async function generateNewIdeaAsPersona(persona) {
+  const prompt = `${personaContextBlock(persona)}
+
+[작업]
+너(${persona.name}) 가 평소 느끼던 불편함을 해결할 새로운 모바일/웹 앱 아이디어 1개 제안.
+- 너의 직업·성격·관심사가 자연스럽게 묻어나야 함
+- 한국 사용자 맥락
+- 너무 흔한 앱(배달, 단순 메신저 등) 제외
+
+[출력 형식]
+{
+  "title": "한 줄 요약 (60자 이내)",
+  "description": "왜 필요한지, 어떤 기능이 있으면 좋겠는지 (200~400자, 너의 말투로)"
+}`;
+
+  const text = await callGemini(prompt);
+  let json;
+  try { json = JSON.parse(text); }
+  catch (e) {
+    throw new Error("AI 응답 파싱 실패. 응답: " + text.substring(0, 300));
+  }
+  return {
+    title: String(json.title || "").substring(0, 100),
+    description: String(json.description || "").substring(0, 990),
+    author: {
+      uid: persona.fakeUid || ("p_" + persona.id),
+      displayName: persona.name,
+      photoURL: persona.photoURL
+    }
+  };
+}
+

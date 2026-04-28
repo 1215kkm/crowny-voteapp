@@ -19,14 +19,30 @@ import {
   postAiComment,
   postAiIdea,
   fetchEventsSince,
-  subscribeToComments
+  subscribeToComments,
+  personaLikeIdea,
+  personaPostComment,
+  personaPostIdea,
+  aggregateUserActivities,
+  listSubscribers,
+  listEmailsByIdea
 } from "./firestore.js";
+import {
+  listPersonas,
+  createPersona,
+  deletePersona,
+  updatePersona,
+  seedDefaultPersonasIfNeeded,
+  personaToAuthor
+} from "./personas.js";
 import { ADMIN_EMAIL } from "./ai-config.js";
 import {
   generateCommentsForIdea,
   generateNewIdea,
   isAiKeyValid,
-  pickFakeAuthor
+  pickFakeAuthor,
+  generateOneCommentAsPersona,
+  generateNewIdeaAsPersona
 } from "./ai.js";
 
 // ---- DOM ----
@@ -37,7 +53,10 @@ const tabs = document.querySelectorAll(".admin-tab");
 const sections = {
   dashboard: document.getElementById("tab-dashboard"),
   ideas: document.getElementById("tab-ideas"),
+  personas: document.getElementById("tab-personas"),
   ai: document.getElementById("tab-ai"),
+  members: document.getElementById("tab-members"),
+  emails: document.getElementById("tab-emails"),
   bans: document.getElementById("tab-bans")
 };
 
@@ -74,6 +93,18 @@ const banEmailInput = document.getElementById("ban-email");
 const banReasonInput = document.getElementById("ban-reason");
 const banAddBtn = document.getElementById("ban-add");
 const bannedListEl = document.getElementById("banned-list");
+
+// 인물·회원·자동좋아요
+const personasListEl = document.getElementById("personas-list");
+const personaForm = document.getElementById("persona-form");
+const aiPersonaSelect = document.getElementById("ai-persona-select");
+const autoLikeToggle = document.getElementById("auto-like-toggle");
+const memberSearch = document.getElementById("member-search");
+const memberRefresh = document.getElementById("member-refresh");
+const membersListEl = document.getElementById("members-list");
+
+let personasCache = [];
+let allMembersCache = [];
 
 let allRealIdeas = [];
 let unsubIdeas = null;
@@ -120,22 +151,34 @@ tabs.forEach((t) => {
     if (t.dataset.tab === "dashboard") loadAnalytics();
     if (t.dataset.tab === "bans") loadBannedList();
     if (t.dataset.tab === "ai") loadScheduledList();
+    if (t.dataset.tab === "personas") loadPersonasList();
+    if (t.dataset.tab === "members") loadMembersList();
+    if (t.dataset.tab === "emails") loadEmailLists();
   });
 });
 
 async function initAdminFeatures() {
   showAiKeyStatus();
-  refreshTargetIdeaSelect(); // 초기 비었을 때 안내 표시
+  refreshTargetIdeaSelect();
   startIdeasListSubscription();
   await loadSettings();
   await loadAnalytics();
   setupRangeButtons();
   setupAiButtons();
   setupBanButtons();
+  setupPersonaForm();
+  setupMembersTab();
 
-  // 자동 큐 처리는 이 페이지에 들어왔을 때만 (관리자 전용)
+  // 인물 시드 + 인물 셀렉트 채우기
+  try {
+    personasCache = await seedDefaultPersonasIfNeeded();
+    refreshPersonaSelect();
+  } catch (e) { console.warn("personas init failed", e); }
+
+  // 자동 큐 처리 / 자동 새 글 / 자동 좋아요는 이 페이지에 들어왔을 때만
   await processQueueIfEnabled();
   await maybeGenerateAutoIdea();
+  await maybeAutoLike();
 }
 
 function showAiKeyStatus() {
@@ -362,9 +405,10 @@ function unsubAdminComments(ideaId) {
 
 async function loadSettings() {
   try {
-    const s = await getSettings();
-    autoCommentToggle.checked = !!s.autoCommentEnabled;
-    autoPostToggle.checked = !!s.autoPostEnabled;
+    const sv = await getSettings();
+    autoCommentToggle.checked = !!sv.autoCommentEnabled;
+    autoPostToggle.checked = !!sv.autoPostEnabled;
+    if (autoLikeToggle) autoLikeToggle.checked = !!sv.autoLikeEnabled;
   } catch (e) { /* ignore */ }
 }
 
@@ -372,7 +416,8 @@ settingsSave?.addEventListener("click", async () => {
   try {
     await setSettings({
       autoCommentEnabled: autoCommentToggle.checked,
-      autoPostEnabled: autoPostToggle.checked
+      autoPostEnabled: autoPostToggle.checked,
+      autoLikeEnabled: autoLikeToggle?.checked || false
     });
     showToast("설정 저장됐어요", "success");
   } catch (e) {
@@ -393,11 +438,22 @@ function setupAiButtons() {
     showToast("AI에 댓글을 요청하는 중...", "info");
     try {
       const n = parseInt(aiCommentCount.value, 10) || 3;
-      const comments = await generateCommentsForIdea(idea.title, idea.description, n);
-      for (const c of comments) {
-        await postAiComment(ideaId, c);
+      const persona = getSelectedPersona();
+      if (persona) {
+        // 선택된 인물의 말투로 N개 (각 호출이 1개씩, 호출 사이 1초 대기)
+        let posted = 0;
+        for (let i = 0; i < n; i++) {
+          if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+          const c = await generateOneCommentAsPersona(idea.title, idea.description, persona);
+          await postAiComment(ideaId, c);
+          posted++;
+        }
+        showToast(`${persona.name}으로 ${posted}개 댓글 등록`, "success");
+      } else {
+        const comments = await generateCommentsForIdea(idea.title, idea.description, n);
+        for (const c of comments) await postAiComment(ideaId, c);
+        showToast(`${comments.length}개 댓글 등록 완료`, "success");
       }
-      showToast(`${comments.length}개 댓글 등록 완료`, "success");
     } catch (e) {
       console.error(e);
       showToast("실패: " + e.message, "");
@@ -457,9 +513,16 @@ function setupAiButtons() {
     aiGenIdea.disabled = true;
     showToast("AI에 새 글 작성 요청 중...", "info");
     try {
-      const newIdea = await generateNewIdea();
-      await postAiIdea(newIdea);
-      showToast("AI 새 글이 등록됐어요", "success");
+      const persona = getSelectedPersona();
+      if (persona) {
+        const r = await generateNewIdeaAsPersona(persona);
+        await postAiIdea({ title: r.title, description: r.description, author: r.author });
+        showToast(`${persona.name}으로 새 글 등록`, "success");
+      } else {
+        const newIdea = await generateNewIdea();
+        await postAiIdea(newIdea);
+        showToast("AI 새 글이 등록됐어요", "success");
+      }
     } catch (e) {
       console.error(e);
       showToast("실패: " + e.message, "");
@@ -644,6 +707,328 @@ function throttleBtn(btn, ms) {
       btn.textContent = orig;
     } else updateText();
   }, 1000);
+}
+
+
+// ============================================
+// 가상 인물 관리 탭
+// ============================================
+
+async function loadPersonasList() {
+  if (!personasListEl) return;
+  personasListEl.innerHTML = '<p class="empty">불러오는 중...</p>';
+  try {
+    personasCache = await listPersonas();
+    refreshPersonaSelect();
+    if (personasCache.length === 0) {
+      personasListEl.innerHTML = '<p class="empty">인물이 없습니다. 아래에서 추가해주세요.</p>';
+      return;
+    }
+    personasListEl.innerHTML = personasCache.map((p) => `
+      <div class="persona-card" data-id="${p.id}">
+        <img class="persona-avatar" src="${escapeHtml(p.photoURL || '')}" alt="">
+        <div class="persona-info">
+          <div class="persona-row">
+            <strong>${escapeHtml(p.name || '익명')}</strong>
+            <span class="muted">${escapeHtml(p.gender || '')} · ${p.age || '-'}세 · ${escapeHtml(p.job || '')}</span>
+          </div>
+          <div class="persona-row">
+            <span class="badge-personality">${escapeHtml(p.personality || '')}</span>
+            <span class="muted persona-style">${escapeHtml((p.speechStyle || '').substring(0, 100))}</span>
+          </div>
+          ${p.bio ? `<p class="persona-bio">${escapeHtml(p.bio)}</p>` : ''}
+        </div>
+        <button class="btn-mini btn-text-danger" data-action="del-persona" data-id="${p.id}">삭제</button>
+      </div>
+    `).join("");
+
+    personasListEl.querySelectorAll('[data-action="del-persona"]').forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("이 인물을 삭제할까요?")) return;
+        try {
+          await deletePersona(btn.dataset.id);
+          await loadPersonasList();
+          showToast("삭제됨", "");
+        } catch (e) { showToast("실패: " + e.message, ""); }
+      });
+    });
+  } catch (e) {
+    console.error(e);
+    personasListEl.innerHTML = '<p class="empty">불러오기 실패</p>';
+  }
+}
+
+function setupPersonaForm() {
+  if (!personaForm) return;
+  personaForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("p-name").value.trim();
+    const age = parseInt(document.getElementById("p-age").value, 10) || 0;
+    const gender = document.getElementById("p-gender").value;
+    const job = document.getElementById("p-job").value.trim();
+    const personality = document.getElementById("p-personality").value.trim();
+    const speechStyle = document.getElementById("p-speech").value.trim();
+    const bio = document.getElementById("p-bio").value.trim();
+    if (!name) { showToast("이름을 입력해주세요", ""); return; }
+    try {
+      await createPersona({ name, age, gender, job, personality, speechStyle, bio });
+      personaForm.reset();
+      await loadPersonasList();
+      showToast("인물 추가됨", "success");
+    } catch (e) { showToast("실패: " + e.message, ""); }
+  });
+}
+
+function refreshPersonaSelect() {
+  if (!aiPersonaSelect) return;
+  aiPersonaSelect.innerHTML = '<option value="">(랜덤 가상 사용자)</option>' + personasCache.map((p) =>
+    `<option value="${p.id}">${escapeHtml(p.name || '익명')} (${escapeHtml(p.personality || '')})</option>`
+  ).join("");
+}
+
+function getSelectedPersona() {
+  if (!aiPersonaSelect || !aiPersonaSelect.value) return null;
+  return personasCache.find((p) => p.id === aiPersonaSelect.value) || null;
+}
+
+// ============================================
+// 자동 좋아요 - 가상 인물이 랜덤한 글에 ❤️
+// ============================================
+
+async function maybeAutoLike() {
+  try {
+    const sv = await getSettings();
+    if (!sv.autoLikeEnabled) return;
+    const lastRun = sv.lastAutoLikeAt?.toMillis?.() || 0;
+    const COOLDOWN = 30 * 60 * 1000; // 30분 쿨다운
+    if (Date.now() - lastRun < COOLDOWN) return;
+
+    if (personasCache.length === 0) {
+      personasCache = await listPersonas();
+      if (personasCache.length === 0) return;
+    }
+    if (allRealIdeas.length === 0) return;
+
+    // 락 먼저
+    await setSettings({ lastAutoLikeAt: new Date() });
+
+    // 랜덤 인물 1~3명, 각자 랜덤 글 1개에 좋아요
+    const n = 1 + Math.floor(Math.random() * 3);
+    let liked = 0;
+    for (let i = 0; i < n; i++) {
+      const persona = personasCache[Math.floor(Math.random() * personasCache.length)];
+      const idea = allRealIdeas[Math.floor(Math.random() * allRealIdeas.length)];
+      try {
+        const r = await personaLikeIdea(idea.id, persona);
+        if (r.liked) liked++;
+        await new Promise((res) => setTimeout(res, 400));
+      } catch (e) { /* skip */ }
+    }
+    if (liked > 0) showToast(`자동 좋아요 ${liked}건 실행됨`, "success");
+  } catch (e) { console.warn("auto-like failed", e); }
+}
+
+// ============================================
+// 회원 관리 탭
+// ============================================
+
+function setupMembersTab() {
+  if (memberRefresh) memberRefresh.addEventListener("click", () => loadMembersList(true));
+  if (memberSearch) memberSearch.addEventListener("input", () => filterMembers());
+}
+
+async function loadMembersList(force) {
+  if (!membersListEl) return;
+  membersListEl.innerHTML = '<p class="empty">집계 중... (글 수에 따라 1~10초 걸립니다)</p>';
+  try {
+    if (force || allMembersCache.length === 0) {
+      allMembersCache = await aggregateUserActivities();
+    }
+    filterMembers();
+  } catch (e) {
+    console.error(e);
+    membersListEl.innerHTML = '<p class="empty">불러오기 실패</p>';
+  }
+}
+
+function filterMembers() {
+  if (!membersListEl) return;
+  const kw = (memberSearch?.value || "").trim().toLowerCase();
+  const list = allMembersCache.filter((m) => {
+    if (!kw) return true;
+    return (m.name || "").toLowerCase().includes(kw) || (m.uid || "").toLowerCase().includes(kw);
+  });
+  // 활동량 기준 정렬
+  list.sort((a, b) => (b.ideas.length + b.comments.length + b.likes.length) - (a.ideas.length + a.comments.length + a.likes.length));
+
+  if (list.length === 0) {
+    membersListEl.innerHTML = '<p class="empty">검색 결과 없음</p>';
+    return;
+  }
+
+  membersListEl.innerHTML = list.map((m) => `
+    <div class="member-row" data-uid="${escapeHtml(m.uid)}">
+      <div class="member-head">
+        <img class="member-avatar" src="${escapeHtml(m.photo || '')}" alt="">
+        <strong>${escapeHtml(m.name)}</strong>
+        <code class="muted">${escapeHtml(m.uid)}</code>
+        <span class="member-counts">
+          글 ${m.ideas.length} · 댓글 ${m.comments.length} · 관심 ${m.likes.length} · 대기 ${m.waitlists.length}
+        </span>
+        <button class="btn-mini btn-text" data-action="toggle-member">펼치기</button>
+      </div>
+      <div class="member-body hidden">
+        ${memberActivitiesHtml(m)}
+      </div>
+    </div>
+  `).join("");
+
+  membersListEl.querySelectorAll('[data-action="toggle-member"]').forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const body = btn.closest(".member-row").querySelector(".member-body");
+      body.classList.toggle("hidden");
+      btn.textContent = body.classList.contains("hidden") ? "펼치기" : "접기";
+    });
+  });
+}
+
+function memberActivitiesHtml(m) {
+  function listSection(title, items, render) {
+    if (!items || items.length === 0) return `<div class="member-section"><h5>${title} (0)</h5><p class="empty">없음</p></div>`;
+    return `<div class="member-section"><h5>${title} (${items.length})</h5><ul>${items.slice(0, 50).map(render).join("")}</ul></div>`;
+  }
+  return `
+    ${listSection("작성 글", m.ideas, (x) => `<li>${escapeHtml(x.title || x.id)}</li>`)}
+    ${listSection("댓글", m.comments, (x) => `<li>"${escapeHtml((x.text||'').substring(0,80))}" — <span class="muted">${escapeHtml(x.ideaTitle||'')}</span></li>`)}
+    ${listSection("관심", m.likes, (x) => `<li>${escapeHtml(x.ideaTitle||x.ideaId)}</li>`)}
+    ${listSection("대기자 등록", m.waitlists, (x) => `<li>${escapeHtml(x.ideaTitle||x.ideaId)} <span class="muted">(${x.tier === 'paid' ? '유료' : '무료'})</span></li>`)}
+  `;
+}
+
+
+
+// ============================================
+// 메일 리스트 탭
+// ============================================
+
+async function loadEmailLists() {
+  const subEl = document.getElementById("emails-subscribers");
+  const byIdeaEl = document.getElementById("emails-by-idea");
+  const refreshBtn = document.getElementById("emails-refresh");
+  if (!subEl || !byIdeaEl) return;
+
+  if (refreshBtn && !refreshBtn._wired) {
+    refreshBtn._wired = true;
+    refreshBtn.addEventListener("click", () => loadEmailLists());
+  }
+
+  subEl.innerHTML = '<p class="empty">불러오는 중...</p>';
+  byIdeaEl.innerHTML = '<p class="empty">불러오는 중...</p>';
+
+  // 1) 구독자
+  try {
+    const subs = await listSubscribers();
+    if (subs.length === 0) {
+      subEl.innerHTML = '<p class="empty">구독자 없음</p>';
+    } else {
+      const emails = subs.map((s) => s.email).filter(Boolean);
+      subEl.innerHTML = renderEmailGroup("구독자 (출시 소식 받기 신청)", emails, subs);
+    }
+  } catch (e) {
+    subEl.innerHTML = '<p class="empty">불러오기 실패: ' + escapeHtml(e.message || '') + '</p>';
+  }
+
+  // 2) 아이디어별
+  try {
+    const groups = await listEmailsByIdea();
+    if (groups.length === 0) {
+      byIdeaEl.innerHTML = '<p class="empty">아직 대기자 등록한 사람이 없어요.</p>';
+      return;
+    }
+    byIdeaEl.innerHTML = groups.map((g) => {
+      const paidEmails = g.paid.map((p) => p.email);
+      const freeEmails = g.free.map((p) => p.email);
+      const allEmails = [...paidEmails, ...freeEmails];
+      return `
+        <div class="email-idea-block">
+          <div class="email-idea-head">
+            <strong>${escapeHtml(g.title || g.ideaId)}</strong>
+            <span class="muted">— 작성자: ${escapeHtml(g.authorName || '')}</span>
+            <span class="muted">유료 ${g.paid.length} · 무료 ${g.free.length} · 전체 ${allEmails.length}</span>
+          </div>
+          ${g.paid.length > 0 ? `
+            <div class="email-tier-block">
+              <h5>💎 유료라도 사용 (${g.paid.length})</h5>
+              ${renderEmailGroup("", paidEmails, g.paid, "paid-" + g.ideaId)}
+            </div>` : ''}
+          ${g.free.length > 0 ? `
+            <div class="email-tier-block">
+              <h5>👥 무료라면 사용 (${g.free.length})</h5>
+              ${renderEmailGroup("", freeEmails, g.free, "free-" + g.ideaId)}
+            </div>` : ''}
+          ${allEmails.length > 1 ? `
+            <div class="email-tier-block">
+              <h5>📋 전체 합치기 (${allEmails.length})</h5>
+              ${renderEmailGroup("", allEmails, [...g.paid, ...g.free], "all-" + g.ideaId)}
+            </div>` : ''}
+        </div>
+      `;
+    }).join("");
+    wireCopyButtons();
+  } catch (e) {
+    byIdeaEl.innerHTML = '<p class="empty">불러오기 실패: ' + escapeHtml(e.message || '') + '</p>';
+  }
+}
+
+function renderEmailGroup(title, emails, items, gid) {
+  const id = gid || ("eg-" + Math.random().toString(36).substring(2, 8));
+  const joined = emails.join(", ");
+  return `
+    ${title ? `<h5>${escapeHtml(title)}</h5>` : ''}
+    <textarea class="email-textarea" id="${id}" readonly rows="2">${escapeHtml(joined)}</textarea>
+    <div class="email-actions-row">
+      <button class="btn-mini btn-copy-emails" data-target="${id}">전체 복사 (쉼표)</button>
+      <button class="btn-mini btn-copy-emails-semi" data-target="${id}">세미콜론 구분</button>
+      <button class="btn-mini btn-text" data-toggle="${id}-detail">상세 보기</button>
+      <span class="muted">${emails.length}명</span>
+    </div>
+    <div id="${id}-detail" class="email-detail hidden">
+      <ul>
+        ${items.map((it) => `<li>${escapeHtml(it.email)} ${it.displayName ? '<span class="muted">— ' + escapeHtml(it.displayName) + '</span>' : ''}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function wireCopyButtons() {
+  document.querySelectorAll(".btn-copy-emails").forEach((b) => {
+    b.addEventListener("click", () => {
+      const t = document.getElementById(b.dataset.target);
+      if (!t) return;
+      const text = t.value.split(",").map((x) => x.trim()).filter(Boolean).join(", ");
+      navigator.clipboard.writeText(text).then(
+        () => showToast("쉼표 구분으로 복사됨", "success"),
+        () => { window.prompt("아래 주소를 복사하세요", text); }
+      );
+    });
+  });
+  document.querySelectorAll(".btn-copy-emails-semi").forEach((b) => {
+    b.addEventListener("click", () => {
+      const t = document.getElementById(b.dataset.target);
+      if (!t) return;
+      const text = t.value.split(",").map((x) => x.trim()).filter(Boolean).join("; ");
+      navigator.clipboard.writeText(text).then(
+        () => showToast("세미콜론 구분으로 복사됨", "success"),
+        () => { window.prompt("아래 주소를 복사하세요", text); }
+      );
+    });
+  });
+  document.querySelectorAll("[data-toggle]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const t = document.getElementById(b.dataset.toggle);
+      if (t) t.classList.toggle("hidden");
+    });
+  });
 }
 
 // ---- Helpers ----

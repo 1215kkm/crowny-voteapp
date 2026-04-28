@@ -618,3 +618,194 @@ export async function userDeleteOwnIdea(ideaId) {
   await _del(_d(db, "ideas", ideaId));
 }
 
+
+// ============================================
+// Persona 기반 액션 (관리자가 가상 인물로 동작)
+// ============================================
+import {
+  doc as _Pd, collection as _Pc, addDoc as _Padd,
+  setDoc as _Pset, deleteDoc as _Pdel, updateDoc as _Pup,
+  serverTimestamp as _Pst, runTransaction as _Ptx,
+  increment as _Pinc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// 가상 인물 명의로 좋아요 (toggleLike와 비슷하지만 fakeUid 사용)
+export async function personaLikeIdea(ideaId, persona) {
+  const fakeUid = persona.fakeUid || ("p_" + persona.id);
+  const likeRef = _Pd(db, "ideas", ideaId, "likes", fakeUid);
+  const ideaRef = _Pd(db, "ideas", ideaId);
+  return await _Ptx(db, async (tx) => {
+    const exist = await tx.get(likeRef);
+    if (exist.exists()) {
+      tx.delete(likeRef);
+      tx.update(ideaRef, { likeCount: _Pinc(-1) });
+      return { liked: false };
+    }
+    tx.set(likeRef, {
+      uid: fakeUid,
+      displayName: persona.name,
+      photoURL: persona.photoURL || "",
+      likedAt: _Pst(),
+      isPersona: true
+    });
+    tx.update(ideaRef, { likeCount: _Pinc(1) });
+    return { liked: true };
+  });
+}
+
+// 가상 인물 명의로 댓글 작성
+export async function personaPostComment(ideaId, persona, text, parentId) {
+  const fakeUid = persona.fakeUid || ("p_" + persona.id);
+  const ref = await _Padd(_Pc(db, "ideas", ideaId, "comments"), {
+    authorUid: fakeUid,
+    authorName: persona.name,
+    authorPhoto: persona.photoURL || "",
+    text: String(text).substring(0, 990),
+    parentId: parentId || null,
+    isAi: !!persona.byAi,
+    isPersona: true,
+    createdAt: _Pst()
+  });
+  try { await _Pup(_Pd(db, "ideas", ideaId), { commentCount: _Pinc(1) }); } catch (e) {}
+  return ref.id;
+}
+
+// 가상 인물 명의로 새 글 작성
+export async function personaPostIdea(persona, title, description, imageDataList) {
+  const fakeUid = persona.fakeUid || ("p_" + persona.id);
+  const images = Array.isArray(imageDataList)
+    ? imageDataList.filter((s) => typeof s === "string" && s.length > 0).slice(0, 5)
+    : [];
+  const payload = {
+    title: String(title).substring(0, 200),
+    description: String(description).substring(0, 4900),
+    authorUid: fakeUid,
+    authorName: persona.name,
+    authorPhoto: persona.photoURL || "",
+    waitlistCount: 0,
+    paidWaitlistCount: 0,
+    freeWaitlistCount: 0,
+    likeCount: 0,
+    commentCount: 0,
+    status: "waiting",
+    isPersona: true,
+    isAi: !!persona.byAi,
+    createdAt: _Pst()
+  };
+  if (images.length > 0) payload.imageDataList = images;
+  const ref = await _Padd(_Pc(db, "ideas"), payload);
+  return ref.id;
+}
+
+// ============================================
+// 회원 활동 집계 (관리자 회원관리 탭)
+// ============================================
+
+// 모든 글/댓글/좋아요/대기에서 author/uid 모아서 사용자별 활동 집계
+export async function aggregateUserActivities() {
+  const map = new Map(); // uid -> { uid, name, photo, ideas, comments, likes, waitlists }
+  function ensure(uid, name, photo) {
+    if (!map.has(uid)) {
+      map.set(uid, {
+        uid, name: name || "(이름 없음)", photo: photo || "",
+        ideas: [], comments: [], likes: [], waitlists: []
+      });
+    }
+    const u = map.get(uid);
+    if (name && !u.name) u.name = name;
+    if (photo && !u.photo) u.photo = photo;
+    return u;
+  }
+
+  // 글
+  const ideaSnap = await getDocs(_q2(_c2(db, "ideas"), _l2(200)));
+  const ideaList = [];
+  ideaSnap.forEach((d) => {
+    const data = { id: d.id, ...d.data() };
+    ideaList.push(data);
+    ensure(data.authorUid, data.authorName, data.authorPhoto)
+      .ideas.push({ id: d.id, title: data.title, createdAt: data.createdAt });
+  });
+
+  // 댓글 + 좋아요 (각 글의 서브컬렉션 순회)
+  for (const idea of ideaList) {
+    try {
+      const cs = await getDocs(_c2(db, "ideas", idea.id, "comments"));
+      cs.forEach((d) => {
+        const data = d.data();
+        ensure(data.authorUid, data.authorName, data.authorPhoto)
+          .comments.push({ ideaId: idea.id, ideaTitle: idea.title, id: d.id, text: data.text, createdAt: data.createdAt });
+      });
+    } catch (e) {}
+    try {
+      const ls = await getDocs(_c2(db, "ideas", idea.id, "likes"));
+      ls.forEach((d) => {
+        const data = d.data();
+        ensure(data.uid || d.id, data.displayName, data.photoURL)
+          .likes.push({ ideaId: idea.id, ideaTitle: idea.title, likedAt: data.likedAt });
+      });
+    } catch (e) {}
+    try {
+      const ws = await getDocs(_c2(db, "ideas", idea.id, "waitlist"));
+      ws.forEach((d) => {
+        const data = d.data();
+        ensure(d.id, data.displayName, data.photoURL)
+          .waitlists.push({ ideaId: idea.id, ideaTitle: idea.title, tier: data.tier, joinedAt: data.joinedAt });
+      });
+    } catch (e) {}
+  }
+  return Array.from(map.values());
+}
+
+// 별칭 import - aggregateUserActivities 가 위에서 쓴 collection/query/limit/getDocs 별칭
+import {
+  collection as _c2, query as _q2, limit as _l2, getDocs as _gd2
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ============================================
+// 메일 리스트 집계
+// ============================================
+
+// 모든 구독자 (출시 소식 받기)
+export async function listSubscribers() {
+  const snap = await _gd2(_c2(db, "subscribers"));
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+// 각 아이디어별 대기자 이메일 (유료/무료 분리, 작성자 제외)
+export async function listEmailsByIdea() {
+  const ideasSnap = await _gd2(_q2(_c2(db, "ideas"), _l2(200)));
+  const result = [];
+  for (const d of ideasSnap.docs) {
+    const idea = { id: d.id, ...d.data() };
+    if (String(idea.id).startsWith("sample_")) continue;
+    try {
+      const wsnap = await _gd2(_c2(db, "ideas", idea.id, "waitlist"));
+      const paid = [];
+      const free = [];
+      wsnap.forEach((wd) => {
+        const w = wd.data();
+        if (!w.email) return; // 이메일 없는 항목 제외
+        const item = {
+          uid: wd.id,
+          email: w.email,
+          displayName: w.displayName || "",
+          tier: w.tier || "free"
+        };
+        if (item.tier === "paid") paid.push(item);
+        else free.push(item);
+      });
+      if (paid.length === 0 && free.length === 0) continue;
+      result.push({
+        ideaId: idea.id,
+        title: idea.title,
+        authorName: idea.authorName,
+        paid,
+        free
+      });
+    } catch (e) { /* skip */ }
+  }
+  return result;
+}
