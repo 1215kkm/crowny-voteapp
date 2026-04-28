@@ -421,6 +421,8 @@ function setupAiButtons() {
       // 부족하면 한번 더 호출 (10개 한도)
       let remaining = totalCount - comments.length;
       while (remaining > 0) {
+        // 분당 15회 한도 회피 - 호출 사이 5초 대기
+        await new Promise((r) => setTimeout(r, 5000));
         const more = await generateCommentsForIdea(idea.title, idea.description, Math.min(remaining, 10));
         comments.push(...more);
         remaining -= more.length;
@@ -516,7 +518,8 @@ async function processQueueIfEnabled() {
       await import("./firestore.js");
     const due = await getDuePendingScheduledComments(30);
     let processed = 0;
-    for (const item of due) {
+    for (let i = 0; i < due.length; i++) {
+      const item = due[i];
       try {
         await postAiComment(item.ideaId, {
           authorName: item.authorName,
@@ -526,6 +529,8 @@ async function processQueueIfEnabled() {
         });
         await markScheduledCommentDone(item.id);
         processed++;
+        // 빠른 연속 처리 방지 - firestore 쓰기는 AI 아님이지만 보수적으로
+        if (i < due.length - 1) await new Promise((r) => setTimeout(r, 500));
       } catch (e) { console.warn("queue item failed", e); }
     }
     if (processed > 0) showToast(`예약 댓글 ${processed}건 처리됨`, "success");
