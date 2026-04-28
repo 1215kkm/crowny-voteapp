@@ -7,6 +7,6 @@
 // ========================================
 
 export const GEMINI_API_KEY = "AIzaSyA0n_VUV7YpGBoSckCkRWauy6nKTAVRh0c";
-export const GEMINI_MODEL = "gemini-2.0-flash"; // 빠르고 무료 한도 큼
+export const GEMINI_MODEL = "gemini-1.5-flash"; // 빠르고 무료 한도 큼
 
 export const ADMIN_EMAIL = "rute20002@gmail.com";

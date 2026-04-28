@@ -125,6 +125,7 @@ tabs.forEach((t) => {
 
 async function initAdminFeatures() {
   showAiKeyStatus();
+  refreshTargetIdeaSelect(); // 초기 비었을 때 안내 표시
   startIdeasListSubscription();
   await loadSettings();
   await loadAnalytics();
@@ -236,11 +237,18 @@ function startIdeasListSubscription() {
 
 function refreshTargetIdeaSelect() {
   if (!aiTargetIdea) return;
+  if (!allRealIdeas || allRealIdeas.length === 0) {
+    aiTargetIdea.innerHTML = '<option value="" disabled selected>실제 글이 없어요 — 메인에서 글 작성 또는 "AI 새 글 즉시 생성"으로 만들어주세요</option>';
+    aiTargetIdea.disabled = true;
+    return;
+  }
+  aiTargetIdea.disabled = false;
   const cur = aiTargetIdea.value;
-  aiTargetIdea.innerHTML = allRealIdeas.map((i) =>
-    `<option value="${i.id}">${escapeHtml(i.title.substring(0, 60))}</option>`
-  ).join("") || '<option disabled>실제 글이 없어요</option>';
-  if (cur) aiTargetIdea.value = cur;
+  aiTargetIdea.innerHTML = allRealIdeas.map((i) => {
+    const title = (i.title || '(제목 없음)').substring(0, 60);
+    return `<option value="${i.id}">${escapeHtml(title)}${i.isAi ? ' [AI]' : ''}</option>`;
+  }).join("");
+  if (cur && allRealIdeas.find((i) => i.id === cur)) aiTargetIdea.value = cur;
 }
 
 function renderAdminIdeas() {
