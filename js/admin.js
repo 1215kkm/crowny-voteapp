@@ -509,11 +509,20 @@ async function loadScheduledList() {
   }
 }
 
-// 큐 처리 - 관리자 페이지 진입 시 1회
+// 큐 처리 - 관리자 페이지 진입 시, 단 30분 쿨다운
 async function processQueueIfEnabled() {
   try {
     const s = await getSettings();
     if (!s.autoCommentEnabled) return;
+    const lastRun = s.lastQueueRunAt?.toMillis?.() || 0;
+    const QUEUE_COOLDOWN_MS = 30 * 60 * 1000; // 30분
+    if (Date.now() - lastRun < QUEUE_COOLDOWN_MS) {
+      console.log("[queue] cooldown active, skip");
+      return;
+    }
+    // 락 먼저 기록 (race 방지)
+    await setSettings({ lastQueueRunAt: new Date() });
+
     const { getDuePendingScheduledComments, markScheduledCommentDone } =
       await import("./firestore.js");
     const due = await getDuePendingScheduledComments(30);
@@ -529,25 +538,36 @@ async function processQueueIfEnabled() {
         });
         await markScheduledCommentDone(item.id);
         processed++;
-        // 빠른 연속 처리 방지 - firestore 쓰기는 AI 아님이지만 보수적으로
         if (i < due.length - 1) await new Promise((r) => setTimeout(r, 500));
       } catch (e) { console.warn("queue item failed", e); }
     }
     if (processed > 0) showToast(`예약 댓글 ${processed}건 처리됨`, "success");
-  } catch (e) { /* ignore */ }
+  } catch (e) { console.warn(e); }
 }
 
-// 자동 새 글 생성 - 24시간 동안 글 없으면 1개 생성
+// 자동 새 글 생성 - 24시간 동안 글 없을 때, 시도 자체는 1시간 쿨다운
 async function maybeGenerateAutoIdea() {
   try {
     const s = await getSettings();
     if (!s.autoPostEnabled) return;
     if (!isAiKeyValid()) return;
+
+    const lastAuto = s.lastAutoPostAt?.toMillis?.() || 0;
+    const AUTO_POST_COOLDOWN_MS = 60 * 60 * 1000; // 1시간
+    if (Date.now() - lastAuto < AUTO_POST_COOLDOWN_MS) {
+      console.log("[auto-post] cooldown active, skip");
+      return;
+    }
+
     const { getLatestIdeaCreatedAt } = await import("./firestore.js");
     const latest = await getLatestIdeaCreatedAt();
     const now = Date.now();
     const gap = latest ? (now - latest) : Infinity;
     if (gap < 24 * 3600 * 1000) return; // 24시간 안 됐으면 skip
+
+    // AI 호출 직전에 락 기록 (race 방지)
+    await setSettings({ lastAutoPostAt: new Date() });
+
     const newIdea = await generateNewIdea();
     await postAiIdea(newIdea);
     showToast("자동 글 1개 생성됨", "success");
