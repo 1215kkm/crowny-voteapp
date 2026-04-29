@@ -52,6 +52,8 @@
         <button class="admin-tab" data-tab="members">회원 관리</button>
         <button class="admin-tab" data-tab="emails">메일 리스트</button>
         <button class="admin-tab" data-tab="bans">사용자 차단</button>
+        <button class="admin-tab" data-tab="access">접근 제어</button>
+        <button class="admin-tab" data-tab="trash">삭제 항목</button>
       </div>
 
       <!-- 대시보드 -->
@@ -66,6 +68,14 @@
         <div id="analytics-summary" class="analytics-summary">불러오는 중...</div>
         <h3>유입 경로</h3>
         <div id="analytics-sources" class="analytics-table"></div>
+        <h3>접속 국가</h3>
+        <div id="analytics-countries" class="analytics-table"></div>
+        <h3>디바이스 / 브라우저</h3>
+        <div id="analytics-devices" class="analytics-table"></div>
+        <h3>UTM 캠페인 Top10</h3>
+        <div id="analytics-utm" class="analytics-table"></div>
+        <h3>검색 키워드 Top10</h3>
+        <div id="analytics-keywords" class="analytics-table"></div>
         <h3>일자별</h3>
         <div id="analytics-daily" class="analytics-table"></div>
       </section>
@@ -190,6 +200,68 @@
         <div id="emails-by-idea" class="email-block">불러오는 중...</div>
       </section>
 
+      <!-- 접근 제어 -->
+      <section id="tab-access" class="admin-section hidden">
+        <h2>국가별 접근 제어</h2>
+        <p class="admin-help">
+          IP 기반으로 사용자의 국가를 감지해 차단/허용합니다.
+          기본값은 <strong>중국(CN)</strong> 차단입니다.
+          VPN 우회는 막지 못하므로 완벽한 차단은 아닙니다.
+        </p>
+
+        <div class="access-controls">
+          <label class="access-toggle">
+            <input type="checkbox" id="access-enabled">
+            <span><strong>접근 제어 사용</strong> — 끄면 모든 국가 허용</span>
+          </label>
+
+          <div class="access-mode-row">
+            <span>모드:</span>
+            <label><input type="radio" name="access-mode" value="blocklist"> 차단 목록 (선택한 국가만 차단)</label>
+            <label><input type="radio" name="access-mode" value="allowlist"> 허용 목록 (선택한 국가만 허용)</label>
+          </div>
+
+          <div class="access-list-row">
+            <label>국가 추가:
+              <select id="access-country-select">
+                <option value="">— 국가 선택 —</option>
+              </select>
+            </label>
+            <button id="access-country-add" class="btn-mini">추가</button>
+          </div>
+
+          <div id="access-selected-list" class="access-selected-list">
+            <p class="empty">선택된 국가가 없습니다.</p>
+          </div>
+
+          <label class="access-msg-row">
+            <span>차단 안내 메시지</span>
+            <textarea id="access-message" rows="3" maxlength="500" placeholder="죄송합니다. 현재 거주 지역에서는 이 서비스를 이용할 수 없습니다."></textarea>
+          </label>
+
+          <div class="access-actions">
+            <button id="access-save" class="btn-mini btn-comment-submit">설정 저장</button>
+            <span id="access-saved-status" class="muted"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 삭제 항목 -->
+      <section id="tab-trash" class="admin-section hidden">
+        <h2>삭제된 항목 (복구 가능)</h2>
+        <p class="admin-help">
+          글/댓글 삭제는 즉시 영구 삭제되지 않고 표시되지 않게 처리됩니다.
+          여기서 [복구] 또는 [영구삭제]를 선택할 수 있어요.
+        </p>
+        <div class="trash-actions">
+          <button id="trash-refresh" class="btn-mini">목록 새로고침</button>
+        </div>
+        <h3>삭제된 글</h3>
+        <div id="trash-ideas" class="trash-list">불러오는 중...</div>
+        <h3>삭제된 댓글</h3>
+        <div id="trash-comments" class="trash-list">불러오는 중...</div>
+      </section>
+
       <!-- 사용자 차단 -->
       <section id="tab-bans" class="admin-section hidden">
         <h2>사용자 차단</h2>
@@ -213,6 +285,7 @@
   <script type="module" src="js/auth.js"></script>
   <script type="module" src="js/firestore.js"></script>
   <script type="module" src="js/analytics.js"></script>
+  <script type="module" src="js/access-guard.js"></script>
   <script type="module" src="js/admin.js"></script>
 </body>
 </html>

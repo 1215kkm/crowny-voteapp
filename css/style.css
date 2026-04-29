@@ -2379,3 +2379,111 @@ input, textarea {
 @media (max-width: 768px) {
   .member-body { grid-template-columns: 1fr; }
 }
+
+/* ============================================
+   접근 제어 (국가별 차단/허용)
+   ============================================ */
+.access-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-top: 12px;
+}
+.access-toggle {
+  display: flex; gap: 10px; align-items: center;
+  font-size: 0.95rem;
+}
+.access-mode-row {
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+  font-size: 0.9rem;
+}
+.access-mode-row label {
+  display: flex; gap: 6px; align-items: center;
+  cursor: pointer;
+}
+.access-list-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+}
+.access-list-row select {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  min-width: 220px;
+}
+.access-selected-list {
+  min-height: 40px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--color-border);
+}
+.access-chips {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.access-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  border: 1px solid #fde68a;
+}
+.access-chip code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+}
+.access-chip-remove {
+  background: transparent;
+  border: none;
+  color: #92400e;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.access-chip-remove:hover { color: #ef4444; }
+.access-msg-row {
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 0.9rem;
+}
+.access-msg-row textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  resize: vertical;
+}
+.access-actions {
+  display: flex; gap: 12px; align-items: center;
+}
+
+/* 디바이스/브라우저 분포 */
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.device-grid h4 {
+  font-size: 0.95rem;
+  margin: 0 0 6px 0;
+  font-weight: 700;
+}
+
+/* 삭제 항목 */
+.trash-list {
+  margin-top: 10px;
+  margin-bottom: 18px;
+}
+.trash-actions {
+  margin-bottom: 10px;
+}
+

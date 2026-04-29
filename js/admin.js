@@ -7,7 +7,13 @@ import {
   subscribeToIdeas,
   adminUpdateIdea,
   adminDeleteIdea,
+  adminPurgeIdea,
+  adminRestoreIdea,
   adminDeleteComment,
+  adminPurgeComment,
+  adminRestoreComment,
+  adminListDeletedIdeas,
+  adminListDeletedComments,
   banUser,
   unbanUser,
   listBannedUsers,
@@ -27,6 +33,11 @@ import {
   listSubscribers,
   listEmailsByIdea
 } from "./firestore.js";
+import { COUNTRIES, countryName, countryFlagEmoji } from "./countries.js";
+import { db } from "./firebase-config.js";
+import {
+  doc as _aDoc, getDoc as _aGet, setDoc as _aSet
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   listPersonas,
   createPersona,
@@ -57,7 +68,9 @@ const sections = {
   ai: document.getElementById("tab-ai"),
   members: document.getElementById("tab-members"),
   emails: document.getElementById("tab-emails"),
-  bans: document.getElementById("tab-bans")
+  bans: document.getElementById("tab-bans"),
+  access: document.getElementById("tab-access"),
+  trash: document.getElementById("tab-trash")
 };
 
 const loginBtn = document.getElementById("login-btn");
@@ -70,6 +83,10 @@ const rangeBtns = document.querySelectorAll(".range-btn");
 const summaryEl = document.getElementById("analytics-summary");
 const sourcesEl = document.getElementById("analytics-sources");
 const dailyEl = document.getElementById("analytics-daily");
+const countriesEl = document.getElementById("analytics-countries");
+const devicesEl = document.getElementById("analytics-devices");
+const utmEl = document.getElementById("analytics-utm");
+const keywordsEl = document.getElementById("analytics-keywords");
 
 // 글 관리
 const ideasListEl = document.getElementById("admin-ideas-list");
@@ -154,6 +171,8 @@ tabs.forEach((t) => {
     if (t.dataset.tab === "personas") loadPersonasList();
     if (t.dataset.tab === "members") loadMembersList();
     if (t.dataset.tab === "emails") loadEmailLists();
+    if (t.dataset.tab === "access") loadAccessTab();
+    if (t.dataset.tab === "trash") loadTrash();
   });
 });
 
@@ -239,6 +258,97 @@ async function loadAnalytics() {
         </tbody>
       </table>
     `;
+
+    // 국가별
+    if (countriesEl) {
+      const byCountry = {};
+      pageviews.forEach((e) => {
+        const c = (e.country || "").toUpperCase();
+        const key = c || "(미상)";
+        byCountry[key] = (byCountry[key] || 0) + 1;
+      });
+      const sortedC = Object.entries(byCountry).sort((a,b) => b[1] - a[1]);
+      countriesEl.innerHTML = `
+        <table class="adm-table">
+          <thead><tr><th>국가</th><th>방문수</th><th>비율</th></tr></thead>
+          <tbody>
+            ${sortedC.map(([code, n]) => {
+              const flag = code.length === 2 ? countryFlagEmoji(code) : "🌐";
+              const cname = code === "(미상)" ? "(미상)" : countryName(code);
+              return `<tr>
+                <td>${flag} ${escapeHtml(cname)} <code class="muted">${escapeHtml(code)}</code></td>
+                <td>${n}</td>
+                <td>${pageviews.length ? Math.round((n / pageviews.length) * 100) : 0}%</td>
+              </tr>`;
+            }).join("") || '<tr><td colspan="3">데이터 없음</td></tr>'}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // 디바이스 / 브라우저
+    if (devicesEl) {
+      const byDevice = {}, byBrowser = {}, byOs = {};
+      pageviews.forEach((e) => {
+        if (e.device) byDevice[e.device] = (byDevice[e.device] || 0) + 1;
+        if (e.browser) byBrowser[e.browser] = (byBrowser[e.browser] || 0) + 1;
+        if (e.os) byOs[e.os] = (byOs[e.os] || 0) + 1;
+      });
+      const renderRows = (m) => Object.entries(m).sort((a,b) => b[1] - a[1])
+        .map(([k, n]) => `<tr><td>${escapeHtml(k)}</td><td>${n}</td><td>${pageviews.length ? Math.round((n/pageviews.length)*100) : 0}%</td></tr>`).join("");
+      devicesEl.innerHTML = `
+        <div class="device-grid">
+          <div><h4>디바이스</h4><table class="adm-table">
+            <thead><tr><th>유형</th><th>방문수</th><th>비율</th></tr></thead>
+            <tbody>${renderRows(byDevice) || '<tr><td colspan="3">데이터 없음</td></tr>'}</tbody>
+          </table></div>
+          <div><h4>브라우저</h4><table class="adm-table">
+            <thead><tr><th>이름</th><th>방문수</th><th>비율</th></tr></thead>
+            <tbody>${renderRows(byBrowser) || '<tr><td colspan="3">데이터 없음</td></tr>'}</tbody>
+          </table></div>
+          <div><h4>OS</h4><table class="adm-table">
+            <thead><tr><th>이름</th><th>방문수</th><th>비율</th></tr></thead>
+            <tbody>${renderRows(byOs) || '<tr><td colspan="3">데이터 없음</td></tr>'}</tbody>
+          </table></div>
+        </div>
+      `;
+    }
+
+    // UTM 캠페인 Top10
+    if (utmEl) {
+      const utmAgg = {};
+      pageviews.forEach((e) => {
+        const src = e.utm_source || "";
+        const cmp = e.utm_campaign || "";
+        if (!src && !cmp) return;
+        const k = `${src || '-'} / ${cmp || '-'}`;
+        utmAgg[k] = (utmAgg[k] || 0) + 1;
+      });
+      const sortedU = Object.entries(utmAgg).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      utmEl.innerHTML = `
+        <table class="adm-table">
+          <thead><tr><th>source / campaign</th><th>방문수</th></tr></thead>
+          <tbody>${sortedU.map(([k, n]) => `<tr><td>${escapeHtml(k)}</td><td>${n}</td></tr>`).join("") || '<tr><td colspan="2">UTM 데이터 없음</td></tr>'}</tbody>
+        </table>
+      `;
+    }
+
+    // 검색 키워드 Top10
+    if (keywordsEl) {
+      const kwAgg = {};
+      pageviews.forEach((e) => {
+        const k = (e.searchKeyword || "").trim();
+        if (!k) return;
+        kwAgg[k] = (kwAgg[k] || 0) + 1;
+      });
+      const sortedK = Object.entries(kwAgg).sort((a,b) => b[1] - a[1]).slice(0, 10);
+      keywordsEl.innerHTML = `
+        <table class="adm-table">
+          <thead><tr><th>키워드</th><th>방문수</th></tr></thead>
+          <tbody>${sortedK.map(([k, n]) => `<tr><td>${escapeHtml(k)}</td><td>${n}</td></tr>`).join("") || '<tr><td colspan="2">키워드 데이터 없음</td></tr>'}</tbody>
+        </table>
+      `;
+    }
 
     // 일자별
     const byDay = {};
@@ -1029,6 +1139,235 @@ function wireCopyButtons() {
       if (t) t.classList.toggle("hidden");
     });
   });
+}
+
+// ============================================
+// 접근 제어 탭
+// ============================================
+
+const DEFAULT_ACCESS = {
+  mode: "blocklist",
+  countries: ["CN"],
+  message: "죄송합니다. 현재 거주 지역에서는 이 서비스를 이용할 수 없습니다.\nThis service is currently not available in your region.",
+  enabled: true
+};
+
+let accessConfig = { ...DEFAULT_ACCESS };
+let accessWired = false;
+
+async function loadAccessTab() {
+  const enabledEl = document.getElementById("access-enabled");
+  const msgEl = document.getElementById("access-message");
+  const selectEl = document.getElementById("access-country-select");
+  const addBtn = document.getElementById("access-country-add");
+  const saveBtn = document.getElementById("access-save");
+  if (!enabledEl) return;
+
+  // 국가 select 채우기 (선택된 국가는 미리 제외)
+  function refreshSelectOptions() {
+    const usedCodes = new Set(accessConfig.countries.map((c) => c.toUpperCase()));
+    selectEl.innerHTML = '<option value="">— 국가 선택 —</option>' +
+      COUNTRIES
+        .filter((c) => !usedCodes.has(c.code))
+        .map((c) => `<option value="${c.code}">${countryFlagEmoji(c.code)} ${escapeHtml(c.name)} (${c.code})</option>`)
+        .join("");
+  }
+
+  function renderSelectedList() {
+    const listEl = document.getElementById("access-selected-list");
+    if (!listEl) return;
+    if (accessConfig.countries.length === 0) {
+      listEl.innerHTML = '<p class="empty">선택된 국가가 없습니다.</p>';
+      return;
+    }
+    listEl.innerHTML = `
+      <div class="access-chips">
+        ${accessConfig.countries.map((code) => `
+          <span class="access-chip">
+            ${countryFlagEmoji(code)} ${escapeHtml(countryName(code))} <code>${escapeHtml(code)}</code>
+            <button type="button" class="access-chip-remove" data-code="${escapeHtml(code)}" title="제거">×</button>
+          </span>
+        `).join("")}
+      </div>
+    `;
+    listEl.querySelectorAll(".access-chip-remove").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const code = btn.dataset.code;
+        accessConfig.countries = accessConfig.countries.filter((c) => c !== code);
+        renderSelectedList();
+        refreshSelectOptions();
+      });
+    });
+  }
+
+  // 1) Firestore에서 현재 설정 로드
+  try {
+    const snap = await _aGet(_aDoc(db, "config", "access"));
+    if (snap.exists()) {
+      const d = snap.data();
+      accessConfig = {
+        mode: d.mode === "allowlist" ? "allowlist" : "blocklist",
+        countries: Array.isArray(d.countries) ? d.countries.map((c) => String(c).toUpperCase()) : [],
+        message: typeof d.message === "string" ? d.message : DEFAULT_ACCESS.message,
+        enabled: d.enabled !== false
+      };
+    }
+  } catch (e) {
+    console.warn("access config load failed", e);
+  }
+
+  enabledEl.checked = accessConfig.enabled;
+  msgEl.value = accessConfig.message || "";
+  document.querySelectorAll('input[name="access-mode"]').forEach((r) => {
+    r.checked = (r.value === accessConfig.mode);
+  });
+  refreshSelectOptions();
+  renderSelectedList();
+
+  if (accessWired) return;
+  accessWired = true;
+
+  addBtn.addEventListener("click", () => {
+    const code = selectEl.value;
+    if (!code) return;
+    if (!accessConfig.countries.includes(code)) {
+      accessConfig.countries.push(code);
+    }
+    selectEl.value = "";
+    refreshSelectOptions();
+    renderSelectedList();
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    accessConfig.enabled = enabledEl.checked;
+    accessConfig.message = msgEl.value || DEFAULT_ACCESS.message;
+    const modeRadio = document.querySelector('input[name="access-mode"]:checked');
+    accessConfig.mode = modeRadio?.value === "allowlist" ? "allowlist" : "blocklist";
+    saveBtn.disabled = true;
+    const statusEl = document.getElementById("access-saved-status");
+    try {
+      await _aSet(_aDoc(db, "config", "access"), {
+        mode: accessConfig.mode,
+        countries: accessConfig.countries,
+        message: accessConfig.message,
+        enabled: accessConfig.enabled,
+        updatedAt: new Date()
+      });
+      if (statusEl) statusEl.textContent = "저장됨 — 모든 사용자에게 즉시 적용됩니다";
+      showToast("접근 제어 설정이 저장됐어요", "success");
+    } catch (e) {
+      console.error(e);
+      if (statusEl) statusEl.textContent = "저장 실패: " + (e.message || "");
+      showToast("저장 실패: " + (e.message || ""), "");
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+// ============================================
+// 삭제 항목 탭 (복구)
+// ============================================
+
+let trashWired = false;
+
+async function loadTrash() {
+  const ideasEl = document.getElementById("trash-ideas");
+  const commentsEl = document.getElementById("trash-comments");
+  if (!ideasEl || !commentsEl) return;
+
+  if (!trashWired) {
+    trashWired = true;
+    document.getElementById("trash-refresh")?.addEventListener("click", () => loadTrash());
+  }
+
+  ideasEl.innerHTML = '<p class="empty">불러오는 중...</p>';
+  commentsEl.innerHTML = '<p class="empty">불러오는 중...</p>';
+
+  try {
+    const deletedIdeas = await adminListDeletedIdeas();
+    if (deletedIdeas.length === 0) {
+      ideasEl.innerHTML = '<p class="empty">삭제된 글이 없어요.</p>';
+    } else {
+      ideasEl.innerHTML = `
+        <table class="adm-table">
+          <thead><tr><th>제목</th><th>작성자</th><th>삭제 시각</th><th>작업</th></tr></thead>
+          <tbody>
+            ${deletedIdeas.map((i) => `
+              <tr>
+                <td>${escapeHtml((i.title || '').substring(0, 80))}</td>
+                <td>${escapeHtml(i.authorName || '')}</td>
+                <td>${i.deletedAt ? new Date(i.deletedAt.toMillis()).toLocaleString("ko-KR") : '-'}</td>
+                <td>
+                  <button class="btn-mini" data-action="restore-idea" data-id="${escapeHtml(i.id)}">복구</button>
+                  <button class="btn-mini btn-text-danger" data-action="purge-idea" data-id="${escapeHtml(i.id)}">영구삭제</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+      ideasEl.querySelectorAll('[data-action="restore-idea"]').forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm("이 글을 복구할까요?")) return;
+          try { await adminRestoreIdea(b.dataset.id); showToast("복구됐어요", "success"); loadTrash(); }
+          catch (e) { showToast("실패: " + e.message, ""); }
+        });
+      });
+      ideasEl.querySelectorAll('[data-action="purge-idea"]').forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm("이 글과 모든 댓글/관심을 영구 삭제합니다. 되돌릴 수 없어요. 진행?")) return;
+          try { await adminPurgeIdea(b.dataset.id); showToast("영구 삭제됐어요", ""); loadTrash(); }
+          catch (e) { showToast("실패: " + e.message, ""); }
+        });
+      });
+    }
+  } catch (e) {
+    ideasEl.innerHTML = '<p class="empty">불러오기 실패: ' + escapeHtml(e.message || "") + '</p>';
+  }
+
+  try {
+    const deletedComments = await adminListDeletedComments();
+    if (deletedComments.length === 0) {
+      commentsEl.innerHTML = '<p class="empty">삭제된 댓글이 없어요.</p>';
+    } else {
+      commentsEl.innerHTML = `
+        <table class="adm-table">
+          <thead><tr><th>댓글</th><th>대상 글</th><th>작성자</th><th>삭제 시각</th><th>작업</th></tr></thead>
+          <tbody>
+            ${deletedComments.map((c) => `
+              <tr>
+                <td>${escapeHtml((c.text || '').substring(0, 100))}</td>
+                <td>${escapeHtml((c.ideaTitle || '').substring(0, 40))}</td>
+                <td>${escapeHtml(c.authorName || '')}</td>
+                <td>${c.deletedAt ? new Date(c.deletedAt.toMillis()).toLocaleString("ko-KR") : '-'}</td>
+                <td>
+                  <button class="btn-mini" data-action="restore-comment" data-idea="${escapeHtml(c.ideaId)}" data-id="${escapeHtml(c.id)}">복구</button>
+                  <button class="btn-mini btn-text-danger" data-action="purge-comment" data-idea="${escapeHtml(c.ideaId)}" data-id="${escapeHtml(c.id)}">영구삭제</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+      commentsEl.querySelectorAll('[data-action="restore-comment"]').forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm("댓글을 복구할까요?")) return;
+          try { await adminRestoreComment(b.dataset.idea, b.dataset.id); showToast("복구됐어요", "success"); loadTrash(); }
+          catch (e) { showToast("실패: " + e.message, ""); }
+        });
+      });
+      commentsEl.querySelectorAll('[data-action="purge-comment"]').forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm("이 댓글을 영구 삭제합니다. 되돌릴 수 없어요. 진행?")) return;
+          try { await adminPurgeComment(b.dataset.idea, b.dataset.id); showToast("영구 삭제됐어요", ""); loadTrash(); }
+          catch (e) { showToast("실패: " + e.message, ""); }
+        });
+      });
+    }
+  } catch (e) {
+    commentsEl.innerHTML = '<p class="empty">불러오기 실패: ' + escapeHtml(e.message || "") + '</p>';
+  }
 }
 
 // ---- Helpers ----

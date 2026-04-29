@@ -45,6 +45,12 @@ export function getCurrentUser() {
 // Listen for auth state changes
 onAuthStateChanged(auth, (user) => {
   currentUser = user || null;
+  // analytics 이벤트에 uid 첨부
+  import("./analytics.js").then((m) => {
+    m.setAnalyticsUid?.(currentUser?.uid || "");
+  }).catch(() => {});
+  // 전역에 노출 — access-guard 가 관리자 면제 판단에 사용
+  window.__currentUser = currentUser;
   authCallbacks.forEach((cb) => cb(currentUser));
 });
 

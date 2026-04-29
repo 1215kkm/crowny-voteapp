@@ -61,10 +61,16 @@ service cloud.firestore {
                   || (request.resource.data.imageDataList is list
                       && request.resource.data.imageDataList.size() <= 5))
             )
+            ||
+            // 작성자 본인의 soft delete (deletedAt / deletedBy 만 변경)
+            ( resource.data.authorUid == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['deletedAt','deletedBy'])
+            )
           )
         );
 
-      // 작성자 본인 또는 관리자만 삭제 가능
+      // 작성자 본인 또는 관리자만 영구 삭제 (purge) 가능
       allow delete: if isAdmin()
         || (request.auth != null && resource.data.authorUid == request.auth.uid);
 
@@ -104,7 +110,14 @@ service cloud.firestore {
         allow delete: if isAdmin()
           || (request.auth != null && resource.data.authorUid == request.auth.uid);
 
-        allow update: if isAdmin();
+        // 본인 또는 관리자가 deletedAt/deletedBy 만 변경 가능 (soft delete)
+        allow update: if isAdmin()
+          || (
+            request.auth != null
+            && resource.data.authorUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['deletedAt','deletedBy'])
+          );
       }
     }
 
@@ -138,6 +151,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- 접근 제어 설정 (국가별 차단/허용) ----
+    match /config/{docId} {
+      allow read: if true; // 모든 클라이언트가 자신의 차단 여부 확인 가능
+      allow write: if isAdmin();
+    }
+
     // ---- 스케줄 댓글 큐 ----
     match /scheduled_comments/{id} {
       allow read: if isAdmin();
@@ -161,7 +180,7 @@ service cloud.firestore {
 
     // ---- 분석 이벤트 ----
     match /events/{id} {
-      // 누구나 자기 방문 기록 추가 가능 (검증 최소화)
+      // 누구나 자기 방문/행동 기록 추가 가능 (검증 최소화)
       allow create: if request.resource.data.type is string
         && request.resource.data.type.size() <= 50;
       allow read: if isAdmin();
