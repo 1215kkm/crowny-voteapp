@@ -52,7 +52,9 @@ export function meetsDesignThreshold(paidCount, freeCount) {
 // ---- Ideas ----
 
 export function subscribeToIdeas(sortField, callback, statusFilter) {
-  const constraints = [orderBy(sortField, "desc"), limit(50)];
+  // 삭제된 글을 클라이언트에서 필터. (where deletedAt == null + orderBy 조합은
+  // composite index를 요구하므로 클라이언트 필터링이 더 유연함.)
+  const constraints = [orderBy(sortField, "desc"), limit(80)];
   if (statusFilter) {
     constraints.unshift(where("status", "==", statusFilter));
   }
@@ -61,7 +63,9 @@ export function subscribeToIdeas(sortField, callback, statusFilter) {
   return onSnapshot(q, (snapshot) => {
     const ideas = [];
     snapshot.forEach((docSnap) => {
-      ideas.push({ id: docSnap.id, ...docSnap.data() });
+      const data = docSnap.data();
+      if (data.deletedAt) return;
+      ideas.push({ id: docSnap.id, ...data });
     });
     callback(ideas);
   }, (error) => {
@@ -69,18 +73,27 @@ export function subscribeToIdeas(sortField, callback, statusFilter) {
   });
 }
 
-export async function getIdea(ideaId) {
+export async function getIdea(ideaId, opts) {
   const ref = doc(db, "ideas", ideaId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() };
+  const data = snap.data();
+  if (data.deletedAt && !opts?.includeDeleted) return null;
+  return { id: snap.id, ...data };
 }
 
-export function subscribeToIdea(ideaId, callback) {
+export function subscribeToIdea(ideaId, callback, opts) {
+  const includeDeleted = !!opts?.includeDeleted;
   const ref = doc(db, "ideas", ideaId);
   return onSnapshot(ref, (snap) => {
-    if (snap.exists()) callback({ id: snap.id, ...snap.data() });
-    else callback(null);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.deletedAt && !includeDeleted) {
+        callback(null);
+        return;
+      }
+      callback({ id: snap.id, ...data });
+    } else callback(null);
   });
 }
 
@@ -264,7 +277,8 @@ export async function addComment(ideaId, user, text, parentId) {
   return ref.id;
 }
 
-export function subscribeToComments(ideaId, callback) {
+export function subscribeToComments(ideaId, callback, opts) {
+  const includeDeleted = !!opts?.includeDeleted;
   const q = query(
     collection(db, "ideas", ideaId, "comments"),
     orderBy("createdAt", "asc"),
@@ -272,13 +286,26 @@ export function subscribeToComments(ideaId, callback) {
   );
   return onSnapshot(q, (snap) => {
     const list = [];
-    snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (!includeDeleted && data.deletedAt) return;
+      list.push({ id: docSnap.id, ...data });
+    });
     callback(list);
   });
 }
 
 export async function deleteComment(ideaId, commentId) {
-  await deleteDoc(doc(db, "ideas", ideaId, "comments", commentId));
+  // Soft delete: deletedAt 마커만 채워서 일반 화면에서 숨김. 관리자 복구 가능.
+  let by = "";
+  try {
+    const auth = await import("./auth.js");
+    by = auth.getCurrentUser?.()?.uid || "";
+  } catch (e) {}
+  await updateDoc(doc(db, "ideas", ideaId, "comments", commentId), {
+    deletedAt: serverTimestamp(),
+    deletedBy: by
+  });
   try {
     await updateDoc(doc(db, "ideas", ideaId), { commentCount: increment(-1) });
   } catch (e) { /* ignore */ }
@@ -341,7 +368,11 @@ export async function getUserLikedIdeas(uid) {
   const ideas = [];
   await Promise.all(ideaIds.map(async (id) => {
     const ideaSnap = await getDoc(doc(db, "ideas", id));
-    if (ideaSnap.exists()) ideas.push({ id, ...ideaSnap.data() });
+    if (ideaSnap.exists()) {
+      const data = ideaSnap.data();
+      if (data.deletedAt) return;
+      ideas.push({ id, ...data });
+    }
   }));
   return ideas;
 }
@@ -430,8 +461,16 @@ export async function adminUpdateIdea(ideaId, fields) {
   await _up(_d(db, "ideas", ideaId), allowed);
 }
 
+// 관리자 글 삭제 = soft delete (복구 가능). 영구 삭제는 adminPurgeIdea.
 export async function adminDeleteIdea(ideaId) {
-  // 댓글, 좋아요, 대기자 등 서브컬렉션은 클라이언트에서 일괄 삭제
+  await _up(_d(db, "ideas", ideaId), {
+    deletedAt: _st(),
+    deletedBy: "admin"
+  });
+}
+
+// 영구 삭제: 글 + 모든 서브컬렉션 영구 제거
+export async function adminPurgeIdea(ideaId) {
   const subs = ["comments","likes","waitlist"];
   for (const sub of subs) {
     const snap = await _gd(_c(db, "ideas", ideaId, sub));
@@ -442,9 +481,72 @@ export async function adminDeleteIdea(ideaId) {
   await _del(_d(db, "ideas", ideaId));
 }
 
+// 복구: deletedAt 제거
+export async function adminRestoreIdea(ideaId) {
+  await _up(_d(db, "ideas", ideaId), {
+    deletedAt: null,
+    deletedBy: null
+  });
+}
+
+// 관리자 댓글 삭제 = soft delete
 export async function adminDeleteComment(ideaId, commentId) {
-  await _del(_d(db, "ideas", ideaId, "comments", commentId));
+  await _up(_d(db, "ideas", ideaId, "comments", commentId), {
+    deletedAt: _st(),
+    deletedBy: "admin"
+  });
   try { await _up(_d(db, "ideas", ideaId), { commentCount: increment(-1) }); } catch (e) {}
+}
+
+// 관리자 댓글 복구
+export async function adminRestoreComment(ideaId, commentId) {
+  await _up(_d(db, "ideas", ideaId, "comments", commentId), {
+    deletedAt: null,
+    deletedBy: null
+  });
+  try { await _up(_d(db, "ideas", ideaId), { commentCount: increment(1) }); } catch (e) {}
+}
+
+// 관리자 댓글 영구 삭제
+export async function adminPurgeComment(ideaId, commentId) {
+  await _del(_d(db, "ideas", ideaId, "comments", commentId));
+}
+
+// 삭제된 글 목록 (관리자용)
+export async function adminListDeletedIdeas() {
+  const snap = await _gd(_c(db, "ideas"));
+  const list = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    if (data.deletedAt) list.push({ id: d.id, ...data });
+  });
+  list.sort((a, b) => (b.deletedAt?.toMillis?.() || 0) - (a.deletedAt?.toMillis?.() || 0));
+  return list;
+}
+
+// 삭제된 댓글 목록 (관리자용) — 모든 글 순회 (성능 주의: 글 수 많아지면 비싸짐)
+export async function adminListDeletedComments() {
+  const ideasSnap = await _gd(_c(db, "ideas"));
+  const out = [];
+  for (const idoc of ideasSnap.docs) {
+    const ideaData = idoc.data();
+    try {
+      const cs = await _gd(_c(db, "ideas", idoc.id, "comments"));
+      cs.forEach((c) => {
+        const cd = c.data();
+        if (cd.deletedAt) {
+          out.push({
+            id: c.id,
+            ideaId: idoc.id,
+            ideaTitle: ideaData.title || "",
+            ...cd
+          });
+        }
+      });
+    } catch (e) { /* skip */ }
+  }
+  out.sort((a, b) => (b.deletedAt?.toMillis?.() || 0) - (a.deletedAt?.toMillis?.() || 0));
+  return out;
 }
 
 // ---- 사용자 차단 ----
@@ -614,8 +716,16 @@ export async function userUpdateOwnIdea(ideaId, fields) {
 }
 
 export async function userDeleteOwnIdea(ideaId) {
-  const { deleteDoc: _del, doc: _d } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-  await _del(_d(db, "ideas", ideaId));
+  // Soft delete: deletedAt 마커. 관리자가 복구할 수 있음.
+  let by = "";
+  try {
+    const auth = await import("./auth.js");
+    by = auth.getCurrentUser?.()?.uid || "";
+  } catch (e) {}
+  await updateDoc(doc(db, "ideas", ideaId), {
+    deletedAt: serverTimestamp(),
+    deletedBy: by
+  });
 }
 
 

@@ -17,6 +17,8 @@ import {
   THRESHOLD_PAID_MIXED,
   THRESHOLD_FREE_MIXED
 } from "./firestore.js";
+import { trackEvent } from "./analytics.js";
+import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
 
 const params = new URLSearchParams(window.location.search);
 const ideaId = params.get("id");
@@ -295,12 +297,14 @@ async function onCommentSubmit(parentId) {
   }
   try {
     await addComment(ideaId, currentUser, text, parentId);
+    trackEvent("comment_create", { ideaId, replyTo: parentId || null });
     if (parentId) {
       const form = document.getElementById(`reply-form-${parentId}`);
       form.querySelector("textarea").value = "";
       form.classList.add("hidden");
     } else {
       commentInput.value = "";
+      clearDraft(commentDraftKey());
     }
     showToast(parentId ? "답글이 등록되었어요" : "댓글이 등록되었어요", "success");
   } catch (e) {
@@ -313,10 +317,35 @@ async function onDeleteComment(commentId) {
   if (!confirm("댓글을 삭제하시겠습니까?")) return;
   try {
     await deleteComment(ideaId, commentId);
+    trackEvent("comment_delete", { ideaId, commentId });
     showToast("삭제되었어요", "");
   } catch (e) {
     showToast("삭제에 실패했어요", "");
   }
+}
+
+// 댓글 임시저장 키 (글별로 구분)
+function commentDraftKey() { return `comment:${ideaId}`; }
+
+// 댓글 입력 자동 저장 + 복원
+if (commentInput) {
+  // 페이지 로드 시 복원
+  try {
+    const d = loadDraft(commentDraftKey());
+    if (d && d.text) {
+      commentInput.value = d.text;
+    }
+  } catch (e) {}
+
+  let cmTimer = null;
+  commentInput.addEventListener("input", () => {
+    clearTimeout(cmTimer);
+    cmTimer = setTimeout(() => {
+      const text = commentInput.value || "";
+      if (text.trim()) saveDraft(commentDraftKey(), { text });
+      else clearDraft(commentDraftKey());
+    }, 400);
+  });
 }
 
 // ---- 액션 ----
@@ -353,6 +382,7 @@ async function onLike() {
     const r = await toggleLike(ideaId, currentUser);
     myLiked = r.liked;
     updateActionButtons();
+    trackEvent("like_toggle", { ideaId, liked: r.liked });
     showToast(r.liked ? "관심 등록되었어요 ❤️" : "관심 해제됐어요", r.liked ? "success" : "");
   } catch (e) {
     showToast("오류가 발생했어요", "");
@@ -363,6 +393,7 @@ async function onShare() {
   const url = `${window.location.origin}/idea.html?id=${encodeURIComponent(ideaId)}`;
   try {
     await navigator.clipboard.writeText(url);
+    trackEvent("share", { ideaId, channel: "copy" });
     showToast("주소가 복사되었어요. 다른 곳에 붙여넣기 해주세요.", "success");
   } catch (e) {
     window.prompt("아래 주소를 복사하세요", url);

@@ -30,6 +30,8 @@ import {
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { SAMPLE_IDEAS, SAMPLE_TOTAL } from "./sample-data.js";
+import { trackEvent } from "./analytics.js";
+import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
 
 let firebaseAvailable = !isPlaceholder;
 
@@ -167,13 +169,61 @@ function heroTypingPulse() {
   }, 500);
 }
 
+// 자동 임시저장 (로컬 PC에만, 7일 보관)
+const DRAFT_KEY = "idea-form";
+const autosaveIdea = () => {
+  const data = {
+    title: ideaTitle.value,
+    description: ideaDesc.value,
+    imageCount: pendingImages.length
+  };
+  if (data.title.trim() || data.description.trim()) {
+    saveDraft(DRAFT_KEY, data);
+  } else {
+    clearDraft(DRAFT_KEY);
+  }
+};
+let autosaveTimer = null;
+const scheduleAutosaveIdea = () => {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(autosaveIdea, 400);
+};
+
+// 페이지 로드 시 임시저장 복원
+(function restoreDraft() {
+  try {
+    const d = loadDraft(DRAFT_KEY);
+    if (d && (d.title || d.description)) {
+      if (d.title) { ideaTitle.value = d.title; titleCount.textContent = d.title.length; }
+      if (d.description) { ideaDesc.value = d.description; descCount.textContent = d.description.length; }
+      // 사용자에게 알림 + 지우기 옵션
+      const note = document.createElement("div");
+      note.className = "draft-restore-note";
+      note.style.cssText = "background:#fef3c7;color:#92400e;padding:8px 12px;border-radius:6px;font-size:0.85rem;margin:8px 0;display:flex;justify-content:space-between;align-items:center;gap:8px;";
+      note.innerHTML = `
+        <span>📝 이전에 작성하던 내용을 불러왔어요${d.imageCount ? ` (이미지 ${d.imageCount}개는 다시 첨부 필요)` : ''}</span>
+        <button type="button" class="btn-mini btn-text-danger" id="draft-clear-btn">지우기</button>
+      `;
+      ideaForm.insertBefore(note, ideaForm.firstChild);
+      document.getElementById("draft-clear-btn")?.addEventListener("click", () => {
+        ideaTitle.value = ""; ideaDesc.value = "";
+        titleCount.textContent = "0"; descCount.textContent = "0";
+        clearDraft(DRAFT_KEY);
+        note.remove();
+      });
+    }
+  } catch (e) { /* ignore */ }
+})();
+
 ideaTitle.addEventListener("input", () => {
   titleCount.textContent = ideaTitle.value.length;
   heroTypingPulse();
+  scheduleAutosaveIdea();
 });
 ideaDesc.addEventListener("input", () => {
   descCount.textContent = ideaDesc.value.length;
   heroTypingPulse();
+  scheduleAutosaveIdea();
 });
 
 // ---- 이미지 + 버튼 ----
@@ -672,6 +722,7 @@ async function onCommentSubmit(btn, ideaId, parentId) {
   btn.disabled = true;
   try {
     await addComment(ideaId, user, text, parentId);
+    trackEvent("comment_create", { ideaId, replyTo: parentId || null });
     if (textarea) textarea.value = "";
     if (parentId) {
       const form = card.querySelector(`.reply-form[data-parent="${cssEscape(parentId)}"]`);
@@ -690,6 +741,7 @@ async function onDeleteComment(ideaId, commentId) {
   if (!confirm("댓글을 삭제하시겠습니까?")) return;
   try {
     await deleteComment(ideaId, commentId);
+    trackEvent("comment_delete", { ideaId, commentId });
     showToast("삭제되었어요", "");
   } catch (e) {
     showToast("삭제에 실패했어요", "");
@@ -748,6 +800,7 @@ async function onLikeClick(btn, ideaId) {
   try {
     const r = await toggleLike(ideaId, user);
     userLikeMap[ideaId] = r.liked;
+    trackEvent("like_toggle", { ideaId, liked: r.liked });
     showToast(r.liked ? "관심 아이디어로 등록됐어요 ❤️" : "관심 등록이 취소됐어요", r.liked ? "success" : "");
   } catch (err) {
     console.error(err);
@@ -766,6 +819,7 @@ async function onShareClick(ideaId) {
   const url = `${window.location.origin}/idea.html?id=${encodeURIComponent(ideaId)}`;
   try {
     await navigator.clipboard.writeText(url);
+    trackEvent("share", { ideaId, channel: "copy" });
     showToast("주소가 복사되었어요. 다른 곳에 붙여넣기 해주세요.", "success");
   } catch (e) {
     window.prompt("아래 주소를 복사하세요", url);
@@ -887,10 +941,13 @@ async function submitIdea(title, desc, user) {
   submitBtn.textContent = "제출 중...";
   try {
     const images = pendingImages.map((p) => p.dataUrl);
-    await addIdea(title, desc, user, images);
+    const newId = await addIdea(title, desc, user, images);
     ideaTitle.value = ""; ideaDesc.value = "";
     titleCount.textContent = "0"; descCount.textContent = "0";
     clearImagePreviews();
+    clearDraft(DRAFT_KEY);
+    document.querySelector(".draft-restore-note")?.remove();
+    trackEvent("idea_create", { ideaId: newId, hasImages: images.length > 0 });
     showToast("아이디어가 등록되었어요! 💡", "success");
     await refreshDailyLimitInfo();
   } catch (error) {
@@ -1022,10 +1079,11 @@ async function onOwnerEditSave(btn, ideaId) {
 }
 
 async function onOwnerDelete(btn, ideaId) {
-  if (!confirm("이 글을 삭제할까요? 댓글/대기자/관심도 함께 사라집니다.")) return;
+  if (!confirm("이 글을 삭제할까요? (관리자가 복구할 수 있습니다)")) return;
   btn.disabled = true;
   try {
     await userDeleteOwnIdea(ideaId);
+    trackEvent("idea_delete", { ideaId, by: "owner" });
     showToast("삭제됐어요", "");
   } catch (e) {
     console.error(e);
