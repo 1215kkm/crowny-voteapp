@@ -46,7 +46,7 @@ import {
   seedDefaultPersonasIfNeeded,
   personaToAuthor
 } from "./personas.js";
-import { ADMIN_EMAIL } from "./ai-config.js";
+import { ADMIN_EMAIL, getGeminiKey, setGeminiKey } from "./ai-config.js";
 import {
   generateCommentsForIdea,
   generateNewIdea,
@@ -202,12 +202,26 @@ async function initAdminFeatures() {
 
 function showAiKeyStatus() {
   if (isAiKeyValid()) {
-    aiBanner.textContent = "✅ Gemini API 키 설정 완료. AI 기능 사용 가능.";
+    aiBanner.innerHTML = "✅ Gemini API 키 설정 완료 (이 브라우저에만 저장). AI 기능 사용 가능. <button type=\"button\" id=\"ai-key-change\" class=\"ai-key-btn\">키 변경</button>";
     aiBanner.className = "ai-status-banner ok";
   } else {
-    aiBanner.innerHTML = "⚠️ Gemini API 키가 설정되지 않았어요. <code>js/ai-config.js</code> 파일에서 <code>GEMINI_API_KEY</code> 값을 채워주세요.";
+    aiBanner.innerHTML = "⚠️ Gemini API 키가 이 브라우저에 없어요. <button type=\"button\" id=\"ai-key-set\" class=\"ai-key-btn\">키 입력</button> <small>(키는 코드·서버에 저장되지 않고 관리자 브라우저에만 보관됩니다)</small>";
     aiBanner.className = "ai-status-banner warn";
   }
+  const setBtn = document.getElementById("ai-key-set") || document.getElementById("ai-key-change");
+  if (setBtn) setBtn.addEventListener("click", promptForGeminiKey);
+}
+
+function promptForGeminiKey() {
+  const current = getGeminiKey();
+  const k = prompt(
+    "Gemini API 키를 붙여넣으세요 (AIza...로 시작).\n비워두고 확인하면 이 브라우저에서 키가 삭제됩니다.\n발급: https://aistudio.google.com",
+    current
+  );
+  if (k === null) return; // 취소
+  setGeminiKey(k);
+  showAiKeyStatus();
+  showToast(k.trim() ? "Gemini 키 저장됨 (이 브라우저)" : "Gemini 키 삭제됨", "");
 }
 
 // ---- 분석 ----

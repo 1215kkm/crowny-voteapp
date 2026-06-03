@@ -2102,6 +2102,13 @@ input, textarea {
 }
 .ai-status-banner.ok { background: #d1fae5; color: #065f46; }
 .ai-status-banner.warn { background: #fef3c7; color: #92400e; }
+.ai-key-btn {
+  margin-left: 8px; padding: 3px 10px; border-radius: var(--radius-sm);
+  background: var(--color-accent-start, #6366f1); color: #fff;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+}
+.ai-key-btn:hover { opacity: 0.9; }
+.ai-status-banner small { opacity: 0.85; }
 .ai-toggles {
   display: flex; flex-direction: column; gap: 10px;
   background: #fff; border: 1px solid var(--color-border);
