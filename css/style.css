@@ -2525,3 +2525,109 @@ input, textarea {
   margin-bottom: 10px;
 }
 
+/* ========================================
+   행동 먼저, 로그인 나중 — 낙관적 피드백
+   ======================================== */
+.is-pending-active {
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  color: #fff !important;
+  border-color: transparent !important;
+}
+.is-pending-active svg,
+.is-pending-active path {
+  fill: currentColor;
+}
+@keyframes pulseBump {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.pulse-bump {
+  animation: pulseBump 0.32s ease;
+}
+
+/* ========================================
+   개인정보 / 분석 동의 배너
+   ======================================== */
+#consent-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translate(-50%, 140%);
+  z-index: 1200;
+  width: min(560px, calc(100vw - 28px));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(.2,.8,.2,1), opacity 0.35s ease;
+  border-top: 3px solid transparent;
+  border-image: linear-gradient(90deg, var(--color-accent-start), var(--color-accent-end)) 1;
+}
+#consent-banner.is-visible {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+.consent-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+.consent-text strong {
+  background: linear-gradient(90deg, var(--color-accent-start), var(--color-accent-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.consent-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.consent-sub a {
+  color: var(--color-accent-start);
+  text-decoration: underline;
+}
+.consent-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.consent-actions button {
+  border-radius: var(--radius-full);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font-family);
+}
+.consent-deny {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+.consent-deny:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.consent-allow {
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  color: #fff;
+  border: none;
+}
+.consent-allow:hover {
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-md);
+}
+@media (max-width: 480px) {
+  #consent-banner { bottom: 12px; padding: 14px; }
+  .consent-actions button { flex: 1; }
+}
+

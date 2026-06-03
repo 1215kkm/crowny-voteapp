@@ -186,9 +186,25 @@ export function setAnalyticsUid(uid) {
   _currentUid = uid || "";
 }
 
+// ---- 동의 게이팅 (PIPA / 쿠키·분석 사전 동의) ----
+
+const CONSENT_KEY = "appter_analytics_consent"; // 'granted' | 'denied'
+
+function getConsent() {
+  try { return localStorage.getItem(CONSENT_KEY) || ""; } catch (e) { return ""; }
+}
+function setConsent(v) {
+  try { localStorage.setItem(CONSENT_KEY, v); } catch (e) {}
+}
+function hasConsent() {
+  return getConsent() === "granted";
+}
+
 // ---- Core write ----
 
 async function writeEvent(payload) {
+  // 동의 게이팅: 동의(granted) 전·거부 시에는 아무것도 기록하지 않는다.
+  if (!hasConsent()) return;
   try {
     const utm = captureUtm();
     const { os, browser, device } = parseUserAgent(navigator.userAgent || "");
@@ -230,11 +246,67 @@ export async function trackEvent(type, extra) {
   });
 }
 
-// ---- 자동 pageview ----
+// ---- 동의 배너 (모든 페이지 공통, JS로 1회 동적 삽입 — DRY) ----
+
+function buildConsentBanner() {
+  if (document.getElementById("consent-banner")) return;
+
+  const banner = document.createElement("div");
+  banner.id = "consent-banner";
+  banner.setAttribute("role", "dialog");
+  banner.setAttribute("aria-live", "polite");
+  banner.setAttribute("aria-label", "분석 데이터 수집 동의");
+  banner.innerHTML = `
+    <div class="consent-text">
+      <strong>Appter</strong>는 서비스 개선을 위해 익명 방문 데이터(방문 경로·기기 등)를 수집해요. 동의하시겠어요?
+      <span class="consent-sub">거부하셔도 투표·아이디어 등록 등 서비스 이용엔 전혀 지장이 없어요.</span>
+    </div>
+    <div class="consent-actions">
+      <button type="button" class="consent-deny" id="consent-deny-btn">거부</button>
+      <button type="button" class="consent-allow" id="consent-allow-btn">동의</button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  // 트랜지션을 위해 다음 프레임에 visible
+  requestAnimationFrame(() => banner.classList.add("is-visible"));
+
+  const close = () => {
+    banner.classList.remove("is-visible");
+    setTimeout(() => banner.remove(), 400);
+  };
+
+  banner.querySelector("#consent-allow-btn").addEventListener("click", () => {
+    setConsent("granted");
+    close();
+    // 동의 직후 그 시점부터 추적 시작 — 현재 페이지 pageview 1회 기록
+    trackPageview();
+  });
+  banner.querySelector("#consent-deny-btn").addEventListener("click", () => {
+    setConsent("denied");
+    close();
+    // 거부 시 아무것도 기록하지 않음 (writeEvent 게이팅으로 차단됨)
+  });
+}
+
+// ---- 부팅: 동의 확인 후에만 추적, 미선택 시 배너 ----
+
+function bootAnalytics() {
+  const consent = getConsent();
+  if (consent === "granted") {
+    // 이미 동의함 → 평소처럼 자동 pageview
+    trackPageview();
+  } else if (consent === "denied") {
+    // 이미 거부함 → 아무것도 안 함, 배너도 다시 안 띄움
+  } else {
+    // 미선택 → 동의 배너 노출 (선택 전까지 trackPageview 호출 안 함)
+    buildConsentBanner();
+  }
+}
+
 if (typeof window !== "undefined") {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => trackPageview());
+    document.addEventListener("DOMContentLoaded", bootAnalytics);
   } else {
-    trackPageview();
+    bootAnalytics();
   }
 }

@@ -46,6 +46,8 @@ let userWaitlistMap = {};
 let userLikeMap = {};
 let unsubIdeas = null;
 let pendingSubmit = false;
+// 행동 먼저, 로그인 나중: 비로그인 사용자의 의도를 담아뒀다가 로그인 후 재생
+let pendingAction = null; // { kind:'waitlist'|'like', ideaId, tier }
 let pendingImages = [];
 let expandedCardId = null;
 const commentUnsubMap = {}; // ideaId -> unsub function
@@ -293,6 +295,29 @@ async function handleAuthState(user) {
       pendingSubmit = false;
       const t = ideaTitle.value.trim(); const d = ideaDesc.value.trim();
       if (t && d && confirm("글을 남기겠습니까?")) await submitIdea(t, d, user);
+    }
+
+    // 행동 먼저, 로그인 나중: 로그인 전에 눌러둔 의도를 실제 동작으로 재생
+    if (pendingAction) {
+      const action = pendingAction;
+      pendingAction = null;
+      try {
+        if (String(action.ideaId).startsWith("sample_")) {
+          // 샘플글은 실제 등록 대상 아님 — 조용히 무시
+        } else if (action.kind === "waitlist") {
+          const result = await toggleWaitlist(action.ideaId, user, action.tier);
+          if (result.joined) userWaitlistMap[action.ideaId] = result.tier;
+          showToast("이 한 표, 저장됐어요!", "success");
+        } else if (action.kind === "like") {
+          const r = await toggleLike(action.ideaId, user);
+          userLikeMap[action.ideaId] = r.liked;
+          if (r.liked) showToast("관심 아이디어로 저장됐어요 ❤️", "success");
+        }
+      } catch (e) {
+        // 재생 실패는 조용히 — 사용자에게 부담 주지 않는다
+        showToast("저장 중 문제가 있었어요. 버튼을 한 번만 더 눌러주세요.", "info");
+      }
+      renderAll();
     }
   } else {
     loginBtn.classList.remove("hidden");
@@ -769,6 +794,25 @@ async function onDeleteComment(ideaId, commentId) {
 
 // ---- 액션 ----
 
+// 낙관적 시각 피드백: 비로그인 사용자가 눌러도 "눌리는 맛"을 즉시 준다.
+// 실제 카운트는 로그인 후 재생되며, renderAll() 이 곧 진짜 상태로 덮어쓴다.
+function optimisticPulse(btn) {
+  if (!btn) return;
+  try {
+    btn.classList.add("is-pending-active");
+    // 카운트 숫자가 있으면 +1 느낌만 잠깐 보여준다 (시각적 보상)
+    const countEl = btn.querySelector(".action-count") || btn.querySelector("[data-count]");
+    if (countEl) {
+      const n = parseInt((countEl.textContent || "").replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n)) countEl.textContent = String(n + 1);
+    }
+    btn.classList.remove("pulse-bump");
+    // reflow 강제로 애니메이션 재시작
+    void btn.offsetWidth;
+    btn.classList.add("pulse-bump");
+  } catch (e) { /* 시각 효과 실패는 무시 */ }
+}
+
 async function onWaitlistClick(btn, ideaId, tier) {
   if (String(ideaId).startsWith("sample_")) {
     showToast("이 아이디어는 예시입니다. 실제 글에서만 등록할 수 있어요.", "info");
@@ -776,8 +820,11 @@ async function onWaitlistClick(btn, ideaId, tier) {
   }
   const user = getCurrentUser();
   if (!user) {
-    showToast("대기자 등록은 로그인이 필요합니다", "info");
-    setTimeout(() => window.appAuth.loginWithGoogle(), 800);
+    // 행동 먼저, 로그인 나중: 누른 맛을 즉시 주고 의도를 저장한 뒤 로그인으로
+    optimisticPulse(btn);
+    pendingAction = { kind: "waitlist", ideaId, tier };
+    showToast("좋아요! 로그인하면 이 한 표가 저장돼요", "info");
+    setTimeout(() => window.appAuth.loginWithGoogle(), 900);
     return;
   }
   btn.disabled = true;
@@ -811,8 +858,11 @@ async function onLikeClick(btn, ideaId) {
   }
   const user = getCurrentUser();
   if (!user) {
-    showToast("관심 등록은 로그인이 필요합니다", "info");
-    setTimeout(() => window.appAuth.loginWithGoogle(), 800);
+    // 행동 먼저, 로그인 나중: 하트가 채워지는 맛을 먼저, 로그인은 뒤로
+    optimisticPulse(btn);
+    pendingAction = { kind: "like", ideaId };
+    showToast("관심 담겼어요! 로그인하면 다음에도 그대로 있어요", "info");
+    setTimeout(() => window.appAuth.loginWithGoogle(), 900);
     return;
   }
   btn.disabled = true;
