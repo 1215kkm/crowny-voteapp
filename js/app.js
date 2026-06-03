@@ -85,6 +85,12 @@ const favBtn = document.getElementById("favorites-btn");
 const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
+const shareModal = document.getElementById("share-success-modal");
+const shareModalClose = document.getElementById("share-success-close");
+const shareModalGoal = document.getElementById("share-success-goal");
+const shareModalShareBtn = document.getElementById("share-success-share");
+const shareModalViewBtn = document.getElementById("share-success-view");
+let shareModalContext = null; // { ideaId, title }
 
 // ---- Init ----
 
@@ -247,6 +253,18 @@ if (favModalClose) favModalClose.addEventListener("click", closeFavoritesModal);
 if (favModal) {
   favModal.addEventListener("click", (e) => { if (e.target === favModal) closeFavoritesModal(); });
 }
+
+// ---- 등록 성공 공유 모달 ----
+if (shareModalClose) shareModalClose.addEventListener("click", closeShareModal);
+if (shareModal) {
+  shareModal.addEventListener("click", (e) => { if (e.target === shareModal) closeShareModal(); });
+}
+if (shareModalShareBtn) shareModalShareBtn.addEventListener("click", () => {
+  if (shareModalContext) shareIdea(shareModalContext.ideaId, shareModalContext.title);
+});
+if (shareModalViewBtn) shareModalViewBtn.addEventListener("click", () => {
+  if (shareModalContext) window.location.href = `idea.html?id=${encodeURIComponent(shareModalContext.ideaId)}`;
+});
 
 // ---- Auth ----
 
@@ -553,7 +571,7 @@ async function handleIdeasClick(e) {
     const ideaId = btn.dataset.ideaId;
     if (action === "paid" || action === "free") return onWaitlistClick(btn, ideaId, action);
     if (action === "like") return onLikeClick(btn, ideaId);
-    if (action === "share") return onShareClick(ideaId);
+    if (action === "share") return onShareClick(ideaId, btn);
     if (action === "comment-submit") return onCommentSubmit(btn, ideaId, null);
     if (action === "reply-submit") return onCommentSubmit(btn, ideaId, btn.dataset.parent);
     if (action === "reply-toggle") return onReplyToggle(btn);
@@ -811,19 +829,55 @@ async function onLikeClick(btn, ideaId) {
   }
 }
 
-async function onShareClick(ideaId) {
+async function onShareClick(ideaId, btn) {
   if (String(ideaId).startsWith("sample_")) {
     showToast("예시 글은 공유 주소가 없습니다.", "info");
     return;
   }
+  const title = btn?.closest(".idea-card")?.querySelector(".idea-title")?.textContent?.trim();
+  await shareIdea(ideaId, title);
+}
+
+// 공유 공통 헬퍼: 모바일 등 Web Share API 지원 시 네이티브 공유 시트(카카오톡 포함),
+// 아니면 공유 문구+주소를 클립보드로 복사.
+async function shareIdea(ideaId, title) {
   const url = `${window.location.origin}/idea.html?id=${encodeURIComponent(ideaId)}`;
+  const headline = title ? `"${title}"` : "이 아이디어";
+  const text = `💡 ${headline} — 이 앱, 진짜 나오면 쓸래요? Appter에서 한 표 주세요!`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Appter", text, url });
+      trackEvent("share", { ideaId, channel: "webshare" });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return; // 사용자가 공유 취소
+      // 그 외 오류는 클립보드 폴백으로
+    }
+  }
   try {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(`${text}\n${url}`);
     trackEvent("share", { ideaId, channel: "copy" });
-    showToast("주소가 복사되었어요. 다른 곳에 붙여넣기 해주세요.", "success");
+    showToast("공유 문구가 복사됐어요. 카톡 등에 붙여넣기 하세요!", "success");
   } catch (e) {
     window.prompt("아래 주소를 복사하세요", url);
   }
+}
+
+function openShareSuccessModal(ideaId, title) {
+  if (!shareModal) return;
+  shareModalContext = { ideaId, title };
+  if (shareModalGoal) {
+    shareModalGoal.innerHTML =
+      `🎯 <strong>유료 ${THRESHOLD_PAID_ALONE}명</strong> 또는 ` +
+      `<strong>유료 ${THRESHOLD_PAID_MIXED} + 무료 ${THRESHOLD_FREE_MIXED}명</strong>을 모으면 설계가 시작돼요.`;
+  }
+  shareModal.classList.remove("hidden");
+}
+
+function closeShareModal() {
+  if (shareModal) shareModal.classList.add("hidden");
+  shareModalContext = null;
 }
 
 // ---- 이미지 처리 ----
@@ -948,7 +1002,7 @@ async function submitIdea(title, desc, user) {
     clearDraft(DRAFT_KEY);
     document.querySelector(".draft-restore-note")?.remove();
     trackEvent("idea_create", { ideaId: newId, hasImages: images.length > 0 });
-    showToast("아이디어가 등록되었어요! 💡", "success");
+    openShareSuccessModal(newId, title);
     await refreshDailyLimitInfo();
   } catch (error) {
     console.error("submit", error);
