@@ -2635,6 +2635,123 @@ input, textarea {
 }
 
 /* =========================================================
+   레이아웃 재배치 = 미리보기 배치 재현 (#05 라이트 / #02 다크)
+   강디 설계 · HTML 무변경, 그리드+카드 토큰만. 신규 HEX 0.
+   소스 끝(테마/다크 블록 직전)에 둬서 기존 규칙을 덮어씀.
+   ========================================================= */
+
+/* --- INDEX: 카드 그리드 --- */
+#ideas-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+/* 로딩/빈/드래프트/펼친 카드는 전체폭 (그리드 셀 깨짐 방지) */
+#ideas-container > #loading-state,
+#ideas-container > #empty-state,
+#ideas-container > .draft-restore-note,
+#ideas-container > .idea-card.expanded {
+  grid-column: 1 / -1;
+}
+.idea-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.idea-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.section-header { justify-content: space-between; }
+.section-header h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+
+/* --- BOARD --- */
+.board-head { text-align: center; max-width: 680px; margin: 0 auto 28px; }
+.board-head h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 10px; }
+.board-head .board-sub { font-size: 1rem; color: var(--color-text-secondary); }
+.board-tabs {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin: 0 auto 28px; max-width: 760px;
+}
+.board-tab {
+  font-size: 1rem; font-weight: 600; padding: 9px 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface); color: var(--color-text-secondary);
+  border: 1px solid var(--color-border); transition: var(--transition);
+}
+.board-tab:hover { background: var(--color-brand-bg); }
+.board-tab.active {
+  background: var(--color-brand-bg); color: var(--color-accent-start);
+  border-color: var(--color-accent-start); font-weight: 700;
+}
+.board-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px; align-items: start;
+}
+.board-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 22px;
+  transition: var(--transition);
+}
+.board-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.board-empty { grid-column: 1 / -1; text-align: center; padding: 48px 0; color: var(--color-text-light); }
+
+/* --- IDEA 상세 --- */
+.detail-main { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px; }
+.detail-back { margin-bottom: 16px; }
+.detail-back a { font-size: 1rem; color: var(--color-text-secondary); font-weight: 600; }
+.detail-article {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 32px;
+  margin-bottom: 20px;
+}
+.detail-title { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; margin: 10px 0; }
+.detail-actions {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 18px; margin-bottom: 20px;
+}
+.detail-action-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.detail-action-row .btn-paid,
+.detail-action-row .btn-free { flex: 1; min-width: 140px; justify-content: center; }
+.btn-paid.active {
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  color: #fff; border-color: transparent;
+}
+.btn-free.active {
+  background: var(--color-brand-bg); color: var(--color-accent-start);
+  border-color: var(--color-accent-start);
+}
+.comments-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 24px;
+}
+
+/* --- 반응형 --- */
+@media (max-width: 768px) {
+  #ideas-container { grid-template-columns: 1fr; }
+  .board-list { grid-template-columns: 1fr; }
+  .board-tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; }
+  .board-head h1 { font-size: 1.6rem; }
+  .detail-main { padding: 18px 14px 40px; }
+  .detail-article { padding: 22px; }
+  .detail-title { font-size: 1.4rem; }
+  .detail-action-row .btn-paid,
+  .detail-action-row .btn-free { flex: 1 1 100%; }
+}
+
+/* =========================================================
    테마 토글 버튼 (라이트/다크 공통)
    ========================================================= */
 .theme-toggle {
@@ -2666,6 +2783,7 @@ html[data-theme="dark"] {
   /* 시그니처 보라→분홍 (라이트의 인디고 대신 다크 전용) */
   --color-accent-start: #8a38f5;
   --color-accent-end: #d53a6b;
+  --color-brand-bg: rgba(138,56,245,0.18);
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.35);
   --shadow-md: 0 8px 24px rgba(0,0,0,0.40);
   --shadow-lg: 0 16px 40px rgba(0,0,0,0.50);
