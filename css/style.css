@@ -2,27 +2,29 @@
    CSS Custom Properties
    ======================================== */
 :root {
-  --color-bg: #f8fafc;
+  /* 라이트 = #05 Untitled UI (강디 미리보기 값 그대로) */
+  --color-bg: #fcfcfd;
   --color-surface: #ffffff;
-  --color-subtle: #f8fafc;
+  --color-subtle: #f9fafb;
+  --color-brand-bg: #f9f5ff;
   --color-hero-start: #0f172a;
   --color-hero-end: #1e293b;
-  --color-accent-start: #6366f1;
-  --color-accent-end: #8b5cf6;
-  --color-text: #1e293b;
-  --color-text-secondary: #64748b;
-  --color-text-light: #94a3b8;
-  --color-border: #e2e8f0;
+  --color-accent-start: #8a38f5;
+  --color-accent-end: #d53a6b;
+  --color-text: #101828;
+  --color-text-secondary: #475467;
+  --color-text-light: #667085;
+  --color-border: #eaecf0;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
   --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-md: 14px;
   --radius-lg: 16px;
   --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-md: 0 4px 8px -2px rgba(16,24,40,0.08), 0 2px 4px -2px rgba(16,24,40,0.04);
+  --shadow-lg: 0 12px 24px -6px rgba(16,24,40,0.12), 0 4px 8px -2px rgba(16,24,40,0.05);
   --font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
   --transition: all 0.2s ease;
 }
@@ -784,7 +786,7 @@ input, textarea {
 .btn-join-waitlist:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+  box-shadow: 0 4px 12px rgba(138,56,245,0.3);
 }
 
 .btn-join-waitlist.joined {
@@ -890,7 +892,7 @@ input, textarea {
 .form-group input:focus,
 .form-group textarea:focus {
   border-color: var(--color-accent-start);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  box-shadow: 0 0 0 3px rgba(138,56,245,0.1);
   background: var(--color-surface);
 }
 
@@ -921,7 +923,7 @@ input, textarea {
 .btn-submit:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+  box-shadow: 0 4px 12px rgba(138,56,245,0.3);
 }
 
 .btn-submit:disabled {
@@ -982,7 +984,7 @@ input, textarea {
 
 .subscribe-input-group input:focus {
   border-color: var(--color-accent-start);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  box-shadow: 0 0 0 3px rgba(138,56,245,0.1);
 }
 
 .btn-subscribe {
@@ -1217,7 +1219,7 @@ input, textarea {
   font-size: 0.85rem;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid #c7d2fe;
+  border: 1px solid #e9d7fe;
   margin-bottom: 14px;
   font-weight: 500;
 }
@@ -1315,7 +1317,7 @@ input, textarea {
 }
 .idea-card.sample-card {
   border-style: dashed;
-  border-color: #c7d2fe;
+  border-color: #e9d7fe;
 }
 .idea-card.sample-card .btn-join-waitlist {
   opacity: 0.65;
@@ -1347,7 +1349,7 @@ input, textarea {
   font-weight: 500;
   transition: var(--transition);
 }
-.primary-nav .nav-link:hover { background: rgba(99,102,241,0.08); color: var(--color-accent-start); }
+.primary-nav .nav-link:hover { background: rgba(138,56,245,0.08); color: var(--color-accent-start); }
 .primary-nav .nav-link.active { background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); color: #fff; }
 
 /* 글쓰기 - 진행 조건 안내 */
@@ -1425,7 +1427,7 @@ input, textarea {
   transition: var(--transition);
 }
 .idea-card:hover { border-color: var(--color-accent-start); box-shadow: var(--shadow-md); }
-.idea-card.sample-card { border-style: dashed; border-color: #c7d2fe; }
+.idea-card.sample-card { border-style: dashed; border-color: #e9d7fe; }
 .card-row { display: flex; gap: 14px; align-items: flex-start; }
 .card-main { flex: 1; min-width: 0; }
 .card-thumbs { position: relative; flex-shrink: 0; }
@@ -1642,7 +1644,7 @@ input, textarea {
   display: flex; gap: 14px;
 }
 .board-card:hover { border-color: var(--color-accent-start); box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.board-card.sample-card { border-style: dashed; border-color: #c7d2fe; }
+.board-card.sample-card { border-style: dashed; border-color: #e9d7fe; }
 .board-card-main { flex: 1; min-width: 0; }
 .board-card-line { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .board-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
@@ -1890,7 +1892,7 @@ input, textarea {
 
 .expanded-threshold {
   background: linear-gradient(135deg, #f0f9ff, #ede9fe);
-  border: 1px solid #c7d2fe;
+  border: 1px solid #e9d7fe;
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 0.85rem;
@@ -2136,7 +2138,7 @@ input, textarea {
 .ai-status-banner.warn { background: #fef3c7; color: #92400e; }
 .ai-key-btn {
   margin-left: 8px; padding: 3px 10px; border-radius: var(--radius-sm);
-  background: var(--color-accent-start, #6366f1); color: #fff;
+  background: var(--color-accent-start); color: #fff;
   font-size: 0.8rem; font-weight: 600; cursor: pointer;
 }
 .ai-key-btn:hover { opacity: 0.9; }
