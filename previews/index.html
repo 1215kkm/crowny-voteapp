@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crowny 디자인 스타일 리서치 — 강디</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Pretendard Variable',-apple-system,sans-serif;
+    background:#0b0d12; color:#e7e9ee; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1180px; margin:0 auto; padding:48px 24px 80px; }
+  .head { text-align:center; margin-bottom:48px; }
+  .badge {
+    display:inline-block; font-size:16px; font-weight:600; padding:6px 14px;
+    border-radius:9999px; background:rgba(138,56,245,0.15); color:#c4a5ff;
+    margin-bottom:16px;
+  }
+  h1 { font-size:38px; font-weight:800; letter-spacing:-0.02em; margin-bottom:12px; }
+  h1 .g { background:linear-gradient(135deg,#8A38F5,#D53A6B); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .sub { color:#9aa1ad; font-size:18px; max-width:640px; margin:0 auto; }
+  .active-note {
+    margin:28px auto 0; max-width:680px; font-size:16px; color:#8b93a1;
+    border:1px solid #23262e; border-radius:12px; padding:12px 18px; background:#12141a;
+  }
+  .active-note b { color:#c4a5ff; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:24px; }
+  .card {
+    background:#12141a; border:1px solid #23262e; border-radius:18px; padding:24px;
+    display:flex; flex-direction:column; transition:transform .2s ease, border-color .2s ease;
+  }
+  .card:hover { transform:translateY(-3px); border-color:#3a3340; }
+  .card .swatch { height:64px; border-radius:12px; margin-bottom:18px; position:relative; overflow:hidden; }
+  .num { position:absolute; top:8px; left:12px; font-size:16px; font-weight:700; color:rgba(255,255,255,0.9); }
+  .pick { position:absolute; top:8px; right:12px; font-size:16px; font-weight:700; padding:2px 10px; border-radius:9999px; background:rgba(0,0,0,0.35); color:#fff; }
+  .card h3 { font-size:21px; font-weight:700; margin-bottom:4px; }
+  .src { font-size:16px; color:#7a8290; margin-bottom:14px; }
+  .src a { color:#9c8cff; text-decoration:none; }
+  .feat { font-size:16px; color:#b8bfca; margin-bottom:16px; flex:1; }
+  .feat b { color:#e7e9ee; }
+  .meta { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .tag { font-size:16px; padding:3px 10px; border-radius:9999px; background:#1c1f27; color:#9aa1ad; border:1px solid #2a2e38; }
+  .tag.ok { color:#7ee2a8; border-color:#1f4133; background:#10241b; }
+  .btn {
+    display:block; text-align:center; text-decoration:none; padding:12px; border-radius:12px;
+    font-size:16px; font-weight:600; transition:opacity .2s ease;
+  }
+  .btn-on { background:linear-gradient(135deg,#8A38F5,#D53A6B); color:#fff; }
+  .btn-on:hover { opacity:.9; }
+  .btn-off { background:#1c1f27; color:#6b7280; border:1px solid #2a2e38; cursor:default; }
+  .foot { margin-top:56px; text-align:center; color:#6b7280; font-size:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <span class="badge">강디 · 디자인 리서치 2024–2026</span>
+    <h1>Crowny <span class="g">디자인 스타일</span> 6선</h1>
+    <p class="sub">아이디어 투표·공유 서비스에 어울리는 공개형 디자인 시스템 6개를 비교했습니다. 별표(★)는 미리보기를 제작한 추천 3종입니다.</p>
+    <div class="active-note">현재 활성 디자인 스타일: <b>#1 — Crowny Class</b> (보라→분홍 그라데이션, Pretendard, radius 10/16, Lucide) · 출처: styles/01-crowny-class.md</div>
+  </div>
+
+  <div class="grid">
+    <!-- 1 Material 3 Expressive -->
+    <div class="card">
+      <div class="swatch" style="background:linear-gradient(135deg,#6750A4,#7D5260);">
+        <span class="num">01</span><span class="pick">★ 미리보기</span>
+      </div>
+      <h3>Material 3 Expressive</h3>
+      <p class="src">Google · <a href="https://m3.material.io/" target="_blank">m3.material.io</a></p>
+      <p class="feat"><b>생동감 있는 색·모션·적응형 컴포넌트.</b> Dynamic Color, 큰 radius(필 버튼·라운드 카드), 스프링 모션, 강한 폰트 대비. 2025년 'Expressive' 업데이트로 표현력 강화.</p>
+      <div class="meta"><span class="tag ok">오픈소스 (Apache 2.0)</span><span class="tag">Roboto/Flex</span><span class="tag">radius 16–28</span></div>
+      <a class="btn btn-on" href="style-01-material3-expressive.html">미리보기 열기 →</a>
+    </div>
+
+    <!-- 2 Apple Liquid Glass -->
+    <div class="card">
+      <div class="swatch" style="background:linear-gradient(135deg,#1e2746,#3a2f5e);">
+        <span class="num">02</span><span class="pick">★ 미리보기</span>
+      </div>
+      <h3>Apple Liquid Glass</h3>
+      <p class="src">Apple · <a href="https://www.apple.com/newsroom/2025/06/apple-introduces-a-delightful-and-elegant-new-software-design/" target="_blank">apple.com</a></p>
+      <p class="feat"><b>반투명 유리 질감 + 실시간 굴절·하이라이트.</b> iOS 26/macOS Tahoe의 새 디자인 언어. blur·specular highlight, 떠 있는 패널. 다크 히어로와 시너지 큼.</p>
+      <div class="meta"><span class="tag">독점 (참고용 OK)</span><span class="tag">SF Pro</span><span class="tag">glass/blur</span></div>
+      <a class="btn btn-on" href="style-02-liquid-glass.html">미리보기 열기 →</a>
+    </div>
+
+    <!-- 3 Vercel Geist -->
+    <div class="card">
+      <div class="swatch" style="background:linear-gradient(135deg,#000,#3b3b3b);">
+        <span class="num">03</span><span class="pick">★ 미리보기</span>
+      </div>
+      <h3>Vercel Geist</h3>
+      <p class="src">Vercel · <a href="https://vercel.com/geist" target="_blank">vercel.com/geist</a></p>
+      <p class="feat"><b>극단적 미니멀·고대비·정밀한 그리드.</b> 흑백 기반 + 1개의 강조색, 얇은 보더, 작은 radius(6–8), 절제된 그림자. 구현 난이도 가장 낮음.</p>
+      <div class="meta"><span class="tag ok">오픈소스 (MIT)</span><span class="tag">Geist Sans</span><span class="tag">radius 6–8</span></div>
+      <a class="btn btn-on" href="style-03-geist.html">미리보기 열기 →</a>
+    </div>
+
+    <!-- 4 shadcn/ui -->
+    <div class="card">
+      <div class="swatch" style="background:linear-gradient(135deg,#18181b,#27272a);">
+        <span class="num">04</span>
+      </div>
+      <h3>shadcn/ui</h3>
+      <p class="src">shadcn · <a href="https://ui.shadcn.com/" target="_blank">ui.shadcn.com</a></p>
+      <p class="feat"><b>Radix 기반 복붙형 컴포넌트.</b> 중립 회색 팔레트, 토큰화된 CSS 변수, 접근성 우수. 단 React/Tailwind 전제 — 순수 HTML/JS인 Crowny엔 직접 이식 부담.</p>
+      <div class="meta"><span class="tag ok">오픈소스 (MIT)</span><span class="tag">Geist/Inter</span><span class="tag">React/Tailwind</span></div>
+      <a class="btn btn-off">미리보기 미제작</a>
+    </div>
+
+    <!-- 5 Untitled UI -->
+    <div class="card">
+      <div class="swatch" style="background:linear-gradient(135deg,#6941C6,#9E77ED);">
+        <span class="num">05</span>
+      </div>
+      <h3>Untitled UI</h3>
+      <p class="src">Untitled UI · <a href="https://www.untitledui.com/" target="_blank">untitledui.com</a></p>
+      <p class="feat"><b>SaaS 표준 컴포넌트 1만+.</b> 깔끔한 중립톤 + 보라 강조, 정돈된 그림자·타이포. 완성도 높지만 핵심 키트는 유료, 너무 '범용 SaaS'라 투표앱 개성은 약함.</p>
+      <div class="meta"><span class="tag">일부 유료</span><span class="tag">Inter</span><span class="tag">radius 8–12</span></div>
+      <a class="btn btn-off">미리보기 미제작</a>
+    </div>
+
+    <!-- 6 Neo-Brutalism -->
+    <div class="card">
+      <div class="swatch" style="background:linear-gradient(135deg,#FFDE00,#FF5C00);">
+        <span class="num" style="color:#111">06</span>
+      </div>
+      <h3>Neo-Brutalism</h3>
+      <p class="src">오픈 트렌드 · <a href="https://www.onething.design/post/neo-brutalism-ui-design-trend" target="_blank">onething.design</a></p>
+      <p class="feat"><b>두꺼운 검정 보더 + 하드 섀도 + 비비드 컬러.</b> 개성·기억성 최강. 투표앱 '도파민'엔 맞지만, 브랜드 정돈감·존댓말 톤과 충돌·접근성 리스크.</p>
+      <div class="meta"><span class="tag ok">오픈 트렌드 (자유)</span><span class="tag">Space Grotesk</span><span class="tag">hard shadow</span></div>
+      <a class="btn btn-off">미리보기 미제작</a>
+    </div>
+  </div>
+
+  <p class="foot">강디 추천 1순위: <b style="color:#c4a5ff">#01 Material 3 Expressive</b> — Crowny 보라/분홍 그라데이션과 가장 자연스럽게 결합되고, 투표·반응 모션을 살리기 좋음. 자세한 비교표는 보고서 참조.</p>
+</div>
+</body>
+</html>

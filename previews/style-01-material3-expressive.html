@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crowny · Material 3 Expressive 미리보기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --primary:#8A38F5; --secondary:#D53A6B;
+    --gradient:linear-gradient(135deg,#8A38F5 0%,#D53A6B 100%);
+    --surface:#FEF7FF; --surface-container:#F3EDF7; --surface-2:#ECE6F0;
+    --on-surface:#1D1B20; --on-surface-var:#49454F; --outline:#CAC4D0;
+    --primary-container:#EADDFF; --on-primary-container:#4F1C8C;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Pretendard Variable',sans-serif; background:var(--surface); color:var(--on-surface); line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .logo { font-family:'Agbalumo',cursive; }
+
+  /* header */
+  header {
+    position:sticky; top:0; z-index:10; height:64px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; background:rgba(254,247,255,0.8); backdrop-filter:blur(12px); border-bottom:1px solid var(--outline);
+  }
+  .brand { display:flex; align-items:center; gap:8px; font-size:22px; font-weight:700; }
+  .brand .dot { width:32px; height:32px; border-radius:9999px; background:var(--gradient); display:grid; place-items:center; color:#fff; }
+  nav { display:flex; gap:6px; align-items:center; }
+  .nav-link { font-size:16px; color:var(--on-surface-var); text-decoration:none; padding:10px 16px; border-radius:9999px; transition:background .2s; }
+  .nav-link:hover { background:var(--surface-2); }
+  .nav-link.active { background:var(--primary-container); color:var(--on-primary-container); font-weight:600; }
+  .btn-tonal { font-size:16px; font-weight:600; padding:10px 20px; border-radius:9999px; background:var(--primary-container); color:var(--on-primary-container); border:none; cursor:pointer; transition:filter .2s; }
+  .btn-tonal:hover { filter:brightness(0.96); }
+
+  /* hero */
+  .hero { padding:64px 24px 56px; max-width:1100px; margin:0 auto; text-align:center; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:16px; font-weight:600; padding:8px 16px; border-radius:9999px; background:var(--primary-container); color:var(--on-primary-container); margin-bottom:24px; }
+  .hero h1 { font-size:52px; font-weight:800; letter-spacing:-0.02em; line-height:1.15; margin-bottom:20px; }
+  .hero h1 .g { background:var(--gradient); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero p { font-size:20px; color:var(--on-surface-var); max-width:620px; margin:0 auto 32px; }
+  .cta-row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn-filled { font-size:18px; font-weight:700; padding:16px 32px; border-radius:9999px; background:var(--gradient); color:#fff; border:none; cursor:pointer; box-shadow:0 4px 14px rgba(138,56,245,0.35); transition:transform .2s, box-shadow .2s; display:inline-flex; align-items:center; gap:8px; }
+  .btn-filled:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(138,56,245,0.45); }
+  .btn-outline { font-size:18px; font-weight:600; padding:16px 32px; border-radius:9999px; background:transparent; color:var(--primary); border:1.5px solid var(--outline); cursor:pointer; }
+
+  /* section */
+  .section { max-width:1100px; margin:0 auto; padding:24px 24px 80px; }
+  .sec-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:24px; }
+  .sec-head h2 { font-size:28px; font-weight:800; }
+  .sec-head a { font-size:16px; color:var(--primary); text-decoration:none; font-weight:600; }
+
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
+  .idea {
+    background:#fff; border-radius:28px; padding:24px; border:1px solid transparent;
+    transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; position:relative; overflow:hidden;
+  }
+  .idea:hover { transform:translateY(-4px); box-shadow:0 12px 28px rgba(29,27,32,0.12); }
+  .idea .cat { display:inline-flex; align-items:center; gap:6px; font-size:16px; font-weight:600; padding:6px 14px; border-radius:9999px; background:var(--primary-container); color:var(--on-primary-container); margin-bottom:16px; }
+  .idea h3 { font-size:21px; font-weight:700; margin-bottom:8px; }
+  .idea .desc { font-size:16px; color:var(--on-surface-var); margin-bottom:20px; }
+  .idea .meta { display:flex; align-items:center; gap:8px; font-size:16px; color:var(--on-surface-var); margin-bottom:20px; }
+  .avatar { width:28px; height:28px; border-radius:9999px; background:var(--gradient); display:grid; place-items:center; color:#fff; font-size:16px; font-weight:700; }
+
+  .vote-row { display:flex; align-items:center; gap:12px; }
+  .vote-btn {
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-size:18px; font-weight:700; padding:14px; border-radius:9999px; border:none; cursor:pointer;
+    background:var(--gradient); color:#fff; box-shadow:0 3px 10px rgba(138,56,245,0.3); transition:transform .15s, box-shadow .2s;
+  }
+  .vote-btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(138,56,245,0.4); }
+  .vote-btn:active { transform:scale(0.97); }
+  .vote-btn.voted { background:var(--primary-container); color:var(--on-primary-container); box-shadow:none; }
+  .count { font-size:20px; font-weight:800; min-width:56px; text-align:center; color:var(--on-surface); }
+  .count small { display:block; font-size:16px; font-weight:500; color:var(--on-surface-var); }
+
+  footer { text-align:center; padding:32px; color:var(--on-surface-var); font-size:16px; border-top:1px solid var(--outline); }
+  .style-tag { position:fixed; bottom:16px; right:16px; font-size:16px; background:#1D1B20; color:#fff; padding:8px 14px; border-radius:9999px; z-index:20; }
+  @media(max-width:600px){ .hero h1{font-size:38px;} nav .nav-link{display:none;} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"><i data-lucide="crown" style="width:18px;height:18px"></i></span><span class="logo">Crowny</span></div>
+  <nav>
+    <a class="nav-link active" href="#">홈</a>
+    <a class="nav-link" href="#">인기</a>
+    <a class="nav-link" href="#">최신</a>
+    <a class="nav-link" href="#">내 아이디어</a>
+    <button class="btn-tonal">로그인</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <span class="pill"><i data-lucide="sparkles" style="width:16px;height:16px"></i> 이번 주 1,284개의 아이디어가 투표받았어요</span>
+  <h1>당신의 아이디어에<br><span class="g">왕관</span>을 씌워보세요</h1>
+  <p>좋은 생각은 혼자 두기 아깝죠. Crowny에서 아이디어를 올리고, 투표로 가장 빛나는 생각을 함께 찾아요.</p>
+  <div class="cta-row">
+    <button class="btn-filled"><i data-lucide="plus" style="width:20px;height:20px"></i> 아이디어 올리기</button>
+    <button class="btn-outline">둘러보기</button>
+  </div>
+</section>
+
+<section class="section">
+  <div class="sec-head"><h2>지금 뜨는 아이디어</h2><a href="#">전체 보기 →</a></div>
+  <div class="cards">
+    <article class="idea">
+      <span class="cat"><i data-lucide="leaf" style="width:14px;height:14px"></i> 환경</span>
+      <h3>아파트 단지 공용 텃밭 만들기</h3>
+      <p class="desc">옥상 유휴 공간에 입주민이 함께 가꾸는 텃밭을 두면 어떨까요? 수확물은 경로당에 기부해요.</p>
+      <div class="meta"><span class="avatar">민</span> 민지 · 2시간 전</div>
+      <div class="vote-row">
+        <button class="vote-btn" onclick="vote(this,128)"><i data-lucide="arrow-up" style="width:18px;height:18px"></i> 투표</button>
+        <div class="count" id="c1">128<small>표</small></div>
+      </div>
+    </article>
+
+    <article class="idea">
+      <span class="cat"><i data-lucide="bus" style="width:14px;height:14px"></i> 교통</span>
+      <h3>심야 마을버스 노선 신설</h3>
+      <p class="desc">막차 이후 역에서 동네까지 도는 미니 셔틀이 있으면 야근족·학생 모두 안전하게 귀가할 수 있어요.</p>
+      <div class="meta"><span class="avatar">준</span> 준호 · 5시간 전</div>
+      <div class="vote-row">
+        <button class="vote-btn voted" onclick="vote(this,342)"><i data-lucide="check" style="width:18px;height:18px"></i> 투표함</button>
+        <div class="count" id="c2">342<small>표</small></div>
+      </div>
+    </article>
+
+    <article class="idea">
+      <span class="cat"><i data-lucide="book-open" style="width:14px;height:14px"></i> 교육</span>
+      <h3>주말 무료 코딩 클래스</h3>
+      <p class="desc">동네 청소년 대상 주말 코딩 모임. 대학생 멘토와 매칭하고, 결과물은 작은 전시회로 마무리해요.</p>
+      <div class="meta"><span class="avatar">서</span> 서연 · 1일 전</div>
+      <div class="vote-row">
+        <button class="vote-btn" onclick="vote(this,89)"><i data-lucide="arrow-up" style="width:18px;height:18px"></i> 투표</button>
+        <div class="count" id="c3">89<small>표</small></div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<footer>© 2026 Crowny · Material 3 Expressive 스타일 미리보기 (강디 제작)</footer>
+<div class="style-tag">스타일 #01 · Material 3 Expressive</div>
+
+<script>
+  lucide.createIcons();
+  function vote(btn, base){
+    const card = btn.closest('.idea');
+    const count = card.querySelector('.count');
+    const voted = btn.classList.toggle('voted');
+    const n = voted ? base+1 : base;
+    count.innerHTML = n + '<small>표</small>';
+    btn.innerHTML = voted
+      ? '<i data-lucide="check" style="width:18px;height:18px"></i> 투표함'
+      : '<i data-lucide="arrow-up" style="width:18px;height:18px"></i> 투표';
+    lucide.createIcons();
+  }
+</script>
+</body>
+</html>
