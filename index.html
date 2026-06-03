@@ -98,12 +98,16 @@
       </circle>
     </svg>
     <div class="hero-inner">
-      <div class="hero-badge">비공개 베타 대기자 모집 중 &middot; 선착순 마감</div>
+      <div class="hero-badge">● 비공개 베타 대기자 모집 중 &middot; 선착순 마감</div>
       <h1 class="hero-title">
         <span id="typing-app" class="typing-text">이런 앱</span><br>
         <span class="hero-line2">이 있었으면 <span class="hero-accent">좋겠다.</span></span>
       </h1>
-      <p class="hero-subtitle">아직 세상에 없는 앱, 당신의 아이디어로 만들어집니다.</p>
+      <p class="hero-subtitle">아직 세상에 없는 앱, 당신의 아이디어로 만들어집니다. 개발 전에 수요를 먼저 투표로 검증하세요.</p>
+      <div class="hero-cta-row">
+        <button type="button" class="btn-hero-primary" data-open-idea-form>아이디어 올리기</button>
+        <a href="#ideas-list" class="btn-hero-secondary">둘러보기</a>
+      </div>
       <div class="hero-counter">현재 <strong id="total-waitlist-count">0</strong>명이 대기 중</div>
     </div>
   </section>
@@ -113,7 +117,7 @@
   <main id="content">
     <section id="ideas-list" class="column-left">
       <div class="section-header">
-        <h2>공유된 아이디어 <span id="ideas-count" class="count-badge">0</span></h2>
+        <h2>지금 검증 중인 아이디어 <span id="ideas-count" class="count-badge">0</span></h2>
         <div class="sort-controls">
           <button class="sort-btn active" data-sort="createdAt">최신순</button>
           <button class="sort-btn" data-sort="waitlistCount">인기순</button>
@@ -132,8 +136,16 @@
         </div>
       </div>
     </section>
+  </main>
 
-    <aside id="idea-form-container" class="column-right">
+  <!-- 아이디어 작성 모달 (기존 사이드바 폼을 모달로 이동 — id/onclick 전부 보존) -->
+  <div id="idea-form-modal" class="modal-backdrop hidden">
+    <aside id="idea-form-container" class="modal-window idea-form-window">
+      <div class="modal-head">
+        <h3 class="form-title">아이디어 쓰고 공유받기</h3>
+        <button type="button" id="idea-form-close" class="modal-close" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
       <div class="equalizer" id="equalizer">
         <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
         <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
@@ -145,7 +157,6 @@
         <div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>
       </div>
       <div class="sticky-form">
-        <h3 class="form-title">아이디어 쓰고 공유받기</h3>
         <div id="form-login-prompt" class="hidden"></div>
 
         <form id="idea-form">
@@ -199,8 +210,9 @@
           <div class="trigger-item"><span class="trigger-icon">📧</span><span>출시 4주 전, 대기자에게만 먼저 알려드립니다</span></div>
         </div>
       </div>
+      </div><!-- /.modal-body -->
     </aside>
-  </main>
+  </div><!-- /#idea-form-modal -->
 
   <!-- 관심 아이디어 모달 -->
   <div id="favorites-modal" class="modal-backdrop hidden">
@@ -232,6 +244,46 @@
   <footer id="site-footer">
     <p>&copy; 2026 Appter. All rights reserved.</p>
   </footer>
+
+  <!-- 작성폼 모달 글루 (가산 전용: 열기/닫기만. app.js 핸들러는 손대지 않음) -->
+  <script>
+  (function () {
+    var modal = document.getElementById('idea-form-modal');
+    if (!modal) return;
+    var closeBtn = document.getElementById('idea-form-close');
+    var titleInput = document.getElementById('idea-title');
+
+    function openModal() {
+      modal.classList.remove('hidden');
+      document.body.classList.add('modal-open');
+      setTimeout(function () { if (titleInput) titleInput.focus(); }, 50);
+    }
+    function closeModal() {
+      modal.classList.add('hidden');
+      document.body.classList.remove('modal-open');
+    }
+
+    // 히어로 CTA / 그 외 data-open-idea-form 트리거로 열기
+    document.querySelectorAll('[data-open-idea-form]').forEach(function (el) {
+      el.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    // 배경 클릭으로 닫기 (모달 내부 클릭은 무시)
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+    // ESC 로 닫기
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+    });
+
+    // 등록 성공 시(app.js가 share-success-modal 을 열면) 작성 모달을 자동으로 닫는다.
+    var share = document.getElementById('share-success-modal');
+    if (share && window.MutationObserver) {
+      new MutationObserver(function () {
+        if (!share.classList.contains('hidden')) closeModal();
+      }).observe(share, { attributes: true, attributeFilter: ['class'] });
+    }
+  })();
+  </script>
 
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/auth.js"></script>
