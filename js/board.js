@@ -5,6 +5,7 @@
 import { onAuthChange } from "./auth.js";
 import { subscribeToIdeas, meetsDesignThreshold } from "./firestore.js";
 import { SAMPLE_IDEAS } from "./sample-data.js";
+import { escapeHtml } from "./utils.js";
 
 const boardList = document.getElementById("board-list");
 const tabs = document.querySelectorAll(".board-tab");
@@ -125,12 +126,6 @@ function boardCardHtml(idea) {
   `;
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
 function truncate(str, n) {
   if (!str) return "";
   return str.length > n ? str.substring(0, n) + "..." : str;

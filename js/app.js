@@ -29,6 +29,7 @@ import {
   userDeleteOwnIdea
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
+import { escapeHtml } from "./utils.js";
 import { SAMPLE_IDEAS, SAMPLE_TOTAL } from "./sample-data.js";
 import { trackEvent } from "./analytics.js";
 import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
@@ -1161,12 +1162,6 @@ function showToast(message, type) {
 
 // ---- Utilities ----
 
-function escapeHtml(str) {
-  if (!str) return "";
-  const d = document.createElement("div");
-  d.textContent = str;
-  return d.innerHTML;
-}
 function truncate(str, n) {
   if (!str) return "";
   return str.length > n ? str.substring(0, n) + "..." : str;

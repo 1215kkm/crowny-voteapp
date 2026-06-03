@@ -34,6 +34,7 @@ import {
   listEmailsByIdea
 } from "./firestore.js";
 import { COUNTRIES, countryName, countryFlagEmoji } from "./countries.js";
+import { escapeHtml } from "./utils.js";
 import { db } from "./firebase-config.js";
 import {
   doc as _aDoc, getDoc as _aGet, setDoc as _aSet
@@ -1386,12 +1387,6 @@ async function loadTrash() {
 
 // ---- Helpers ----
 
-function escapeHtml(str) {
-  if (!str && str !== 0) return "";
-  const d = document.createElement("div");
-  d.textContent = String(str);
-  return d.innerHTML;
-}
 
 function formatTime(ts) {
   if (!ts) return "";
