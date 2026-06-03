@@ -185,14 +185,6 @@ function updateThresholdMessage() {
   }
 }
 
-  if (currentIdea.authorUid === currentUser.uid) {
-    statusControls.classList.remove("hidden");
-    statusSelect.value = currentIdea.status || "waiting";
-  } else {
-    statusControls.classList.add("hidden");
-  }
-}
-
 // ---- Comments ----
 
 function renderComments(comments) {
