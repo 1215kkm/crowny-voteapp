@@ -18,6 +18,7 @@ import {
   THRESHOLD_FREE_MIXED
 } from "./firestore.js";
 import { trackEvent } from "./analytics.js";
+import { escapeHtml } from "./utils.js";
 import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
 
 const params = new URLSearchParams(window.location.search);
@@ -414,12 +415,6 @@ function formatTime(ts) {
   return d.toLocaleDateString("ko-KR");
 }
 
-function escapeHtml(str) {
-  if (!str) return "";
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
 
 function showToast(message, type) {
   const container = document.getElementById("toast-container");

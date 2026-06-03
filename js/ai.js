@@ -2,7 +2,7 @@
 // AI Module - Gemini API 클라이언트 + 가상 댓글/글 생성기
 // ========================================
 
-import { GEMINI_API_KEY, GEMINI_MODEL } from "./ai-config.js";
+import { getGeminiKey, GEMINI_MODEL } from "./ai-config.js";
 
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -40,14 +40,16 @@ export function pickFakeAuthor() {
 }
 
 function isKeyValid() {
-  return GEMINI_API_KEY && !GEMINI_API_KEY.startsWith("PASTE_");
+  const key = getGeminiKey();
+  return !!key && !key.startsWith("PASTE_");
 }
 
 async function callGemini(prompt, maxTokens) {
-  if (!isKeyValid()) {
-    throw new Error("Gemini API 키가 설정되지 않았습니다. js/ai-config.js 를 수정해주세요.");
+  const key = getGeminiKey();
+  if (!key || key.startsWith("PASTE_")) {
+    throw new Error("Gemini API 키가 설정되지 않았습니다. 관리자 화면의 'Gemini 키 설정'에서 입력해주세요.");
   }
-  const url = `${API_BASE}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `${API_BASE}/${GEMINI_MODEL}:generateContent?key=${key}`;
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {

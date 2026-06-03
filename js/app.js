@@ -29,6 +29,7 @@ import {
   userDeleteOwnIdea
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
+import { escapeHtml } from "./utils.js";
 import { SAMPLE_IDEAS, SAMPLE_TOTAL } from "./sample-data.js";
 import { trackEvent } from "./analytics.js";
 import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
@@ -45,6 +46,8 @@ let userWaitlistMap = {};
 let userLikeMap = {};
 let unsubIdeas = null;
 let pendingSubmit = false;
+// 행동 먼저, 로그인 나중: 비로그인 사용자의 의도를 담아뒀다가 로그인 후 재생
+let pendingAction = null; // { kind:'waitlist'|'like', ideaId, tier }
 let pendingImages = [];
 let expandedCardId = null;
 const commentUnsubMap = {}; // ideaId -> unsub function
@@ -85,6 +88,12 @@ const favBtn = document.getElementById("favorites-btn");
 const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
+const shareModal = document.getElementById("share-success-modal");
+const shareModalClose = document.getElementById("share-success-close");
+const shareModalGoal = document.getElementById("share-success-goal");
+const shareModalShareBtn = document.getElementById("share-success-share");
+const shareModalViewBtn = document.getElementById("share-success-view");
+let shareModalContext = null; // { ideaId, title }
 
 // ---- Init ----
 
@@ -248,6 +257,18 @@ if (favModal) {
   favModal.addEventListener("click", (e) => { if (e.target === favModal) closeFavoritesModal(); });
 }
 
+// ---- 등록 성공 공유 모달 ----
+if (shareModalClose) shareModalClose.addEventListener("click", closeShareModal);
+if (shareModal) {
+  shareModal.addEventListener("click", (e) => { if (e.target === shareModal) closeShareModal(); });
+}
+if (shareModalShareBtn) shareModalShareBtn.addEventListener("click", () => {
+  if (shareModalContext) shareIdea(shareModalContext.ideaId, shareModalContext.title);
+});
+if (shareModalViewBtn) shareModalViewBtn.addEventListener("click", () => {
+  if (shareModalContext) window.location.href = `idea.html?id=${encodeURIComponent(shareModalContext.ideaId)}`;
+});
+
 // ---- Auth ----
 
 async function handleAuthState(user) {
@@ -274,6 +295,29 @@ async function handleAuthState(user) {
       pendingSubmit = false;
       const t = ideaTitle.value.trim(); const d = ideaDesc.value.trim();
       if (t && d && confirm("글을 남기겠습니까?")) await submitIdea(t, d, user);
+    }
+
+    // 행동 먼저, 로그인 나중: 로그인 전에 눌러둔 의도를 실제 동작으로 재생
+    if (pendingAction) {
+      const action = pendingAction;
+      pendingAction = null;
+      try {
+        if (String(action.ideaId).startsWith("sample_")) {
+          // 샘플글은 실제 등록 대상 아님 — 조용히 무시
+        } else if (action.kind === "waitlist") {
+          const result = await toggleWaitlist(action.ideaId, user, action.tier);
+          if (result.joined) userWaitlistMap[action.ideaId] = result.tier;
+          showToast("이 한 표, 저장됐어요!", "success");
+        } else if (action.kind === "like") {
+          const r = await toggleLike(action.ideaId, user);
+          userLikeMap[action.ideaId] = r.liked;
+          if (r.liked) showToast("관심 아이디어로 저장됐어요 ❤️", "success");
+        }
+      } catch (e) {
+        // 재생 실패는 조용히 — 사용자에게 부담 주지 않는다
+        showToast("저장 중 문제가 있었어요. 버튼을 한 번만 더 눌러주세요.", "info");
+      }
+      renderAll();
     }
   } else {
     loginBtn.classList.remove("hidden");
@@ -553,7 +597,7 @@ async function handleIdeasClick(e) {
     const ideaId = btn.dataset.ideaId;
     if (action === "paid" || action === "free") return onWaitlistClick(btn, ideaId, action);
     if (action === "like") return onLikeClick(btn, ideaId);
-    if (action === "share") return onShareClick(ideaId);
+    if (action === "share") return onShareClick(ideaId, btn);
     if (action === "comment-submit") return onCommentSubmit(btn, ideaId, null);
     if (action === "reply-submit") return onCommentSubmit(btn, ideaId, btn.dataset.parent);
     if (action === "reply-toggle") return onReplyToggle(btn);
@@ -750,6 +794,25 @@ async function onDeleteComment(ideaId, commentId) {
 
 // ---- 액션 ----
 
+// 낙관적 시각 피드백: 비로그인 사용자가 눌러도 "눌리는 맛"을 즉시 준다.
+// 실제 카운트는 로그인 후 재생되며, renderAll() 이 곧 진짜 상태로 덮어쓴다.
+function optimisticPulse(btn) {
+  if (!btn) return;
+  try {
+    btn.classList.add("is-pending-active");
+    // 카운트 숫자가 있으면 +1 느낌만 잠깐 보여준다 (시각적 보상)
+    const countEl = btn.querySelector(".action-count") || btn.querySelector("[data-count]");
+    if (countEl) {
+      const n = parseInt((countEl.textContent || "").replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(n)) countEl.textContent = String(n + 1);
+    }
+    btn.classList.remove("pulse-bump");
+    // reflow 강제로 애니메이션 재시작
+    void btn.offsetWidth;
+    btn.classList.add("pulse-bump");
+  } catch (e) { /* 시각 효과 실패는 무시 */ }
+}
+
 async function onWaitlistClick(btn, ideaId, tier) {
   if (String(ideaId).startsWith("sample_")) {
     showToast("이 아이디어는 예시입니다. 실제 글에서만 등록할 수 있어요.", "info");
@@ -757,8 +820,11 @@ async function onWaitlistClick(btn, ideaId, tier) {
   }
   const user = getCurrentUser();
   if (!user) {
-    showToast("대기자 등록은 로그인이 필요합니다", "info");
-    setTimeout(() => window.appAuth.loginWithGoogle(), 800);
+    // 행동 먼저, 로그인 나중: 누른 맛을 즉시 주고 의도를 저장한 뒤 로그인으로
+    optimisticPulse(btn);
+    pendingAction = { kind: "waitlist", ideaId, tier };
+    showToast("좋아요! 로그인하면 이 한 표가 저장돼요", "info");
+    setTimeout(() => window.appAuth.loginWithGoogle(), 900);
     return;
   }
   btn.disabled = true;
@@ -792,8 +858,11 @@ async function onLikeClick(btn, ideaId) {
   }
   const user = getCurrentUser();
   if (!user) {
-    showToast("관심 등록은 로그인이 필요합니다", "info");
-    setTimeout(() => window.appAuth.loginWithGoogle(), 800);
+    // 행동 먼저, 로그인 나중: 하트가 채워지는 맛을 먼저, 로그인은 뒤로
+    optimisticPulse(btn);
+    pendingAction = { kind: "like", ideaId };
+    showToast("관심 담겼어요! 로그인하면 다음에도 그대로 있어요", "info");
+    setTimeout(() => window.appAuth.loginWithGoogle(), 900);
     return;
   }
   btn.disabled = true;
@@ -811,19 +880,55 @@ async function onLikeClick(btn, ideaId) {
   }
 }
 
-async function onShareClick(ideaId) {
+async function onShareClick(ideaId, btn) {
   if (String(ideaId).startsWith("sample_")) {
     showToast("예시 글은 공유 주소가 없습니다.", "info");
     return;
   }
+  const title = btn?.closest(".idea-card")?.querySelector(".idea-title")?.textContent?.trim();
+  await shareIdea(ideaId, title);
+}
+
+// 공유 공통 헬퍼: 모바일 등 Web Share API 지원 시 네이티브 공유 시트(카카오톡 포함),
+// 아니면 공유 문구+주소를 클립보드로 복사.
+async function shareIdea(ideaId, title) {
   const url = `${window.location.origin}/idea.html?id=${encodeURIComponent(ideaId)}`;
+  const headline = title ? `"${title}"` : "이 아이디어";
+  const text = `💡 ${headline} — 이 앱, 진짜 나오면 쓸래요? Appter에서 한 표 주세요!`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: "Appter", text, url });
+      trackEvent("share", { ideaId, channel: "webshare" });
+      return;
+    } catch (e) {
+      if (e && e.name === "AbortError") return; // 사용자가 공유 취소
+      // 그 외 오류는 클립보드 폴백으로
+    }
+  }
   try {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(`${text}\n${url}`);
     trackEvent("share", { ideaId, channel: "copy" });
-    showToast("주소가 복사되었어요. 다른 곳에 붙여넣기 해주세요.", "success");
+    showToast("공유 문구가 복사됐어요. 카톡 등에 붙여넣기 하세요!", "success");
   } catch (e) {
     window.prompt("아래 주소를 복사하세요", url);
   }
+}
+
+function openShareSuccessModal(ideaId, title) {
+  if (!shareModal) return;
+  shareModalContext = { ideaId, title };
+  if (shareModalGoal) {
+    shareModalGoal.innerHTML =
+      `🎯 <strong>유료 ${THRESHOLD_PAID_ALONE}명</strong> 또는 ` +
+      `<strong>유료 ${THRESHOLD_PAID_MIXED} + 무료 ${THRESHOLD_FREE_MIXED}명</strong>을 모으면 설계가 시작돼요.`;
+  }
+  shareModal.classList.remove("hidden");
+}
+
+function closeShareModal() {
+  if (shareModal) shareModal.classList.add("hidden");
+  shareModalContext = null;
 }
 
 // ---- 이미지 처리 ----
@@ -948,7 +1053,7 @@ async function submitIdea(title, desc, user) {
     clearDraft(DRAFT_KEY);
     document.querySelector(".draft-restore-note")?.remove();
     trackEvent("idea_create", { ideaId: newId, hasImages: images.length > 0 });
-    showToast("아이디어가 등록되었어요! 💡", "success");
+    openShareSuccessModal(newId, title);
     await refreshDailyLimitInfo();
   } catch (error) {
     console.error("submit", error);
@@ -1107,12 +1212,6 @@ function showToast(message, type) {
 
 // ---- Utilities ----
 
-function escapeHtml(str) {
-  if (!str) return "";
-  const d = document.createElement("div");
-  d.textContent = str;
-  return d.innerHTML;
-}
 function truncate(str, n) {
   if (!str) return "";
   return str.length > n ? str.substring(0, n) + "..." : str;

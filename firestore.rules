@@ -180,9 +180,15 @@ service cloud.firestore {
 
     // ---- 분석 이벤트 ----
     match /events/{id} {
-      // 누구나 자기 방문/행동 기록 추가 가능 (검증 최소화)
+      // 익명 방문/행동 기록(앱 특성상 비로그인 분석 필요). 인증을 요구할 수 없으므로
+      // 남용으로 인한 문서 비대화를 막는 검증을 둔다: type 검증 + 필드 개수 상한 +
+      // 자유 텍스트 필드 길이 상한. (스팸 볼륨 차단은 Firebase App Check 권장.)
       allow create: if request.resource.data.type is string
-        && request.resource.data.type.size() <= 50;
+        && request.resource.data.type.size() <= 50
+        && request.resource.data.keys().size() <= 40
+        && (!('referrer' in request.resource.data) || request.resource.data.referrer.size() <= 300)
+        && (!('ua' in request.resource.data) || request.resource.data.ua.size() <= 300)
+        && (!('searchKeyword' in request.resource.data) || request.resource.data.searchKeyword.size() <= 100);
       allow read: if isAdmin();
       allow update: if false;
       allow delete: if isAdmin();
