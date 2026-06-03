@@ -70,22 +70,43 @@
 </div>
 
 <script>
-const STYLES = [];
-function reg(o){ STYLES.push(o); }
+// 메타데이터만 보관 (미리보기 HTML 본문은 아래 <template> 에 verbatim 으로 들어있음).
+// 이렇게 분리하면 미리보기 안의 스크립트 태그가 바깥 갤러리 스크립트를 깨지 않는다.
+const STYLES = [
+  {num:'01',short:'Material 3 Expressive',name:'Material 3 Expressive',
+   feature:'구글의 차세대 머티리얼. 큰 둥근 모서리·생동감 있는 컬러 토큰·tonal 표면·통통 튀는 모션. 칩/FAB/큰 라운드 버튼이 핵심.',
+   license:'Apache 2.0 (구글 공식, 무료·상업 가능)',fitLevel:'good',
+   fit:'적합 — 친근·활기. 보라/분홍 그라데이션과 잘 맞음'},
+  {num:'02',short:'Apple Liquid Glass',name:'Apple Liquid Glass',
+   feature:'iOS/visionOS의 반투명 유리 질감. backdrop-blur + 내부 하이라이트 + 컬러풀 배경광. 떠 있는 알약형 헤더·둥근 카드.',
+   license:'디자인 언어(무료 재현). Apple 상표·에셋은 사용 불가',fitLevel:'best',
+   fit:'최적 (CEO 픽) — 보라/분홍 배경광과 환상 궁합'},
+  {num:'03',short:'Vercel Geist',name:'Vercel Geist',
+   feature:'극도로 미니멀·하이콘트라스트. 흰 배경·검정 텍스트·얇은 회색 보더·작은 radius(8px). 군더더기 0, 정보 밀도 높음.',
+   license:'Geist 폰트는 OFL/MIT(무료). 디자인 컨벤션 자유 재현',fitLevel:'good',
+   fit:'적합 — 신뢰감·전문성. 단, 그라데이션은 포인트로만'},
+  {num:'04',short:'shadcn/ui',name:'shadcn/ui',
+   feature:'개발자 사이 표준. 차분한 중성 회색(zinc)·subtle 보더·radius 8~12px·은은한 그림자. 컴포넌트 일관성이 최대 강점.',
+   license:'MIT (복붙해서 소유, 완전 무료)',fitLevel:'good',
+   fit:'적합 — 구현 속도 1위. 브랜드색은 accent로 주입'},
+  {num:'05',short:'Untitled UI',name:'Untitled UI',
+   feature:'프리미엄 SaaS 룩. 부드러운 회색조·정교한 그림자 단계·여유로운 여백·둥근 12~16px. 깔끔하고 고급스러운 기업용 느낌.',
+   license:'Figma 유료 키트 (디자인 컨벤션은 자유, 에셋은 라이선스 필요)',fitLevel:'mid',
+   fit:'무난 — 고급스럽지만 다소 무난. 차별점은 약함'},
+  {num:'06',short:'Neo-Brutalism',name:'Neo-Brutalism',
+   feature:'두꺼운 검정 보더(3px)·딱딱한 오프셋 그림자(no blur)·쨍한 원색 블록·radius 0~8px. 개성 폭발, 한눈에 각인되는 화면.',
+   license:'스타일 컨벤션 (자유, 무료)',fitLevel:'mid',
+   fit:'주목도 1위 / 신뢰감은 다소 손해 — 캠페인용엔 강력'}
+];
 </script>
 <!-- STYLE_DATA_START -->
+<!-- 각 미리보기 HTML 은 JS 문자열이 아니라 template 요소 안에 verbatim 으로 들어있다.
+     template 내용은 inert(파싱만, 실행 안 함)이라 그 안의 스크립트 태그 짝이
+     맞으면 바깥 문서를 깨지 않는다. 탭 클릭 시 innerHTML 을 iframe.srcdoc 으로 주입. -->
 
 <!-- ========== #01 Material 3 Expressive ========== -->
-<script>
-reg({
-num:'01',
-short:'Material 3 Expressive',
-name:'Material 3 Expressive',
-feature:'구글의 차세대 머티리얼. 큰 둥근 모서리·생동감 있는 컬러 토큰·tonal 표면·통통 튀는 모션. 칩/FAB/큰 라운드 버튼이 핵심.',
-license:'Apache 2.0 (구글 공식, 무료·상업 가능)',
-fitLevel:'good',
-fit:'적합 — 친근·활기. 보라/분홍 그라데이션과 잘 맞음',
-html:`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<template data-style="01">
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
 <style>
@@ -171,21 +192,12 @@ el.querySelector('.share').onclick=function(){this.textContent='✅ 링크 복�
 }
 draw();wrap.appendChild(el);
 });
-</script></body></html>`
-});
-</script>
+</script></body></html>
+</template>
 
 <!-- ========== #02 Apple Liquid Glass ========== -->
-<script>
-reg({
-num:'02',
-short:'Apple Liquid Glass',
-name:'Apple Liquid Glass',
-feature:'iOS/visionOS의 반투명 유리 질감. backdrop-blur + 내부 하이라이트 + 컬러풀 배경광. 떠 있는 알약형 헤더·둥근 카드.',
-license:'디자인 언어(무료 재현). Apple 상표·에셋은 사용 불가',
-fitLevel:'best',
-fit:'최적 (CEO 픽) — 보라/분홍 배경광과 환상 궁합',
-html:`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<template data-style="02">
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
 <style>
@@ -271,21 +283,12 @@ el.querySelector('.share').onclick=function(){this.textContent='✅ 링크 복�
 }
 draw();wrap.appendChild(el);
 });
-</script></body></html>`
-});
-</script>
+</script></body></html>
+</template>
 
 <!-- ========== #03 Vercel Geist ========== -->
-<script>
-reg({
-num:'03',
-short:'Vercel Geist',
-name:'Vercel Geist',
-feature:'극도로 미니멀·하이콘트라스트. 흰 배경·검정 텍스트·얇은 회색 보더·작은 radius(8px). 군더더기 0, 정보 밀도 높음.',
-license:'Geist 폰트는 OFL/MIT(무료). 디자인 컨벤션 자유 재현',
-fitLevel:'good',
-fit:'적합 — 신뢰감·전문성. 단, 그라데이션은 포인트로만',
-html:`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<template data-style="03">
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
 <style>
@@ -368,21 +371,12 @@ el.querySelector('.share').onclick=function(){this.textContent='✅ 링크 복�
 }
 draw();wrap.appendChild(el);
 });
-</script></body></html>`
-});
-</script>
+</script></body></html>
+</template>
 
 <!-- ========== #04 shadcn/ui ========== -->
-<script>
-reg({
-num:'04',
-short:'shadcn/ui',
-name:'shadcn/ui',
-feature:'개발자 사이 표준. 차분한 중성 회색(zinc)·subtle 보더·radius 8~12px·은은한 그림자. 컴포넌트 일관성이 최대 강점.',
-license:'MIT (복붙해서 소유, 완전 무료)',
-fitLevel:'good',
-fit:'적합 — 구현 속도 1위. 브랜드색은 accent로 주입',
-html:`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<template data-style="04">
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
 <style>
@@ -468,21 +462,12 @@ el.querySelector('.share').onclick=function(){this.textContent='✅ 링크 복�
 }
 draw();wrap.appendChild(el);
 });
-</script></body></html>`
-});
-</script>
+</script></body></html>
+</template>
 
 <!-- ========== #05 Untitled UI ========== -->
-<script>
-reg({
-num:'05',
-short:'Untitled UI',
-name:'Untitled UI',
-feature:'프리미엄 SaaS 룩. 부드러운 회색조·정교한 그림자 단계·여유로운 여백·둥근 12~16px. 깔끔하고 고급스러운 기업용 느낌.',
-license:'Figma 유료 키트 (디자인 컨벤션은 자유, 에셋은 라이선스 필요)',
-fitLevel:'mid',
-fit:'무난 — 고급스럽지만 다소 무난. 차별점은 약함',
-html:`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<template data-style="05">
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
 <style>
@@ -567,21 +552,12 @@ el.querySelector('.share').onclick=function(){this.textContent='✅ 링크 복�
 }
 draw();wrap.appendChild(el);
 });
-</script></body></html>`
-});
-</script>
+</script></body></html>
+</template>
 
 <!-- ========== #06 Neo-Brutalism ========== -->
-<script>
-reg({
-num:'06',
-short:'Neo-Brutalism',
-name:'Neo-Brutalism',
-feature:'두꺼운 검정 보더(3px)·딱딱한 오프셋 그림자(no blur)·쨍한 원색 블록·radius 0~8px. 개성 폭발, 한눈에 각인되는 화면.',
-license:'스타일 컨벤션 (자유, 무료)',
-fitLevel:'mid',
-fit:'주목도 1위 / 신뢰감은 다소 손해 — 캠페인용엔 강력',
-html:`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<template data-style="06">
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Agbalumo&display=swap" rel="stylesheet">
 <style>
@@ -666,9 +642,8 @@ el.querySelector('.share').onclick=function(){this.textContent='✅ 링크 복�
 }
 draw();wrap.appendChild(el);
 });
-</script></body></html>`
-});
-</script>
+</script></body></html>
+</template>
 
 <!-- STYLE_DATA_END -->
 
@@ -688,9 +663,10 @@ draw();wrap.appendChild(el);
         '<div class="blk"><div class="lbl">라이선스</div><div class="val">'+s.license+'</div></div>'+
         '<div class="blk"><div class="lbl">Crowny 적합도</div><div class="val"><span class="fit '+fitClass(s.fitLevel)+'">'+s.fit+'</span></div></div>'+
       '</div>';
+    const tpl = document.querySelector('template[data-style="'+s.num+'"]');
     const ifr = document.createElement('iframe');
     ifr.setAttribute('title', s.name+' 미리보기');
-    ifr.srcdoc = s.html;
+    ifr.srcdoc = tpl ? tpl.innerHTML : '<p style="color:#fff;padding:24px">미리보기 #'+s.num+' 누락</p>';
     frameWrap.innerHTML='';
     frameWrap.appendChild(ifr);
   }
