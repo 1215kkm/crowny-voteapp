@@ -2850,3 +2850,161 @@ html[data-theme="dark"] .theme-toggle { background: var(--color-surface); border
   }
 }
 
+/* =========================================================
+   CEO 미리보기 1:1 오버라이드 (라이트 #05 / 다크 #02)
+   - 라이트 중앙정렬 히어로 + 작성폼 모달화
+   - 가산 전용: 위 규칙을 지우지 않고 cascade 마지막에서 덮는다.
+   - 토큰만 사용. 신규 HEX 없음. JS 참조 요소(#hero/#equalizer/.hero-neural/.eq-bar/#typing-app)는
+     DOM 보존 + 여기서 시각만 재정의·은은화.
+   ========================================================= */
+
+/* ---- 라이트 히어로: 네이비 → 밝은 중앙정렬 ---- */
+#hero {
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: 72px 24px 36px;
+}
+/* 네이비 시절 글로우/파티클/뉴럴 SVG는 라이트에선 끈다 (요소는 DOM 유지) */
+#hero::before,
+#hero::after { display: none; }
+.hero-neural { display: none; }
+#hero.typing { animation: none; }
+#hero.pulse { animation: none; }
+
+.hero-inner { max-width: 760px; }
+
+.hero-badge {
+  background: var(--color-brand-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent-start);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  backdrop-filter: none;
+}
+
+.hero-title {
+  font-size: 3rem;
+  line-height: 1.12;
+  margin-bottom: 16px;
+  color: var(--color-text);
+}
+/* #typing-app(타이핑 애니메이션)·강조어 둘 다 그라데이션으로 통일 */
+.hero-title .typing-text,
+.hero-accent {
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: var(--color-text-light);
+  margin: 0 auto 26px;
+  max-width: 580px;
+}
+
+/* CTA 2개: 주(그라데이션) + 보조(고스트) */
+.hero-cta-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.btn-hero-primary {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(138,56,245,0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-hero-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(138,56,245,0.32); }
+.btn-hero-primary:active { transform: translateY(0); }
+.btn-hero-secondary {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  padding: 14px 26px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+.btn-hero-secondary:hover { background: var(--color-brand-bg); border-color: var(--color-accent-start); color: var(--color-accent-start); }
+
+/* 대기자 카운터: 라이트 카드형 (텍스트는 그대로, #total-waitlist-count 보존) */
+.hero-counter {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  padding: 12px 24px;
+  box-shadow: var(--shadow-sm);
+}
+.hero-counter strong { color: var(--color-accent-start); }
+
+/* ---- 콘텐츠: 사이드바 사라짐 → 풀폭 단일 컬럼 + 3열 카드 그리드 ---- */
+#content {
+  margin: 8px auto 0;          /* 네이비 시절의 -50px 당김 제거 */
+  grid-template-columns: 1fr;  /* 380px 사이드바 컬럼 제거 */
+  gap: 0;
+}
+.column-left { max-width: 1100px; margin: 0 auto; width: 100%; }
+/* 사이드바가 혹시 DOM에 남아도 안 보이게 (현재 HTML엔 없음 — 안전망) */
+.column-right { display: none; }
+
+/* 섹션 헤더: 흰 글씨 → 본문색 (라이트 배경에서 읽히게) */
+.section-header h2 { color: var(--color-text); }
+
+/* ---- 작성폼 모달 ---- */
+.modal-window.idea-form-window { max-width: 560px; }
+.idea-form-window .form-title { font-size: 1.25rem; font-weight: 800; }
+/* 모달 안의 이퀄라이저는 DOM 유지하되 시각적으로 숨김 (app.js가 querySelector함 → 삭제 금지) */
+.idea-form-window #equalizer { display: none; }
+.idea-form-window .sticky-form { position: static; }
+body.modal-open { overflow: hidden; }
+
+/* ---- 다크(#02) 히어로 파리티 ---- */
+html[data-theme="dark"] #hero {
+  background: transparent;        /* 페이지 보라 글로우가 비치게 */
+  color: var(--color-text);
+}
+html[data-theme="dark"] .hero-badge {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+}
+html[data-theme="dark"] .hero-title { color: var(--color-text); }
+html[data-theme="dark"] .hero-subtitle { color: var(--color-text-secondary); }
+html[data-theme="dark"] .hero-counter {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-secondary);
+}
+html[data-theme="dark"] .btn-hero-secondary {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+}
+html[data-theme="dark"] .btn-hero-secondary:hover { background: rgba(255,255,255,0.14); }
+html[data-theme="dark"] .section-header h2 { color: var(--color-text); }
+
+/* ---- 반응형: 라이트 히어로 ---- */
+@media (max-width: 768px) {
+  #hero { padding: 48px 20px 28px; }
+  .hero-title { font-size: 2rem; }
+  .hero-subtitle { font-size: 1rem; }
+  .hero-cta-row { flex-direction: column; }
+  .btn-hero-primary, .btn-hero-secondary { width: 100%; justify-content: center; }
+  #content { grid-template-columns: 1fr; margin: 8px auto 0; }
+  .section-header { flex-direction: row; align-items: center; }
+}
