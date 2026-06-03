@@ -30,12 +30,40 @@ onAuthChange((user) => {
   }
 });
 
-tabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    tabs.forEach((t) => t.classList.remove("active"));
-    tab.classList.add("active");
-    currentTab = tab.dataset.tab;
-    renderList();
+// 접근성: 탭 버튼에 role/aria/roving tabindex + 좌우 화살표 키보드 이동
+if (boardList) {
+  boardList.setAttribute("role", "tabpanel");
+  boardList.setAttribute("aria-live", "polite");
+}
+
+function activateTab(tab) {
+  tabs.forEach((t) => {
+    const isActive = t === tab;
+    t.classList.toggle("active", isActive);
+    t.setAttribute("aria-selected", isActive ? "true" : "false");
+    t.setAttribute("tabindex", isActive ? "0" : "-1");
+  });
+  currentTab = tab.dataset.tab;
+  renderList();
+}
+
+tabs.forEach((tab, idx) => {
+  const isActive = tab.classList.contains("active");
+  tab.setAttribute("role", "tab");
+  tab.setAttribute("aria-selected", isActive ? "true" : "false");
+  tab.setAttribute("tabindex", isActive ? "0" : "-1");
+  tab.addEventListener("click", () => activateTab(tab));
+  tab.addEventListener("keydown", (e) => {
+    let next = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = tabs[idx + 1] || tabs[0];
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = tabs[idx - 1] || tabs[tabs.length - 1];
+    else if (e.key === "Home") next = tabs[0];
+    else if (e.key === "End") next = tabs[tabs.length - 1];
+    if (next) {
+      e.preventDefault();
+      next.focus();
+      activateTab(next);
+    }
   });
 });
 
