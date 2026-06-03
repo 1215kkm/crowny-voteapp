@@ -2652,27 +2652,33 @@ input, textarea {
    라이트 규칙은 손대지 않고, 토큰 재정의 + 유리 전용 추가 규칙만.
    ========================================================= */
 html[data-theme="dark"] {
-  --color-bg: #0b0d12;
-  --color-surface: rgba(255,255,255,0.07);
-  --color-subtle: rgba(255,255,255,0.04);
-  --color-text: #f4f5f7;
-  --color-text-secondary: #b8bfca;
-  --color-text-light: #8b93a1;
-  --color-border: rgba(255,255,255,0.12);
-  --glass-border: rgba(255,255,255,0.20);
+  /* 강디 미리보기 #02 Apple Liquid Glass 값 그대로 */
+  --color-bg: #0b0a14;
+  --color-surface: rgba(255,255,255,0.08);
+  --color-subtle: rgba(255,255,255,0.05);
+  --color-text: #f5f3fa;
+  --color-text-secondary: #b6b2c7;
+  --color-text-light: #8b8698;
+  --color-border: rgba(255,255,255,0.14);
+  --glass-border: rgba(255,255,255,0.18);
+  /* 시그니처 보라→분홍 (라이트의 인디고 대신 다크 전용) */
+  --color-accent-start: #8a38f5;
+  --color-accent-end: #d53a6b;
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.35);
   --shadow-md: 0 8px 24px rgba(0,0,0,0.40);
   --shadow-lg: 0 16px 40px rgba(0,0,0,0.50);
 }
-html[data-theme="dark"] body { background: #0b0d12; color: var(--color-text); }
-/* 보라→분홍→시안 3겹 배경광 */
+html[data-theme="dark"] body { background: #0b0a14; color: var(--color-text); }
+/* 강디 #02 배경광: 보라→분홍→연보라 3겹 (미리보기와 동일 강도) */
 html[data-theme="dark"] body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(60% 50% at 18% 8%, rgba(138,56,245,0.30), transparent 70%),
-    radial-gradient(50% 50% at 85% 18%, rgba(213,58,107,0.26), transparent 70%),
-    radial-gradient(60% 60% at 60% 100%, rgba(56,189,248,0.16), transparent 70%);
+    radial-gradient(1100px 600px at 15% -10%, rgba(138,56,245,0.45), transparent 60%),
+    radial-gradient(900px 600px at 90% 10%, rgba(213,58,107,0.40), transparent 55%),
+    radial-gradient(700px 500px at 60% 90%, rgba(168,85,247,0.30), transparent 60%);
 }
+/* 히어로 네이비 블록 제거 → 페이지 보라 글로우가 비치게 (파티클·텍스트는 유지) */
+html[data-theme="dark"] #hero { background: transparent; }
 /* 떠 있는 유리 헤더 */
 html[data-theme="dark"] #site-header {
   background: rgba(18,16,26,0.55);
@@ -2690,7 +2696,7 @@ html[data-theme="dark"] .adm-table {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.37), inset 0 1px 0 rgba(255,255,255,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 /* 입력류 */
 html[data-theme="dark"] input,
