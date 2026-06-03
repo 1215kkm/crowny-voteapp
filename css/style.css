@@ -2,27 +2,29 @@
    CSS Custom Properties
    ======================================== */
 :root {
-  --color-bg: #f8fafc;
+  /* 라이트 = #05 Untitled UI (강디 미리보기 값 그대로) */
+  --color-bg: #fcfcfd;
   --color-surface: #ffffff;
-  --color-subtle: #f8fafc;
+  --color-subtle: #f9fafb;
+  --color-brand-bg: #f9f5ff;
   --color-hero-start: #0f172a;
   --color-hero-end: #1e293b;
-  --color-accent-start: #6366f1;
-  --color-accent-end: #8b5cf6;
-  --color-text: #1e293b;
-  --color-text-secondary: #64748b;
-  --color-text-light: #94a3b8;
-  --color-border: #e2e8f0;
+  --color-accent-start: #8a38f5;
+  --color-accent-end: #d53a6b;
+  --color-text: #101828;
+  --color-text-secondary: #475467;
+  --color-text-light: #667085;
+  --color-border: #eaecf0;
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
   --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-md: 14px;
   --radius-lg: 16px;
   --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-md: 0 4px 8px -2px rgba(16,24,40,0.08), 0 2px 4px -2px rgba(16,24,40,0.04);
+  --shadow-lg: 0 12px 24px -6px rgba(16,24,40,0.12), 0 4px 8px -2px rgba(16,24,40,0.05);
   --font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
   --transition: all 0.2s ease;
 }
@@ -784,7 +786,7 @@ input, textarea {
 .btn-join-waitlist:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+  box-shadow: 0 4px 12px rgba(138,56,245,0.3);
 }
 
 .btn-join-waitlist.joined {
@@ -890,7 +892,7 @@ input, textarea {
 .form-group input:focus,
 .form-group textarea:focus {
   border-color: var(--color-accent-start);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  box-shadow: 0 0 0 3px rgba(138,56,245,0.1);
   background: var(--color-surface);
 }
 
@@ -921,7 +923,7 @@ input, textarea {
 .btn-submit:hover {
   opacity: 0.9;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+  box-shadow: 0 4px 12px rgba(138,56,245,0.3);
 }
 
 .btn-submit:disabled {
@@ -982,7 +984,7 @@ input, textarea {
 
 .subscribe-input-group input:focus {
   border-color: var(--color-accent-start);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+  box-shadow: 0 0 0 3px rgba(138,56,245,0.1);
 }
 
 .btn-subscribe {
@@ -1217,7 +1219,7 @@ input, textarea {
   font-size: 0.85rem;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid #c7d2fe;
+  border: 1px solid #e9d7fe;
   margin-bottom: 14px;
   font-weight: 500;
 }
@@ -1315,7 +1317,7 @@ input, textarea {
 }
 .idea-card.sample-card {
   border-style: dashed;
-  border-color: #c7d2fe;
+  border-color: #e9d7fe;
 }
 .idea-card.sample-card .btn-join-waitlist {
   opacity: 0.65;
@@ -1347,7 +1349,7 @@ input, textarea {
   font-weight: 500;
   transition: var(--transition);
 }
-.primary-nav .nav-link:hover { background: rgba(99,102,241,0.08); color: var(--color-accent-start); }
+.primary-nav .nav-link:hover { background: rgba(138,56,245,0.08); color: var(--color-accent-start); }
 .primary-nav .nav-link.active { background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); color: #fff; }
 
 /* 글쓰기 - 진행 조건 안내 */
@@ -1425,7 +1427,7 @@ input, textarea {
   transition: var(--transition);
 }
 .idea-card:hover { border-color: var(--color-accent-start); box-shadow: var(--shadow-md); }
-.idea-card.sample-card { border-style: dashed; border-color: #c7d2fe; }
+.idea-card.sample-card { border-style: dashed; border-color: #e9d7fe; }
 .card-row { display: flex; gap: 14px; align-items: flex-start; }
 .card-main { flex: 1; min-width: 0; }
 .card-thumbs { position: relative; flex-shrink: 0; }
@@ -1642,7 +1644,7 @@ input, textarea {
   display: flex; gap: 14px;
 }
 .board-card:hover { border-color: var(--color-accent-start); box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.board-card.sample-card { border-style: dashed; border-color: #c7d2fe; }
+.board-card.sample-card { border-style: dashed; border-color: #e9d7fe; }
 .board-card-main { flex: 1; min-width: 0; }
 .board-card-line { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .board-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
@@ -1890,7 +1892,7 @@ input, textarea {
 
 .expanded-threshold {
   background: linear-gradient(135deg, #f0f9ff, #ede9fe);
-  border: 1px solid #c7d2fe;
+  border: 1px solid #e9d7fe;
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 0.85rem;
@@ -2136,7 +2138,7 @@ input, textarea {
 .ai-status-banner.warn { background: #fef3c7; color: #92400e; }
 .ai-key-btn {
   margin-left: 8px; padding: 3px 10px; border-radius: var(--radius-sm);
-  background: var(--color-accent-start, #6366f1); color: #fff;
+  background: var(--color-accent-start); color: #fff;
   font-size: 0.8rem; font-weight: 600; cursor: pointer;
 }
 .ai-key-btn:hover { opacity: 0.9; }
@@ -2652,27 +2654,33 @@ input, textarea {
    라이트 규칙은 손대지 않고, 토큰 재정의 + 유리 전용 추가 규칙만.
    ========================================================= */
 html[data-theme="dark"] {
-  --color-bg: #0b0d12;
-  --color-surface: rgba(255,255,255,0.07);
-  --color-subtle: rgba(255,255,255,0.04);
-  --color-text: #f4f5f7;
-  --color-text-secondary: #b8bfca;
-  --color-text-light: #8b93a1;
-  --color-border: rgba(255,255,255,0.12);
-  --glass-border: rgba(255,255,255,0.20);
+  /* 강디 미리보기 #02 Apple Liquid Glass 값 그대로 */
+  --color-bg: #0b0a14;
+  --color-surface: rgba(255,255,255,0.08);
+  --color-subtle: rgba(255,255,255,0.05);
+  --color-text: #f5f3fa;
+  --color-text-secondary: #b6b2c7;
+  --color-text-light: #8b8698;
+  --color-border: rgba(255,255,255,0.14);
+  --glass-border: rgba(255,255,255,0.18);
+  /* 시그니처 보라→분홍 (라이트의 인디고 대신 다크 전용) */
+  --color-accent-start: #8a38f5;
+  --color-accent-end: #d53a6b;
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.35);
   --shadow-md: 0 8px 24px rgba(0,0,0,0.40);
   --shadow-lg: 0 16px 40px rgba(0,0,0,0.50);
 }
-html[data-theme="dark"] body { background: #0b0d12; color: var(--color-text); }
-/* 보라→분홍→시안 3겹 배경광 */
+html[data-theme="dark"] body { background: #0b0a14; color: var(--color-text); }
+/* 강디 #02 배경광: 보라→분홍→연보라 3겹 (미리보기와 동일 강도) */
 html[data-theme="dark"] body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(60% 50% at 18% 8%, rgba(138,56,245,0.30), transparent 70%),
-    radial-gradient(50% 50% at 85% 18%, rgba(213,58,107,0.26), transparent 70%),
-    radial-gradient(60% 60% at 60% 100%, rgba(56,189,248,0.16), transparent 70%);
+    radial-gradient(1100px 600px at 15% -10%, rgba(138,56,245,0.45), transparent 60%),
+    radial-gradient(900px 600px at 90% 10%, rgba(213,58,107,0.40), transparent 55%),
+    radial-gradient(700px 500px at 60% 90%, rgba(168,85,247,0.30), transparent 60%);
 }
+/* 히어로 네이비 블록 제거 → 페이지 보라 글로우가 비치게 (파티클·텍스트는 유지) */
+html[data-theme="dark"] #hero { background: transparent; }
 /* 떠 있는 유리 헤더 */
 html[data-theme="dark"] #site-header {
   background: rgba(18,16,26,0.55);
@@ -2690,7 +2698,7 @@ html[data-theme="dark"] .adm-table {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.37), inset 0 1px 0 rgba(255,255,255,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 /* 입력류 */
 html[data-theme="dark"] input,
