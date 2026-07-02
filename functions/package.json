@@ -1,0 +1,12 @@
+{
+  "name": "functions",
+  "description": "강팀 AI 회의 백엔드 (Cloud Functions)",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "private": true,
+  "dependencies": {
+    "firebase-functions": "^6.0.1"
+  }
+}

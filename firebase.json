@@ -3,6 +3,9 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -11,7 +14,11 @@
       "firestore.indexes.json",
       "**/.*",
       "**/node_modules/**",
+      "functions/**",
       "seed.html"
+    ],
+    "rewrites": [
+      { "source": "/api/meeting", "function": "runMeeting" }
     ]
   }
 }
