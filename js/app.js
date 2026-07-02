@@ -30,7 +30,6 @@ import {
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { escapeHtml } from "./utils.js";
-import { SAMPLE_IDEAS, SAMPLE_TOTAL } from "./sample-data.js";
 import { trackEvent } from "./analytics.js";
 import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
 
@@ -107,7 +106,7 @@ if (!firebaseAvailable) {
   onAuthChange(handleAuthState);
   try {
     subscribeToTotalWaitlistCount((count) => {
-      totalWaitlistCount.textContent = (count + SAMPLE_TOTAL).toLocaleString();
+      totalWaitlistCount.textContent = count.toLocaleString();
     });
   } catch (e) { /* ignore */ }
   startIdeasSubscription();
@@ -302,9 +301,7 @@ async function handleAuthState(user) {
       const action = pendingAction;
       pendingAction = null;
       try {
-        if (String(action.ideaId).startsWith("sample_")) {
-          // 샘플글은 실제 등록 대상 아님 — 조용히 무시
-        } else if (action.kind === "waitlist") {
+        if (action.kind === "waitlist") {
           const result = await toggleWaitlist(action.ideaId, user, action.tier);
           if (result.joined) userWaitlistMap[action.ideaId] = result.tier;
           showToast("이 한 표, 저장됐어요!", "success");
@@ -382,9 +379,7 @@ async function updateUserStatusMaps() {
 
 // ---- 합치기 ----
 function getMergedIdeas() {
-  const samples = SAMPLE_IDEAS.map((s) => ({ ...s, isSample: true }));
-  const reals = currentRealIdeas.map((r) => ({ ...r, isSample: false }));
-  const merged = [...reals, ...samples];
+  const merged = currentRealIdeas.map((r) => ({ ...r }));
   if (currentSort === "waitlistCount") {
     merged.sort((a, b) => (b.waitlistCount || 0) - (a.waitlistCount || 0));
   } else {
@@ -435,9 +430,8 @@ function statusLabel(status) {
 
 function createIdeaCard(idea) {
   const card = document.createElement("article");
-  card.className = "idea-card" + (idea.isSample ? " sample-card" : "");
+  card.className = "idea-card";
   card.dataset.id = idea.id;
-  card.dataset.sample = idea.isSample ? "1" : "0";
 
   const isHot = (idea.waitlistCount || 0) >= 10;
   const paid = idea.paidWaitlistCount || 0;
@@ -463,7 +457,6 @@ function createIdeaCard(idea) {
       <div class="card-main">
         <div class="card-line-top">
           <span class="status-badge ${status.cls}">${status.txt}</span>
-          ${idea.isSample ? '<span class="badge-sample">예시</span>' : ''}
           ${isHot ? '<span class="badge-popular">HOT</span>' : ''}
           ${meetsThreshold ? '<span class="badge-threshold">설계 진입 ✓</span>' : ''}
           <span class="expand-icon" aria-hidden="true">▾</span>
@@ -504,7 +497,7 @@ function createIdeaCard(idea) {
         ${allImages ? `<div class="expanded-images">${allImages}</div>` : ''}
         ${renderProgressBlock(paid, free, meetsThreshold)}
 
-        ${(!idea.isSample && getCurrentUser()?.uid === idea.authorUid) ? `
+        ${(getCurrentUser()?.uid === idea.authorUid) ? `
           <div class="owner-actions">
             <button class="btn-mini btn-text" data-action="owner-edit" data-idea-id="${idea.id}">✏️ 수정</button>
             <button class="btn-mini btn-text-danger" data-action="owner-delete" data-idea-id="${idea.id}">🗑️ 삭제</button>
@@ -521,14 +514,12 @@ function createIdeaCard(idea) {
 
         <section class="inline-comments">
           <h4 class="inline-comments-title">댓글 <span class="inline-comments-count">${idea.commentCount || 0}</span></h4>
-          ${idea.isSample ? '<p class="comment-sample-note">예시 글에는 댓글을 남길 수 없어요.</p>' : `
-            <div class="inline-comment-form">
-              <textarea class="inline-comment-input" rows="2" maxlength="1000" placeholder="댓글을 남겨주세요"></textarea>
-              <button class="btn-mini btn-comment-submit" data-action="comment-submit" data-idea-id="${idea.id}">댓글 등록</button>
-            </div>
-          `}
+          <div class="inline-comment-form">
+            <textarea class="inline-comment-input" rows="2" maxlength="1000" placeholder="댓글을 남겨주세요"></textarea>
+            <button class="btn-mini btn-comment-submit" data-action="comment-submit" data-idea-id="${idea.id}">댓글 등록</button>
+          </div>
           <div class="inline-comments-list">
-            ${idea.isSample ? '<p class="empty-comment">예시 글입니다.</p>' : '<p class="empty-comment">댓글을 불러옵니다...</p>'}
+            <p class="empty-comment">댓글을 불러옵니다...</p>
           </div>
         </section>
       </div>
@@ -635,10 +626,8 @@ function toggleAccordion(card) {
   if (!wasExpanded) {
     card.classList.add("expanded");
     expandedCardId = ideaId;
-    // 댓글 구독 (실제 글만)
-    if (card.dataset.sample !== "1") {
-      subscribeCommentsForCard(ideaId, card);
-    }
+    // 댓글 구독
+    subscribeCommentsForCard(ideaId, card);
   } else {
     expandedCardId = null;
     if (commentUnsubMap[ideaId]) {
@@ -746,10 +735,6 @@ async function onCommentSubmit(btn, ideaId, parentId) {
     setTimeout(() => window.appAuth.loginWithGoogle(), 800);
     return;
   }
-  if (String(ideaId).startsWith("sample_")) {
-    showToast("예시 글에는 댓글을 남길 수 없어요.", "info");
-    return;
-  }
   const card = btn.closest(".idea-card");
   let text = "";
   let textarea;
@@ -814,10 +799,6 @@ function optimisticPulse(btn) {
 }
 
 async function onWaitlistClick(btn, ideaId, tier) {
-  if (String(ideaId).startsWith("sample_")) {
-    showToast("이 아이디어는 예시입니다. 실제 글에서만 등록할 수 있어요.", "info");
-    return;
-  }
   const user = getCurrentUser();
   if (!user) {
     // 행동 먼저, 로그인 나중: 누른 맛을 즉시 주고 의도를 저장한 뒤 로그인으로
@@ -852,10 +833,6 @@ async function onWaitlistClick(btn, ideaId, tier) {
 }
 
 async function onLikeClick(btn, ideaId) {
-  if (String(ideaId).startsWith("sample_")) {
-    showToast("이 아이디어는 예시입니다.", "info");
-    return;
-  }
   const user = getCurrentUser();
   if (!user) {
     // 행동 먼저, 로그인 나중: 하트가 채워지는 맛을 먼저, 로그인은 뒤로
@@ -881,10 +858,6 @@ async function onLikeClick(btn, ideaId) {
 }
 
 async function onShareClick(ideaId, btn) {
-  if (String(ideaId).startsWith("sample_")) {
-    showToast("예시 글은 공유 주소가 없습니다.", "info");
-    return;
-  }
   const title = btn?.closest(".idea-card")?.querySelector(".idea-title")?.textContent?.trim();
   await shareIdea(ideaId, title);
 }

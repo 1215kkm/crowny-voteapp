@@ -4,7 +4,6 @@
 
 import { onAuthChange } from "./auth.js";
 import { subscribeToIdeas, meetsDesignThreshold } from "./firestore.js";
-import { SAMPLE_IDEAS } from "./sample-data.js";
 import { escapeHtml } from "./utils.js";
 
 const boardList = document.getElementById("board-list");
@@ -85,15 +84,10 @@ function startSubscription() {
 }
 
 function renderList() {
-  // 샘플 글 - 현재 탭에 맞는 status 만
-  const samples = SAMPLE_IDEAS
-    .filter((s) => (s.status || "waiting") === currentTab)
-    .map((s) => ({ ...s, isSample: true }));
-  // 실제 아이디어도 클라이언트에서 분류
-  const reals = currentRealIdeas
+  // 현재 탭에 맞는 status 만
+  const merged = currentRealIdeas
     .filter((r) => (r.status || "waiting") === currentTab)
-    .map((r) => ({ ...r, isSample: false }));
-  const merged = [...reals, ...samples];
+    .map((r) => ({ ...r }));
 
   // 인기순(대기자 수)로 정렬
   merged.sort((a, b) => (b.waitlistCount || 0) - (a.waitlistCount || 0));
@@ -111,10 +105,6 @@ function renderList() {
   boardList.querySelectorAll(".board-card").forEach((card) => {
     card.addEventListener("click", () => {
       const id = card.dataset.id;
-      if (String(id).startsWith("sample_")) {
-        showToast("이 아이디어는 예시입니다. 실제 글에서만 상세 페이지가 동작합니다.", "info");
-        return;
-      }
       window.location.href = `idea.html?id=${encodeURIComponent(id)}`;
     });
   });
@@ -128,10 +118,9 @@ function boardCardHtml(idea) {
     ? `<div class="board-card-thumb"><img src="${escapeHtml(idea.imageDataList[0])}" alt=""></div>`
     : "";
   return `
-    <article class="board-card${idea.isSample ? ' sample-card' : ''}" data-id="${idea.id}">
+    <article class="board-card" data-id="${idea.id}">
       <div class="board-card-main">
         <div class="board-card-line">
-          ${idea.isSample ? '<span class="badge-sample">예시</span>' : ''}
           ${meets ? '<span class="badge-threshold">설계 진입 ✓</span>' : ''}
         </div>
         <h3 class="board-card-title">${escapeHtml(idea.title)}</h3>

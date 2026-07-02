@@ -890,7 +890,6 @@ export async function listEmailsByIdea() {
   const result = [];
   for (const d of ideasSnap.docs) {
     const idea = { id: d.id, ...d.data() };
-    if (String(idea.id).startsWith("sample_")) continue;
     try {
       const wsnap = await _gd2(_c2(db, "ideas", idea.id, "waitlist"));
       const paid = [];
