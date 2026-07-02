@@ -126,6 +126,43 @@
       '<div class="tw-m-sum"><b>정리</b><ul><li>결정: 방향 확정 후 착수</li><li>다음 액션: 구현·홍보 투트랙</li></ul></div>';
   }
 
+  // ---- 회의 로딩 애니메이션 (멤버 칩이 차례로 발언하듯 점멸 + 진행 문구 순환) ----
+  var LOAD_MSGS = [
+    "강팀이 모여 안건을 읽는 중",
+    "강대표가 회의를 여는 중",
+    "강디가 사용자 흐름을 그려보는 중",
+    "강개발이 구현 가능성을 따져보는 중",
+    "강체크가 리스크를 점검하는 중",
+    "아뱅이 판을 뒤집을 아이디어를 꺼내는 중",
+    "회의록을 정리하는 중"
+  ];
+  var loadTimer = null;
+
+  function showLoading(afterRemain) {
+    resultEl.innerHTML =
+      '<div class="tw-notice">체험 <b>3회</b> 중 <b>' + afterRemain + '회</b> 남았습니다. ' +
+        '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. 퍼가기 적립은 하루 최대 <b>3번</b>까지예요.</div>' +
+      '<div class="tw-loading">' +
+        '<div class="tw-load-chips">' +
+          '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
+          '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
+          '<span class="tw-chip abang">아뱅</span>' +
+        '</div>' +
+        '<div class="tw-load-text"><span id="tw-load-msg">' + LOAD_MSGS[0] + '</span><span class="tw-load-dots"></span></div>' +
+      '</div>';
+    resultEl.classList.remove("hidden");
+    var i = 0;
+    var msgEl = resultEl.querySelector("#tw-load-msg");
+    loadTimer = setInterval(function () {
+      i = (i + 1) % LOAD_MSGS.length;
+      if (msgEl) msgEl.textContent = LOAD_MSGS[i];
+    }, 2200);
+    resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function stopLoading() {
+    if (loadTimer) { clearInterval(loadTimer); loadTimer = null; }
+  }
+
   // ---- 실행 ----
   var running = false;
   runBtn.addEventListener("click", async function () {
@@ -138,6 +175,7 @@
     var orig = runBtn.textContent;
     runBtn.disabled = true;
     runBtn.textContent = "강팀 회의 중…";
+    showLoading(remaining() - 1);
 
     try {
       var html = null, isDemo = false;
@@ -157,18 +195,19 @@
       consumeOne();
       renderResult(html, prompt, isDemo);
     } finally {
+      stopLoading();
       running = false;
       runBtn.textContent = remaining() > 0 ? orig : "무료 소진 — 아래 '더 받기'";
       runBtn.disabled = remaining() <= 0;
     }
   });
 
-  // ---- 더 받기 (3 → 가입 +5 → 추천 +10) ----
+  // ---- 더 받기 (체험 3회 → 가입·로그인 후 SNS 퍼가기 1회당 +3회, 하루 최대 3번) ----
   function showMore() {
     var loggedIn = !!(window.appAuth && window.appAuth.getCurrentUser && window.appAuth.getCurrentUser());
     var msg = loggedIn
-      ? "무료 횟수를 다 썼어요.\n\n내 추천 링크를 공유하고 친구가 쓰면 10회 더 드려요:\n" + myRefLink()
-      : "무료 3회를 다 썼어요.\n\n· 가입하면 5회 더\n· 내 링크로 친구가 쓰면 10회 더\n\n지금 가입할까요?";
+      ? "무료 횟수를 다 썼어요.\n\nSNS로 퍼가실 때마다 3회씩 더 드려요 (하루 최대 3번):\n" + myRefLink()
+      : "체험 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 퍼가실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번)\n\n지금 가입할까요?";
     if (loggedIn) {
       shareOther("Appter 강팀 무료 회의");
     } else {
