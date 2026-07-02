@@ -8,6 +8,8 @@
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
   var FREE_ANON = 3;               // 익명 무료 횟수 (캐시 저장)
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
+  var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
+  var LS_FOLLOW = "appter_followed_kkm"; // 스친추가 적립 1회 플래그
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
 
   var rotor = document.getElementById("flip-rotor");
@@ -34,16 +36,24 @@
 
   // ---- 무료 횟수 ----
   function used() { return parseInt(localStorage.getItem(LS_COUNT) || "0", 10) || 0; }
-  function remaining() { return Math.max(0, FREE_ANON - used()); }
+  function bonus() { return parseInt(localStorage.getItem(LS_BONUS) || "0", 10) || 0; }
+  function remaining() { return Math.max(0, FREE_ANON + bonus() - used()); }
   function renderQuota() {
     if (remainEl) remainEl.textContent = remaining();
     if (remaining() <= 0) {
       runBtn.disabled = true;
       runBtn.textContent = "무료 소진 — 아래 '더 받기'";
+    } else if (!running && runBtn.textContent.indexOf("무료 소진") === 0) {
+      runBtn.disabled = false;
+      runBtn.textContent = "→ 강팀 회의시작해";
     }
   }
   function consumeOne() {
     localStorage.setItem(LS_COUNT, String(used() + 1));
+    renderQuota();
+  }
+  function addBonus(n) {
+    localStorage.setItem(LS_BONUS, String(bonus() + n));
     renderQuota();
   }
 
@@ -119,13 +129,21 @@
     window.open(url, "_blank", "noopener");
   }
 
+  function isMobileDevice() {
+    var ua = navigator.userAgent || "";
+    if (/Mobi|Android|iPhone|iPod|Windows Phone/i.test(ua)) return true;
+    if (/iPad/i.test(ua)) return true;
+    if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true; // iPadOS 13+
+    return false;
+  }
+
   // 회의 화면 이미지를 자동 첨부해서 공유.
-  // 모바일 공유시트(navigator.share)는 이미지 파일 첨부 지원 → 자동 첨부.
-  // 스레드 intent 등 텍스트만 되는 곳은 이미지를 자동 저장해 주고 첨부를 안내.
+  // 모바일: 공유시트(navigator.share)에 이미지 파일 자동 첨부 → 스레드/인스타 앱 선택.
+  // PC: 윈도우 공유창엔 스레드가 없으므로 이미지 자동 저장 + 스레드 글쓰기 창(문구 채워짐)을 연다.
   function shareMeeting(title, mode) {
     var caption = shareCaption(title);
     return captureMeetingBlob().then(function (blob) {
-      if (blob && navigator.canShare) {
+      if (isMobileDevice() && blob && navigator.canShare) {
         var file = new File([blob], "강팀회의록.png", { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           return navigator.share({ files: [file], text: caption }).catch(function (e) {
@@ -171,6 +189,7 @@
   function renderResult(html, title, isDemo) {
     resultEl.innerHTML =
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
+      (remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
       '<div class="tw-result-body">' + metaHtml() + html + "</div>" +
       '<div class="tw-share">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
@@ -208,10 +227,18 @@
   ];
   var loadTimer = null;
 
+  function quotaNoticeHtml(remain) {
+    if (remain <= 1) {
+      return '<div class="tw-notice tw-warn">이제 <b>' + Math.max(0, remain) + '회</b> 남았습니다. ' +
+        'SNS에 퍼가지 않으시면 <b>0회</b>가 되어 더 사용하실 수 없어요. 퍼가실 때마다 <b>3회씩</b> 늘어나요! (하루 최대 3번)</div>';
+    }
+    return '<div class="tw-notice">체험 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
+      '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. 퍼가기 적립은 하루 최대 <b>3번</b>까지예요.</div>';
+  }
+
   function showLoading(afterRemain) {
     resultEl.innerHTML =
-      '<div class="tw-notice">체험 <b>3회</b> 중 <b>' + afterRemain + '회</b> 남았습니다. ' +
-        '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. 퍼가기 적립은 하루 최대 <b>3번</b>까지예요.</div>' +
+      quotaNoticeHtml(afterRemain) +
       '<div class="tw-loading">' +
         '<div class="tw-load-chips">' +
           '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
@@ -285,6 +312,15 @@
     }
   }
   if (moreBtn) moreBtn.addEventListener("click", showMore);
+
+  // ---- 스친추가 적립: 버튼 눌러 스레드 프로필 열면 1회에 한해 +3회 ----
+  var followBtn = document.querySelector(".tw-follow");
+  if (followBtn) followBtn.addEventListener("click", function () {
+    if (localStorage.getItem(LS_FOLLOW)) return;
+    localStorage.setItem(LS_FOLLOW, "1");
+    addBonus(3);
+    setTimeout(function () { alert("스친추가 고마워요! 회의 3회가 추가됐어요."); }, 400);
+  });
 
   renderQuota();
 })();
