@@ -48,7 +48,7 @@
   .tw-help:hover .tw-tip, .tw-help:focus .tw-tip { opacity: 1; visibility: visible; }
   .tw-title { font-size: 20px; font-weight: 800; color: var(--color-text); margin-top: 4px; }
   .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; }
-  .tw-input { width: 100%; resize: vertical; min-height: 150px; font-family: inherit;
+  .tw-input { width: 100%; resize: vertical; min-height: 230px; font-family: inherit;
     font-size: 16px; line-height: 1.6; color: var(--color-text); background: var(--color-subtle);
     border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; }
   .tw-input:focus { outline: none; border-color: var(--color-accent-start); }
@@ -414,8 +414,8 @@
       <p class="tw-sub">앱 아이디어를 던지면 강팀 5명이 회의해서 결과를 만들어줘요.</p>
     </div>
 
-    <textarea id="team-input" class="tw-input" rows="7" maxlength="1500"
-      placeholder="예시입력: 강사와 학생앱을 crownyclass.com 에 다 만들었어 수업에 필요한 기능은 다 넣었고 무료로 배포하려고 해 파악해서 구현에 대해서와 홍보마케팅에 대해서 회의해봐"></textarea>
+    <textarea id="team-input" class="tw-input" rows="10" maxlength="1500"
+      placeholder="예시입력1: 강사와 학생이 수업때 파일전송과 원격케어를 쉽게 할 수 있는 앱을 Crownyclass.com에 만들어놨어 더 쓸수밖에 없도록 하는 추가 아이디어와 홍보 아이디어를 알려줘&#10;&#10;예시입력2: 밑에서 위로 점프해서 올라가는 흔한 게임을 만들었어 귀여운 스타일이야 어떻게 하면 더 재미있게 할 수 있을지 추가 아이디어와 홍보 아이디어를 알려줘"></textarea>
 
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
     <div class="tw-quota">무료 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
