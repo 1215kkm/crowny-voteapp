@@ -1211,7 +1211,7 @@ input, textarea {
 }
 
 /* ========================================
-   추가: 일일 제한 안내 / 이미지 업로드 / 샘플 배지
+   추가: 일일 제한 안내 / 이미지 업로드
    ======================================== */
 .daily-limit-info {
   background: linear-gradient(135deg, #eef2ff, #f3e8ff);
@@ -1300,27 +1300,6 @@ input, textarea {
   width: 100%;
   height: auto;
   display: block;
-}
-
-/* 샘플(예시) 배지 */
-.badge-sample {
-  display: inline-block;
-  padding: 2px 8px;
-  background: #e0e7ff;
-  color: #4338ca;
-  font-size: 0.7rem;
-  font-weight: 700;
-  border-radius: var(--radius-full);
-  vertical-align: middle;
-  margin-right: 4px;
-  letter-spacing: 0.02em;
-}
-.idea-card.sample-card {
-  border-style: dashed;
-  border-color: #e9d7fe;
-}
-.idea-card.sample-card .btn-join-waitlist {
-  opacity: 0.65;
 }
 
 /* ========================================
@@ -1427,7 +1406,6 @@ input, textarea {
   transition: var(--transition);
 }
 .idea-card:hover { border-color: var(--color-accent-start); box-shadow: var(--shadow-md); }
-.idea-card.sample-card { border-style: dashed; border-color: #e9d7fe; }
 .card-row { display: flex; gap: 14px; align-items: flex-start; }
 .card-main { flex: 1; min-width: 0; }
 .card-thumbs { position: relative; flex-shrink: 0; }
@@ -1644,7 +1622,6 @@ input, textarea {
   display: flex; gap: 14px;
 }
 .board-card:hover { border-color: var(--color-accent-start); box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.board-card.sample-card { border-style: dashed; border-color: #e9d7fe; }
 .board-card-main { flex: 1; min-width: 0; }
 .board-card-line { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
 .board-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }

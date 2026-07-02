@@ -60,6 +60,10 @@ Tailwind / Bootstrap / Bulma / Foundation / MUI / Chakra / styled-components 도
 3. 가설이 5개 넘으면 *어디 잘못 봤는지* 의심 (전제 점검).
 4. 추측으로 고치지 말 것.
 
+### 기능 단위를 *통째로* 감사할 땐 — 전수조사
+단일 버그 대응이 아니라 "이 기능 전체를 점검하라"는 요청이면 **전수조사 패턴**을 쓴다: 표본 아닌 *전 경로 sweep* → 결함마다 `파일:라인`+재현 → 버그 1개 찾으면 *같은 유형*을 코드 전체에서 재탐(ACK 없음·끊김 잔여물·틱 기반 시간·세션 꼬임·빈 catch·스냅샷 함정) → 프로토콜이면 *양쪽 병렬* → *수정 전 진단 먼저 제시* → 부수영향("기존 기능 깨나?") 명시 → 계측으로 검증.
+상세: [`.claude/knowledge/team-memory/patterns/exhaustive-audit.md`](../team-memory/patterns/exhaustive-audit.md)
+
 ---
 
 ## 4. 응답 패턴
@@ -90,3 +94,13 @@ Tailwind / Bootstrap / Bulma / Foundation / MUI / Chakra / styled-components 도
 ## 7. PostToolUse 훅 — 테스트 결과 자동 적재
 
 `npm test` / `pytest` / `vitest` 등 실행하면 *자동으로* `.ai-team/last-test-output.txt` 에 마지막 30줄이 쌓임 → 다음 강체크·강개발 호출 컨텍스트에 자동 포함됨. 테스트 실패하면 그 결과를 *컨텍스트로 받아* 스스로 수정.
+
+---
+
+## 증거 적층 생태계 — 구현 자가 점검
+
+구현 시 묻기: **"사용자 활동이 *영구 데이터 자산*으로 보관되나?"** 회원가입·SNS 공유·임베드는 *자산 누수 방지*. export 기능은 신중 (자산이 *나가는* 문).
+
+큰지도 모드: *자동화 가능 영역* 표시 — 어떤 자산이 수동 누적되나, SEO·SNS 발행·이메일 시퀀스로 자동화 가능한가.
+
+상세: `.claude/knowledge/team-memory/patterns/owned-ecosystem-receipt-stacking.md`

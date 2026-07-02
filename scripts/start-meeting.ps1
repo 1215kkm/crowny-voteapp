@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $date = Get-Date -Format "yyyy-MM-dd"
+$time = Get-Date -Format "HH:mm"
 $slug = ($Title -replace ' ', '-') -replace '[\/\\:*?"<>|]', ''
 $dir  = ".ai-team/meetings/${date}-${slug}"
 
@@ -33,6 +34,7 @@ $mockupTpl  = Find-Template "mockup.html"
 (Get-Content $meetingTpl -Raw) `
     -replace '{{TITLE}}', $Title `
     -replace '{{DATE}}', $date `
+    -replace '{{TIME}}', $time `
     -replace '{{AGENDA}}', $Title |
   Set-Content "$dir/meeting.html" -Encoding utf8
 
