@@ -97,7 +97,8 @@
   /* ===== 데스크톱: 좌(원화면 3/4) + 우(강팀 회의창 1/4) 2단 ===== */
   @media (min-width: 1024px) {
     .flip-arrow { display: none !important; }
-    #flip-scene { display: flex; align-items: stretch; }
+    /* 실제 두 face는 #flip-rotor의 자식이므로 flex는 rotor에 걸어야 2단이 된다 */
+    #flip-rotor { display: flex; align-items: stretch; }
     #appter-face { flex: 1 1 75%; min-width: 0; }
     #team-face { flex: 0 0 25%; width: 25%; min-width: 320px; align-self: stretch;
       position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 60;
