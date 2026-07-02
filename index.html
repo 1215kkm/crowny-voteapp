@@ -80,6 +80,38 @@
   .tw-m-req { font-size: 16px; color: var(--color-text-light); margin: 4px 0 10px; }
   .tw-m-act { font-size: 16px; color: var(--color-text); line-height: 1.6; margin: 6px 0; }
   .tw-m-act b { color: var(--color-accent-start); }
+
+  /* 회의록 헤더 (라벨·날짜·참여 칩) — 강팀 회의록 양식 */
+  .tw-m-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tw-m-label { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: var(--color-accent-end); text-transform: uppercase; }
+  .tw-m-date { font-size: 13px; color: var(--color-text-light); }
+  .tw-m-members { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+  .tw-m-mlabel { font-size: 12px; font-weight: 700; color: var(--color-text-light); margin-right: 2px; }
+  .tw-chip { font-size: 12px; font-weight: 700; color: #fff; padding: 3px 10px; border-radius: var(--radius-full); }
+  .tw-chip.daepyo { background: #374151; }
+  .tw-chip.abang { background: #d53a6b; }
+  .tw-chip.gdi { background: #0d9c84; }
+  .tw-chip.gdev { background: #475569; }
+  .tw-chip.gchk { background: #7030d4; }
+
+  /* 멤버별 발언자 색 — 다크·라이트 모두 대비 확보 */
+  .tw-m-act.daepyo b { color: var(--color-text); }
+  .tw-m-act.abang b { color: #e25c86; }
+  .tw-m-act.gdi b { color: #14b8a0; }
+  .tw-m-act.gdev b { color: #8fa3bb; }
+  .tw-m-act.gchk b { color: #9d6ff0; }
+
+  /* 속마음 — 회색 이탤릭, 괄호 그대로 */
+  .tw-think { color: #8b8fa0; font-style: italic; font-size: 14px; }
+
+  /* 정리 박스 */
+  .tw-m-sum { margin-top: 12px; font-size: 15px; color: var(--color-text);
+    background: color-mix(in srgb, var(--color-accent-start) 8%, transparent);
+    border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent-start);
+    border-radius: var(--radius-md); padding: 10px 14px; }
+  .tw-m-sum > b { color: var(--color-accent-start); }
+  .tw-m-sum ul { margin: 6px 0 0 18px; }
+  .tw-m-sum li { margin: 3px 0; }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   .tw-share-btn { flex: 1; border: none; cursor: pointer; font-family: inherit; font-size: 16px;
     font-weight: 700; padding: 12px; border-radius: var(--radius-md); color: #fff;

@@ -84,10 +84,24 @@
   // ---- 결과 렌더 ----
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
+  // 회의록 헤더 — 라벨 + 날짜시간 + 참여 멤버 칩 (강팀 회의록 양식)
+  function metaHtml() {
+    var d = new Date();
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    var dt = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    return '<div class="tw-m-meta">' +
+      '<span class="tw-m-label">강팀 회의록</span><span class="tw-m-date">' + dt + '</span>' +
+      '<div class="tw-m-members"><span class="tw-m-mlabel">참여</span>' +
+        '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
+        '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
+        '<span class="tw-chip abang">아뱅</span>' +
+      '</div></div>';
+  }
+
   function renderResult(html, title, isDemo) {
     resultEl.innerHTML =
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
-      '<div class="tw-result-body">' + html + "</div>" +
+      '<div class="tw-result-body">' + metaHtml() + html + "</div>" +
       '<div class="tw-share">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
         '<button type="button" class="tw-share-btn tw-share-other">인스타·기타 공유</button>' +
@@ -104,11 +118,12 @@
     return '' +
       '<div class="tw-m-title">강팀 회의 결과</div>' +
       '<div class="tw-m-req">요청: "' + t + (prompt.length > 60 ? "…" : "") + '"</div>' +
-      '<div class="tw-m-act"><b>강디</b> "첫인상·흐름부터 볼게요~ 사용자 목표가 뭔지 3단계로 줄여봐요."</div>' +
-      '<div class="tw-m-act"><b>강개발</b> "됩니다/안 됩니다부터. 무료 배포면 서버·키 비용 구조 먼저 잡죠."</div>' +
-      '<div class="tw-m-act"><b>강체크</b> "개인정보·키 노출·무료 남용 3개 봅니다. 증거로 잡을게요."</div>' +
-      '<div class="tw-m-act"><b>아뱅</b> "오~ 이거 스레드로 퍼뜨리면 유입 도는데? 수익 경로 한 줄 박자."</div>' +
-      '<div class="tw-m-act"><b>강대표</b> "좋아. 방향 잡혔어. 가자."</div>';
+      '<div class="tw-m-act gdi"><b>강디</b> "첫인상·흐름부터 볼게요~ 사용자 목표가 뭔지 3단계로 줄여봐요." <span class="tw-think">(카드형이 안전하지…)</span></div>' +
+      '<div class="tw-m-act gdev"><b>강개발</b> "됩니다/안 됩니다부터. 무료 배포면 서버·키 비용 구조 먼저 잡죠."</div>' +
+      '<div class="tw-m-act gchk"><b>강체크</b> "개인정보·키 노출·무료 남용 3개 봅니다. 증거로 잡을게요."</div>' +
+      '<div class="tw-m-act abang"><b>아뱅</b> "오~ 이거 스레드로 퍼뜨리면 유입 도는데? 수익 경로 한 줄 박자." <span class="tw-think">(판을 뒤집어야 재밌지)</span></div>' +
+      '<div class="tw-m-act daepyo"><b>강대표</b> "좋아. 방향 잡혔어. 가자."</div>' +
+      '<div class="tw-m-sum"><b>정리</b><ul><li>결정: 방향 확정 후 착수</li><li>다음 액션: 구현·홍보 투트랙</li></ul></div>';
   }
 
   // ---- 실행 ----
