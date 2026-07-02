@@ -13,6 +13,7 @@ fi
 
 TITLE="$1"
 DATE=$(date +%F)
+TIME=$(date +%H:%M)
 # slug: 한글/영문 모두 OK, 공백→하이픈, 특수문자 일부 제거
 SLUG=$(echo "$TITLE" | tr ' ' '-' | tr -d '/\\:*?"<>|')
 
@@ -36,7 +37,7 @@ MEETING_TPL=$(find_template "meeting.html")
 MOCKUP_TPL=$(find_template "mockup.html")
 
 # placeholder 치환
-sed -e "s/{{TITLE}}/${TITLE}/g" -e "s/{{DATE}}/${DATE}/g" -e "s/{{AGENDA}}/${TITLE}/g" \
+sed -e "s/{{TITLE}}/${TITLE}/g" -e "s/{{DATE}}/${DATE}/g" -e "s/{{TIME}}/${TIME}/g" -e "s/{{AGENDA}}/${TITLE}/g" \
   "$MEETING_TPL" > "$DIR/meeting.html"
 sed -e "s/{{TITLE}}/${TITLE}/g" "$MOCKUP_TPL" > "$DIR/mockup.html"
 

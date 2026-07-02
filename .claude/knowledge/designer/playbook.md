@@ -146,3 +146,13 @@ ASCII 플로우 예:
 - 그림자 레이어링 (다중 shadow)
 - 마이크로 인터랙션 (호버 시 살짝 떠오름, 클릭 시 ripple)
 - CTA 눌리는 *타이밍*에 심리 레버 (예: 결제 직전 "이번 주만 -20%")
+
+---
+
+## 증거 적층 생태계 — 화면 설계 자가 점검
+
+화면 설계 시 묻기: **"사용자가 남긴 흔적이 *다음 사용자에게 보이는가?"** UGC(합격사례·후기·포폴) 가 *눈에 띄는 자리* 에 노출되도록. 빈 상태(empty state) 카피에 *첫 자산을 남기도록 유도* 박기.
+
+큰지도 모드: Mermaid `flowchart LR` 로 *사업 간 자산 흐름* 다이어그램 1장.
+
+상세: `.claude/knowledge/team-memory/patterns/owned-ecosystem-receipt-stacking.md`
