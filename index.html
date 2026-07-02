@@ -94,12 +94,12 @@
   .tw-credit { text-align: center; font-size: 16px; color: var(--color-text-light); margin-top: 10px; }
   .tw-credit a { color: var(--color-accent-start); text-decoration: none; font-weight: 700; }
 
-  /* ===== 데스크톱: 좌(원화면) + 우(강팀 회의창 전용) 2단 ===== */
+  /* ===== 데스크톱: 좌(원화면 3/4) + 우(강팀 회의창 1/4) 2단 ===== */
   @media (min-width: 1024px) {
     .flip-arrow { display: none !important; }
     #flip-scene { display: flex; align-items: stretch; }
-    #appter-face { flex: 1 1 auto; min-width: 0; }
-    #team-face { flex: 0 0 400px; width: 400px; align-self: stretch;
+    #appter-face { flex: 1 1 75%; min-width: 0; }
+    #team-face { flex: 0 0 25%; width: 25%; min-width: 320px; align-self: stretch;
       position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 60;
       background: var(--color-bg); border-left: 1px solid var(--color-border); padding: 24px; }
     #team-face .team-widget { box-shadow: none; border: none; padding: 0; }
@@ -370,7 +370,7 @@
     <div class="tw-quota">무료 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
 
     <a class="tw-follow" href="https://www.threads.net/@kkm450815" target="_blank" rel="noopener">
-      <span class="tw-follow-ic">＠</span> 제작자 스친추가 <span class="tw-follow-tag">@kkm450815</span>
+      <span class="tw-follow-ic">＠</span> 스친추가 <span class="tw-follow-tag">@kkm450815</span>
     </a>
 
     <div id="team-result" class="tw-result hidden"></div>
