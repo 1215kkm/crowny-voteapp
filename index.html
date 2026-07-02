@@ -32,8 +32,97 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <style id="team-widget-style">
+  /* ===== 강팀 큐브 플립 위젯 ===== */
+  #flip-scene, #flip-rotor, .flip-face { position: relative; }
+  .flip-arrow { display: none; }
+
+  .team-widget { background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 20px;
+    display: flex; flex-direction: column; gap: 12px; }
+  .tw-badge { align-self: flex-start; font-size: 16px; font-weight: 700; color: #fff;
+    padding: 4px 12px; border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); }
+  .tw-title { font-size: 20px; font-weight: 800; color: var(--color-text); margin-top: 4px; }
+  .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; }
+  .tw-input { width: 100%; resize: vertical; min-height: 150px; font-family: inherit;
+    font-size: 16px; line-height: 1.6; color: var(--color-text); background: var(--color-subtle);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; }
+  .tw-input:focus { outline: none; border-color: var(--color-accent-start); }
+  .tw-run { width: 100%; border: none; cursor: pointer; font-family: inherit; font-size: 18px;
+    font-weight: 800; color: #fff; padding: 16px; border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+    box-shadow: var(--shadow-md); }
+  .tw-run:disabled { opacity: .55; cursor: not-allowed; }
+  .tw-quota { font-size: 16px; color: var(--color-text-secondary); text-align: center; }
+  .tw-quota b { color: var(--color-accent-start); }
+  .tw-more-link { background: none; border: none; color: var(--color-accent-start);
+    font: inherit; font-size: 16px; cursor: pointer; text-decoration: underline; }
+
+  /* 제작자 스친추가 — 크게 눈에 띄게 */
+  .tw-follow { display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 18px; border-radius: var(--radius-md); font-size: 19px;
+    font-weight: 800; text-decoration: none; color: #fff; background: #101014;
+    border: 2px solid var(--color-accent-end); box-shadow: var(--shadow-md); }
+  .tw-follow-ic { font-size: 22px; line-height: 1; }
+  .tw-follow-tag { font-weight: 600; opacity: .8; font-size: 16px; }
+
+  /* 결과 */
+  .tw-result.hidden { display: none; }
+  .tw-result { margin-top: 8px; border-top: 1px solid var(--color-border); padding-top: 14px; }
+  .tw-demo-note { font-size: 16px; color: var(--color-warning); margin-bottom: 8px; }
+  .tw-result-body { background: var(--color-subtle); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); padding: 14px; }
+  .tw-m-title { font-size: 18px; font-weight: 800; color: var(--color-text); }
+  .tw-m-req { font-size: 16px; color: var(--color-text-light); margin: 4px 0 10px; }
+  .tw-m-act { font-size: 16px; color: var(--color-text); line-height: 1.6; margin: 6px 0; }
+  .tw-m-act b { color: var(--color-accent-start); }
+  .tw-share { display: flex; gap: 8px; margin-top: 12px; }
+  .tw-share-btn { flex: 1; border: none; cursor: pointer; font-family: inherit; font-size: 16px;
+    font-weight: 700; padding: 12px; border-radius: var(--radius-md); color: #fff;
+    background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); }
+  .tw-credit { text-align: center; font-size: 16px; color: var(--color-text-light); margin-top: 10px; }
+  .tw-credit a { color: var(--color-accent-start); text-decoration: none; font-weight: 700; }
+
+  /* ===== 데스크톱: 우측 고정 패널 ===== */
+  @media (min-width: 1024px) {
+    .flip-arrow { display: none !important; }
+    #team-face { position: fixed; top: 84px; right: 24px; z-index: 60; width: 360px;
+      max-height: calc(100vh - 108px); overflow-y: auto; }
+  }
+
+  /* ===== 모바일: 3D 큐브 플립 ===== */
+  @media (max-width: 1023px) {
+    #flip-scene { position: fixed; inset: 0; perspective: 1800px; overflow: hidden; z-index: 40; }
+    #flip-rotor { position: absolute; inset: 0; transform-style: preserve-3d;
+      transition: transform .75s cubic-bezier(.4,.15,.2,1); transform: rotateY(180deg); }
+    #flip-rotor.show-appter { transform: rotateY(0deg); }
+    .flip-face { position: absolute; inset: 0; backface-visibility: hidden;
+      -webkit-backface-visibility: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: var(--color-bg); }
+    #appter-face { transform: rotateY(0deg); }
+    #team-face { transform: rotateY(180deg); padding: 60px 16px 32px; }
+    .team-widget { min-height: calc(100vh - 96px); }
+    .flip-arrow { display: flex; align-items: center; justify-content: center; position: fixed;
+      top: 14px; z-index: 80; height: 44px; min-width: 44px; padding: 0 16px; border: none;
+      cursor: pointer; border-radius: var(--radius-full); font-family: inherit; font-size: 16px;
+      font-weight: 800; color: #fff;
+      background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+      box-shadow: var(--shadow-md); }
+    .flip-arrow-left { left: 14px; }
+    .flip-arrow-right { right: 14px; }
+    #to-appter { display: flex; }
+    #to-team { display: none; }
+    #flip-rotor.show-appter ~ #to-appter { display: none; }
+    #flip-rotor.show-appter ~ #to-team { display: flex; }
+  }
+  </style>
 </head>
 <body>
+<!-- 강팀 큐브 플립: 앞면=강팀 회의창 / 뒷면=Appter 원화면 (모바일). 데스크톱은 우측 패널. -->
+<div id="flip-scene">
+<div id="flip-rotor">
+<div id="appter-face" class="flip-face">
   <!-- Header -->
   <header id="site-header">
     <div class="header-inner">
@@ -244,6 +333,35 @@
   <footer id="site-footer">
     <p>&copy; 2026 Appter. All rights reserved.</p>
   </footer>
+</div><!-- /appter-face -->
+
+<!-- ===== 강팀 회의 요청창 (뒷면 / 데스크톱 우측 패널) ===== -->
+<div id="team-face" class="flip-face">
+  <div class="team-widget">
+    <div class="tw-head">
+      <span class="tw-badge">강팀 AI 회의</span>
+      <h3 class="tw-title">강팀에게 무료로 회의 요청</h3>
+      <p class="tw-sub">앱 아이디어를 던지면 강팀 5명이 회의해서 결과를 만들어줘요.</p>
+    </div>
+
+    <textarea id="team-input" class="tw-input" rows="7" maxlength="1500"
+      placeholder="예시입력: 강사와 학생앱을 crownyclass.com 에 다 만들었어 수업에 필요한 기능은 다 넣었고 무료로 배포하려고 해 파악해서 전체적으로 강팀이 회의해봐"></textarea>
+
+    <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
+    <div class="tw-quota">무료 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
+
+    <a class="tw-follow" href="https://www.threads.net/@kkm450815" target="_blank" rel="noopener">
+      <span class="tw-follow-ic">＠</span> 제작자 스친추가 <span class="tw-follow-tag">@kkm450815</span>
+    </a>
+
+    <div id="team-result" class="tw-result hidden"></div>
+  </div>
+</div>
+
+</div><!-- /flip-rotor -->
+<button id="to-appter" class="flip-arrow flip-arrow-left" type="button" aria-label="Appter 화면 보기">←</button>
+<button id="to-team" class="flip-arrow flip-arrow-right" type="button" aria-label="강팀 회의창 보기">강팀 →</button>
+</div><!-- /flip-scene -->
 
   <!-- 작성폼 모달 글루 (가산 전용: 열기/닫기만. app.js 핸들러는 손대지 않음) -->
   <script>
@@ -292,5 +410,6 @@
   <script type="module" src="js/access-guard.js"></script>
   <script type="module" src="js/app.js"></script>
   <script type="module" src="js/theme.js"></script>
+  <script src="js/team-widget.js"></script>
 </body>
 </html>
