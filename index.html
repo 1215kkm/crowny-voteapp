@@ -4,14 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>(function(){try{var t=localStorage.getItem('appter_theme');document.documentElement.dataset.theme=t==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}})();</script>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-86ZZWE6PJ6"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-86ZZWE6PJ6');
-  </script>
+  <!-- Google tag (gtag.js): 분석 동의 후에만 js/analytics.js가 로드 (PIPA 동의 게이팅) -->
   <title>이런 앱이 있었으면 좋겠다 | Appter</title>
   <meta name="description" content="이 앱, 진짜 나오면 쓸래요? 수요를 먼저 투표로 검증하는 Appter. 원하는 앱 아이디어를 공유하고 한 표로 만들어지게 하세요.">
   <!-- Open Graph -->
@@ -53,9 +46,14 @@
     line-height: 1.5; padding: 12px 14px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
     opacity: 0; visibility: hidden; transition: opacity .15s; pointer-events: none; }
   .tw-help:hover .tw-tip, .tw-help:focus .tw-tip { opacity: 1; visibility: visible; }
+  .tw-consult { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--color-text);
+    padding: 6px 12px; border-radius: var(--radius-full); text-decoration: none; white-space: nowrap;
+    border: 1px solid var(--color-accent-end); background: rgba(213, 58, 107, 0.12); }
+  .tw-consult:hover { background: rgba(213, 58, 107, 0.25); }
+  .tw-consult-ic { color: var(--color-accent-end); font-weight: 800; margin-right: 2px; }
   .tw-title { font-size: 20px; font-weight: 800; color: var(--color-text); margin-top: 4px; }
   .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; }
-  .tw-input { width: 100%; resize: vertical; min-height: 150px; font-family: inherit;
+  .tw-input { width: 100%; resize: vertical; min-height: 230px; font-family: inherit;
     font-size: 16px; line-height: 1.6; color: var(--color-text); background: var(--color-subtle);
     border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; }
   .tw-input:focus { outline: none; border-color: var(--color-accent-start); }
@@ -87,6 +85,65 @@
   .tw-m-req { font-size: 16px; color: var(--color-text-light); margin: 4px 0 10px; }
   .tw-m-act { font-size: 16px; color: var(--color-text); line-height: 1.6; margin: 6px 0; }
   .tw-m-act b { color: var(--color-accent-start); }
+
+  /* 회의록 헤더 (라벨·날짜·참여 칩) — 강팀 회의록 양식 */
+  .tw-m-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tw-m-label { font-size: 13px; font-weight: 800; letter-spacing: .12em; color: var(--color-accent-end); text-transform: uppercase; }
+  .tw-m-date { font-size: 13px; color: var(--color-text-light); }
+  .tw-m-members { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+  .tw-m-mlabel { font-size: 12px; font-weight: 700; color: var(--color-text-light); margin-right: 2px; }
+  .tw-chip { font-size: 12px; font-weight: 700; color: #fff; padding: 3px 10px; border-radius: var(--radius-full); }
+  .tw-chip.daepyo { background: #374151; }
+  .tw-chip.abang { background: #d53a6b; }
+  .tw-chip.gdi { background: #0d9c84; }
+  .tw-chip.gdev { background: #475569; }
+  .tw-chip.gchk { background: #7030d4; }
+
+  /* 멤버별 발언자 색 — 다크·라이트 모두 대비 확보 */
+  .tw-m-act.daepyo b { color: var(--color-text); }
+  .tw-m-act.abang b { color: #e25c86; }
+  .tw-m-act.gdi b { color: #14b8a0; }
+  .tw-m-act.gdev b { color: #8fa3bb; }
+  .tw-m-act.gchk b { color: #9d6ff0; }
+
+  /* 속마음 — 회색 이탤릭, 괄호 그대로 */
+  .tw-think { color: #8b8fa0; font-style: italic; font-size: 14px; }
+
+  /* 남은 횟수·퍼가기 안내 */
+  .tw-notice { font-size: 14px; line-height: 1.6; color: var(--color-text-light);
+    background: var(--color-subtle); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 10px; }
+  .tw-notice b { color: var(--color-accent-start); }
+  .tw-notice.tw-warn { border-color: var(--color-accent-end); color: var(--color-text); }
+  .tw-notice.tw-warn b { color: var(--color-accent-end); }
+
+  /* 회의 로딩 — 멤버 칩이 차례로 발언하듯 점멸 */
+  .tw-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 4px; }
+  .tw-load-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .tw-load-chips .tw-chip { opacity: .3; animation: twSpeak 2s ease-in-out infinite; }
+  .tw-load-chips .tw-chip:nth-child(1) { animation-delay: 0s; }
+  .tw-load-chips .tw-chip:nth-child(2) { animation-delay: .4s; }
+  .tw-load-chips .tw-chip:nth-child(3) { animation-delay: .8s; }
+  .tw-load-chips .tw-chip:nth-child(4) { animation-delay: 1.2s; }
+  .tw-load-chips .tw-chip:nth-child(5) { animation-delay: 1.6s; }
+  @keyframes twSpeak {
+    0%, 100% { opacity: .3; transform: scale(.95); box-shadow: none; }
+    20% { opacity: 1; transform: scale(1.12); box-shadow: 0 0 12px rgba(213,58,107,.45); }
+    40% { opacity: .3; transform: scale(.95); }
+  }
+  .tw-load-text { font-size: 15px; color: var(--color-text-light); }
+  .tw-load-dots::after { display: inline-block; width: 18px; text-align: left;
+    content: ""; animation: twDots 1.2s steps(1, end) infinite; }
+  @keyframes twDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+
+  /* 정리 박스 — 배경은 color-mix 대신 rgba(html2canvas 캡처 호환) */
+  .tw-m-sum { margin-top: 12px; font-size: 15px; color: var(--color-text);
+    background: rgba(138, 56, 245, 0.08);
+    border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent-start);
+    border-radius: var(--radius-md); padding: 10px 14px; }
+  .tw-m-sum > b { color: var(--color-accent-start); }
+  .tw-m-sum ul { margin: 6px 0 0 18px; }
+  .tw-m-sum li { margin: 3px 0; }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   .tw-share-btn { flex: 1; border: none; cursor: pointer; font-family: inherit; font-size: 16px;
     font-weight: 700; padding: 12px; border-radius: var(--radius-md); color: #fff;
@@ -97,7 +154,8 @@
   /* ===== 데스크톱: 좌(원화면 3/4) + 우(강팀 회의창 1/4) 2단 ===== */
   @media (min-width: 1024px) {
     .flip-arrow { display: none !important; }
-    #flip-scene { display: flex; align-items: stretch; }
+    /* 실제 두 face는 #flip-rotor의 자식이므로 flex는 rotor에 걸어야 2단이 된다 */
+    #flip-rotor { display: flex; align-items: stretch; }
     #appter-face { flex: 1 1 75%; min-width: 0; }
     #team-face { flex: 0 0 25%; width: 25%; min-width: 320px; align-self: stretch;
       position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 60;
@@ -142,8 +200,8 @@
     <div class="header-inner">
       <a href="/" class="logo"><img src="images/logo_text_white.png" alt="Appter" width="175"></a>
       <nav class="primary-nav">
-        <a href="/" class="nav-link active">홈</a>
-        <a href="board.html" class="nav-link">아이디어 게시판</a>
+        <a href="/" class="nav-link active">Appter소개</a>
+        <a href="board.html" class="nav-link">아이디어모음</a>
       
         <a href="admin.html" class="nav-link nav-admin-only" data-admin-only>관리자</a></nav>
       <div id="auth-area">
@@ -209,7 +267,6 @@
       <p class="hero-subtitle">아직 세상에 없는 앱, 당신의 아이디어로 만들어집니다. 개발 전에 수요를 먼저 투표로 검증하세요.</p>
       <div class="hero-cta-row">
         <button type="button" class="btn-hero-primary" data-open-idea-form>아이디어 올리기</button>
-        <a href="#ideas-list" class="btn-hero-secondary">둘러보기</a>
       </div>
       <div class="hero-counter">현재 <strong id="total-waitlist-count">0</strong>명이 대기 중</div>
     </div>
@@ -358,13 +415,14 @@
         <span class="tw-help" tabindex="0" role="button" aria-label="강팀이란?">?
           <span class="tw-tip">강팀은 제작자의 성공적인 마케팅 노하우와 오랫동안 쌓아온 아이디어가 축적되어 탄생한 AI 팀이에요.</span>
         </span>
+        <a class="tw-consult" href="https://crownyclass.com/community.html?board=showcase" target="_blank" rel="noopener"><span class="tw-consult-ic">→</span> 디자이너 선택 후 컨설팅받기</a>
       </div>
-      <h3 class="tw-title">강팀에게 무료로 회의 요청</h3>
+      <h3 class="tw-title">강팀에게 회의요청</h3>
       <p class="tw-sub">앱 아이디어를 던지면 강팀 5명이 회의해서 결과를 만들어줘요.</p>
     </div>
 
-    <textarea id="team-input" class="tw-input" rows="7" maxlength="1500"
-      placeholder="예시입력: 강사와 학생앱을 crownyclass.com 에 다 만들었어 수업에 필요한 기능은 다 넣었고 무료로 배포하려고 해 파악해서 구현에 대해서와 홍보마케팅에 대해서 회의해봐"></textarea>
+    <textarea id="team-input" class="tw-input" rows="10" maxlength="1500"
+      placeholder="예시입력1: 강사와 학생이 수업때 파일전송과 원격케어를 쉽게 할 수 있는 앱을 Crownyclass.com에 만들어놨어 더 쓸수밖에 없도록 하는 추가 아이디어와 홍보 아이디어를 알려줘&#10;&#10;예시입력2: 밑에서 위로 점프해서 올라가는 흔한 게임을 만들었어 귀여운 스타일이야 어떻게 하면 더 재미있게 할 수 있을지 추가 아이디어와 홍보 아이디어를 알려줘"></textarea>
 
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
     <div class="tw-quota">무료 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
