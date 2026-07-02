@@ -1,9 +1,11 @@
 // 강팀 회의 위젯 — 큐브 플립 + 무료횟수 + 회의 실행 + 공유(스레드/인스타)
-// 백엔드(Vercel /api/meeting, Gemini)는 다음 단계. 지금은 호출 시도 후 실패 시 데모 결과.
+// 백엔드: Firebase Functions runMeeting (Gemini). 호출 실패 시에만 데모 결과.
 (function () {
   "use strict";
 
   var CREATOR_THREADS = "kkm450815";
+  // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
+  var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
   var FREE_ANON = 3;               // 익명 무료 횟수 (캐시 저장)
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
@@ -125,7 +127,7 @@
     try {
       var html = null, isDemo = false;
       try {
-        var res = await fetch("/api/meeting", {
+        var res = await fetch(MEETING_API, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt: prompt, ref: myRefId() })
