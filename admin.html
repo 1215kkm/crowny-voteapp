@@ -156,6 +156,16 @@
               <small>가상 인물들이 일정 간격으로 랜덤한 글에 관심(❤️)을 누릅니다. 댓글/글 생성 안 함.</small>
             </span>
           </label>
+          <label class="ai-toggle">
+            <span class="ai-toggle-label">
+              <strong>강팀 회의 모델</strong>
+              <small>회의 위젯이 사용할 AI 모델. Gemini는 무료 할당량, Claude Haiku는 유료(회당 약 ₩17)·고품질. 선택한 모델이 실패하면 자동으로 다른 모델로 폴백합니다.</small>
+            </span>
+            <select id="meeting-provider-select" style="margin-left:auto;">
+              <option value="gemini">Gemini 2.5 Flash (무료)</option>
+              <option value="claude">Claude Haiku 4.5 (유료)</option>
+            </select>
+          </label>
           <button id="settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
         </div>
 
