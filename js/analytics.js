@@ -200,6 +200,27 @@ function hasConsent() {
   return getConsent() === "granted";
 }
 
+// ---- Google Analytics (gtag) — 동의 후에만 로드 ----
+
+const GA_ID = "G-86ZZWE6PJ6";
+let _gaLoaded = false;
+
+function loadGoogleAnalytics() {
+  if (_gaLoaded || document.querySelector('script[src*="googletagmanager.com/gtag"]')) {
+    _gaLoaded = true;
+    return;
+  }
+  _gaLoaded = true;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  window.gtag("js", new Date());
+  window.gtag("config", GA_ID);
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+  document.head.appendChild(s);
+}
+
 // ---- Core write ----
 
 async function writeEvent(payload) {
@@ -278,7 +299,8 @@ function buildConsentBanner() {
   banner.querySelector("#consent-allow-btn").addEventListener("click", () => {
     setConsent("granted");
     close();
-    // 동의 직후 그 시점부터 추적 시작 — 현재 페이지 pageview 1회 기록
+    // 동의 직후 그 시점부터 추적 시작 — GA 로드 + 현재 페이지 pageview 1회 기록
+    loadGoogleAnalytics();
     trackPageview();
   });
   banner.querySelector("#consent-deny-btn").addEventListener("click", () => {
@@ -293,7 +315,8 @@ function buildConsentBanner() {
 function bootAnalytics() {
   const consent = getConsent();
   if (consent === "granted") {
-    // 이미 동의함 → 평소처럼 자동 pageview
+    // 이미 동의함 → GA 로드 + 평소처럼 자동 pageview
+    loadGoogleAnalytics();
     trackPageview();
   } else if (consent === "denied") {
     // 이미 거부함 → 아무것도 안 함, 배너도 다시 안 띄움
