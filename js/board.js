@@ -66,7 +66,7 @@ tabs.forEach((tab, idx) => {
   });
 });
 
-// 즉시 샘플 노출 + 백그라운드로 firestore 구독
+// firestore 구독으로 실제 아이디어 렌더
 renderList();
 startSubscription();
 
