@@ -2786,10 +2786,9 @@ html[data-theme="dark"] #site-header {
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   backdrop-filter: blur(20px) saturate(160%);
 }
-/* 유리 패널: 카드·모달·섹션·관심·관리자 표면 */
+/* 유리 패널: 카드·모달·관심·관리자 표면 (소식받기 섹션은 모달 안이라 제외 — 이중 유리 방지) */
 html[data-theme="dark"] .idea-card,
 html[data-theme="dark"] .modal-window,
-html[data-theme="dark"] .subscribe-section,
 html[data-theme="dark"] .fav-item,
 html[data-theme="dark"] .adm-card,
 html[data-theme="dark"] .adm-table {
@@ -2821,7 +2820,6 @@ html[data-theme="dark"] .theme-toggle { background: var(--color-surface); border
   html[data-theme="dark"] #site-header,
   html[data-theme="dark"] .idea-card,
   html[data-theme="dark"] .modal-window,
-  html[data-theme="dark"] .subscribe-section,
   html[data-theme="dark"] .fav-item,
   html[data-theme="dark"] .adm-card,
   html[data-theme="dark"] .adm-table {
