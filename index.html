@@ -129,9 +129,9 @@
     content: ""; animation: twDots 1.2s steps(1, end) infinite; }
   @keyframes twDots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
 
-  /* 정리 박스 */
+  /* 정리 박스 — 배경은 color-mix 대신 rgba(html2canvas 캡처 호환) */
   .tw-m-sum { margin-top: 12px; font-size: 15px; color: var(--color-text);
-    background: color-mix(in srgb, var(--color-accent-start) 8%, transparent);
+    background: rgba(138, 56, 245, 0.08);
     border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent-start);
     border-radius: var(--radius-md); padding: 10px 14px; }
   .tw-m-sum > b { color: var(--color-accent-start); }

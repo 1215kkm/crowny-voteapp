@@ -62,22 +62,92 @@
 
   // ---- 공유 ----
   function shareCaption(title) {
-    return "강팀 AI가 회의해서 만든 결과예요 🤖\n\"" + (title || "내 앱 아이디어") +
-      "\"\n\n너도 무료로 시켜봐 👉 " + myRefLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+    return "상품기획천재 강팀 AI의 회의내용이에요\n\"" + (title || "내 앱 아이디어") +
+      "\"\n\n너도 아이디어를 얻어봐 → " + myRefLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
   }
-  function openThreads(title) {
-    var url = "https://www.threads.net/intent/post?text=" + encodeURIComponent(shareCaption(title));
+
+  // 회의 화면 캡처 (meeting.html의 이미지 저장과 같은 html2canvas 방식 — 필요할 때만 로드)
+  var h2cPromise = null;
+  function loadH2C() {
+    if (window.html2canvas) return Promise.resolve();
+    if (!h2cPromise) {
+      h2cPromise = new Promise(function (res, rej) {
+        var s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    return h2cPromise;
+  }
+
+  function captureMeetingBlob() {
+    var body = resultEl && resultEl.querySelector(".tw-result-body");
+    if (!body) return Promise.resolve(null);
+    return loadH2C().then(function () {
+      var bg = getComputedStyle(document.body).backgroundColor;
+      if (!bg || bg === "rgba(0, 0, 0, 0)") bg = "#0b0a14";
+      var pad = document.createElement("div");
+      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:560px;padding:26px;box-sizing:border-box;background:" + bg;
+      pad.appendChild(body.cloneNode(true));
+      document.body.appendChild(pad);
+      return window.html2canvas(pad, { scale: 2, backgroundColor: bg, useCORS: true })
+        .then(function (canvas) {
+          return new Promise(function (res) { canvas.toBlob(res, "image/png"); });
+        })
+        .finally(function () { document.body.removeChild(pad); });
+    }).catch(function () { return null; });
+  }
+
+  function downloadBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function copyText(t) {
+    var ta = document.createElement("textarea");
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function openThreadsIntent(caption) {
+    var url = "https://www.threads.net/intent/post?text=" + encodeURIComponent(caption);
     window.open(url, "_blank", "noopener");
   }
-  function shareOther(title) {
-    if (navigator.share) {
-      navigator.share({ title: "강팀 회의 결과", text: shareCaption(title), url: myRefLink() }).catch(function () {});
+
+  // 회의 화면 이미지를 자동 첨부해서 공유.
+  // 모바일 공유시트(navigator.share)는 이미지 파일 첨부 지원 → 자동 첨부.
+  // 스레드 intent 등 텍스트만 되는 곳은 이미지를 자동 저장해 주고 첨부를 안내.
+  function shareMeeting(title, mode) {
+    var caption = shareCaption(title);
+    return captureMeetingBlob().then(function (blob) {
+      if (blob && navigator.canShare) {
+        var file = new File([blob], "강팀회의록.png", { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          return navigator.share({ files: [file], text: caption }).catch(function (e) {
+            if (e && e.name === "AbortError") return;
+            fallbackShare(blob, caption, mode);
+          });
+        }
+      }
+      fallbackShare(blob, caption, mode);
+    });
+  }
+
+  function fallbackShare(blob, caption, mode) {
+    if (blob) downloadBlob(blob, "강팀회의록.png");
+    if (mode === "threads") {
+      if (blob) alert("회의 화면 이미지를 저장했어요. 스레드 글에 첨부해 주세요!");
+      openThreadsIntent(caption);
     } else {
-      var ta = document.createElement("textarea");
-      ta.value = shareCaption(title); document.body.appendChild(ta); ta.select();
-      try { document.execCommand("copy"); } catch (e) {}
-      document.body.removeChild(ta);
-      alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
+      copyText(caption);
+      alert(blob
+        ? "회의 화면 이미지를 저장하고 공유 문구를 복사했어요. 인스타/스레드에 붙여넣고 이미지를 첨부하세요!"
+        : "공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
     }
   }
 
@@ -108,8 +178,8 @@
       "</div>" +
       '<div class="tw-credit">이 회의 만든 곳 · <a href="https://www.threads.net/@' + CREATOR_THREADS + '" target="_blank" rel="noopener">@' + CREATOR_THREADS + "</a></div>";
     resultEl.classList.remove("hidden");
-    resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { openThreads(title); });
-    resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareOther(title); });
+    resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { shareMeeting(title, "threads"); });
+    resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareMeeting(title, "other"); });
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
@@ -209,7 +279,7 @@
       ? "무료 횟수를 다 썼어요.\n\nSNS로 퍼가실 때마다 3회씩 더 드려요 (하루 최대 3번):\n" + myRefLink()
       : "체험 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 퍼가실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번)\n\n지금 가입할까요?";
     if (loggedIn) {
-      shareOther("Appter 강팀 무료 회의");
+      shareMeeting("Appter 강팀 무료 회의", "other");
     } else {
       if (confirm(msg) && window.appAuth && window.appAuth.loginWithGoogle) window.appAuth.loginWithGoogle();
     }
