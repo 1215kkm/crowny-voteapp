@@ -43,6 +43,16 @@
   .tw-badge { align-self: flex-start; font-size: 16px; font-weight: 700; color: #fff;
     padding: 4px 12px; border-radius: var(--radius-full);
     background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); }
+  .tw-badge-row { display: flex; align-items: center; gap: 8px; }
+  .tw-help { position: relative; display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%; background: var(--color-subtle);
+    border: 1px solid var(--color-border); color: var(--color-text-secondary);
+    font-size: 16px; font-weight: 700; cursor: help; }
+  .tw-tip { position: absolute; top: 132%; left: 0; z-index: 90; width: 260px;
+    background: var(--color-text); color: var(--color-bg); font-size: 16px; font-weight: 500;
+    line-height: 1.5; padding: 12px 14px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+    opacity: 0; visibility: hidden; transition: opacity .15s; pointer-events: none; }
+  .tw-help:hover .tw-tip, .tw-help:focus .tw-tip { opacity: 1; visibility: visible; }
   .tw-title { font-size: 20px; font-weight: 800; color: var(--color-text); margin-top: 4px; }
   .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; }
   .tw-input { width: 100%; resize: vertical; min-height: 150px; font-family: inherit;
@@ -84,11 +94,15 @@
   .tw-credit { text-align: center; font-size: 16px; color: var(--color-text-light); margin-top: 10px; }
   .tw-credit a { color: var(--color-accent-start); text-decoration: none; font-weight: 700; }
 
-  /* ===== 데스크톱: 우측 고정 패널 ===== */
+  /* ===== 데스크톱: 좌(원화면) + 우(강팀 회의창 전용) 2단 ===== */
   @media (min-width: 1024px) {
     .flip-arrow { display: none !important; }
-    #team-face { position: fixed; top: 84px; right: 24px; z-index: 60; width: 360px;
-      max-height: calc(100vh - 108px); overflow-y: auto; }
+    #flip-scene { display: flex; align-items: stretch; }
+    #appter-face { flex: 1 1 auto; min-width: 0; }
+    #team-face { flex: 0 0 400px; width: 400px; align-self: stretch;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto; z-index: 60;
+      background: var(--color-bg); border-left: 1px solid var(--color-border); padding: 24px; }
+    #team-face .team-widget { box-shadow: none; border: none; padding: 0; }
   }
 
   /* ===== 모바일: 3D 큐브 플립 ===== */
@@ -339,13 +353,18 @@
 <div id="team-face" class="flip-face">
   <div class="team-widget">
     <div class="tw-head">
-      <span class="tw-badge">강팀 AI 회의</span>
+      <div class="tw-badge-row">
+        <span class="tw-badge">강팀 AI 회의</span>
+        <span class="tw-help" tabindex="0" role="button" aria-label="강팀이란?">?
+          <span class="tw-tip">강팀은 제작자의 성공적인 마케팅 노하우와 오랫동안 쌓아온 아이디어가 축적되어 탄생한 AI 팀이에요.</span>
+        </span>
+      </div>
       <h3 class="tw-title">강팀에게 무료로 회의 요청</h3>
       <p class="tw-sub">앱 아이디어를 던지면 강팀 5명이 회의해서 결과를 만들어줘요.</p>
     </div>
 
     <textarea id="team-input" class="tw-input" rows="7" maxlength="1500"
-      placeholder="예시입력: 강사와 학생앱을 crownyclass.com 에 다 만들었어 수업에 필요한 기능은 다 넣었고 무료로 배포하려고 해 파악해서 전체적으로 강팀이 회의해봐"></textarea>
+      placeholder="예시입력: 강사와 학생앱을 crownyclass.com 에 다 만들었어 수업에 필요한 기능은 다 넣었고 무료로 배포하려고 해 파악해서 구현에 대해서와 홍보마케팅에 대해서 회의해봐"></textarea>
 
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
     <div class="tw-quota">무료 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
