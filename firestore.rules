@@ -37,6 +37,9 @@ service cloud.firestore {
         && (!('imageDataList' in request.resource.data)
             || (request.resource.data.imageDataList is list
                 && request.resource.data.imageDataList.size() <= 5))
+        && (!('contact' in request.resource.data)
+            || (request.resource.data.contact is string
+                && request.resource.data.contact.size() <= 200))
       );
 
       allow update: if isAdmin()
@@ -169,12 +172,32 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ---- 사용자 문서 (강팀 무료 횟수 부여 등) ----
+    match /users/{uid} {
+      // 본인 또는 관리자 읽기, 쓰기는 관리자만 (사용자 자가 부여 방지)
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+
     // ---- 사용자별 관심 미러 컬렉션 ----
     match /users/{uid}/likes/{ideaId} {
       // 본인만 읽고 쓰기
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow create: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow delete: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow update: if false;
+    }
+
+    // ---- 강팀 회의 내역 (본인 것만 읽고 생성) ----
+    match /meetings/{id} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin() || (
+        request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.html is string
+        && request.resource.data.html.size() <= 60000
+      );
+      allow delete: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
       allow update: if false;
     }
 

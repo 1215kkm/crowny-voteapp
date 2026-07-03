@@ -75,6 +75,22 @@
   .tw-follow-ic { font-size: 22px; line-height: 1; }
   .tw-follow-tag { font-weight: 600; opacity: .8; font-size: 16px; }
 
+  /* 내 회의 내역 (로그인 사용자) */
+  .tw-history { margin-bottom: 14px; border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); background: var(--color-subtle); overflow: hidden; }
+  .tw-history-head { font-size: 13px; font-weight: 800; letter-spacing: .04em;
+    color: var(--color-text-secondary); padding: 10px 14px; border-bottom: 1px solid var(--color-border); }
+  .tw-history-list { max-height: 220px; overflow-y: auto; }
+  .tw-hist-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+    font-family: inherit; padding: 9px 14px; border-bottom: 1px solid var(--color-border); }
+  .tw-hist-item:last-child { border-bottom: none; }
+  .tw-hist-item:hover { background: color-mix(in srgb, var(--color-accent-start) 12%, transparent); }
+  .tw-hist-when { font-size: 12px; color: var(--color-text-light); }
+  .tw-hist-title { font-size: 14px; font-weight: 700; color: var(--color-text); line-height: 1.35;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tw-hist-hint { font-size: 13px; color: var(--color-text-light); text-align: center; padding: 6px 0 2px; }
+
   /* 결과 */
   .tw-result.hidden { display: none; }
   .tw-result { margin-top: 8px; border-top: 1px solid var(--color-border); padding-top: 14px; }
@@ -151,6 +167,73 @@
   .tw-credit { text-align: center; font-size: 16px; color: var(--color-text-light); margin-top: 10px; }
   .tw-credit a { color: var(--color-accent-start); text-decoration: none; font-weight: 700; }
 
+  /* ===== 헤더: 하트 버튼 + 프로필 배지 ===== */
+  .header-heart-btn { background: none; border: none; cursor: pointer; font-size: 22px;
+    line-height: 1; padding: 4px; border-radius: 50%; }
+  .header-heart-btn:hover { transform: scale(1.12); }
+  #profile-btn { position: relative; }
+  .profile-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px;
+    padding: 0 5px; border-radius: 9px; background: var(--color-accent-end); color: #fff;
+    font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+    box-shadow: 0 0 0 2px var(--color-bg); }
+  .profile-badge.hidden { display: none; }
+  .activity-item { display: block; width: 100%; text-align: left; cursor: pointer; }
+  .fav-item-sub { font-size: 13px; color: var(--color-text-light); margin-top: 3px; }
+  .fav-goal { color: var(--color-accent-end); font-weight: 700; }
+  .fav-goal b { color: var(--color-accent-end); }
+  .fav-goal.met { color: var(--color-success, #16a34a); }
+
+  /* ===== 아이디어 카드: hover/클릭 시 배경 검정 ===== */
+  #ideas-container .idea-card:hover,
+  #ideas-container .idea-card.active,
+  .board-card:hover,
+  .board-card.active {
+    background: #000 !important;
+    border-color: #000 !important;
+    color: #fff;
+  }
+  #ideas-container .idea-card:hover *,
+  #ideas-container .idea-card.active *,
+  .board-card:hover *,
+  .board-card.active * { color: inherit; }
+  /* 배경 검정에서도 뱃지·버튼·프로그레스는 원래 색 유지 */
+  #ideas-container .idea-card:hover .status-badge,
+  #ideas-container .idea-card:hover .badge-popular,
+  #ideas-container .idea-card:hover .badge-threshold,
+  #ideas-container .idea-card:hover .btn-mini,
+  #ideas-container .idea-card.active .status-badge,
+  #ideas-container .idea-card.active .btn-mini { color: #fff; }
+
+  /* ===== 아이디어 상세 오버레이 (딤 없음 · 회의창보다 50px 큰 폭) ===== */
+  .idea-overlay { position: fixed; inset: 0; z-index: 120; pointer-events: none; }
+  .idea-overlay.hidden { display: none; }
+  /* 강팀 회의창(25%, min 320px)보다 약 50px 넓게 */
+  .idea-overlay-panel { pointer-events: auto; position: absolute; top: 0; right: 0; bottom: 0;
+    width: min(94vw, max(370px, calc(25% + 50px)));
+    background: var(--color-bg); border-left: 1px solid var(--color-border);
+    box-shadow: -12px 0 40px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .32s cubic-bezier(.2,.8,.2,1); overflow: visible; }
+  .idea-overlay.show .idea-overlay-panel { transform: translateX(0); }
+  /* 중앙 왼쪽 바깥 X 버튼 */
+  .idea-overlay-x { pointer-events: auto; position: absolute; left: -44px; top: 50%;
+    transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text);
+    font-size: 18px; font-weight: 700; cursor: pointer; box-shadow: -4px 0 16px rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center; }
+  .idea-overlay-x:hover { background: var(--color-accent-end); color: #fff; border-color: var(--color-accent-end); }
+  .idea-overlay-head { display: flex; align-items: center; padding: 16px 22px;
+    border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+  .idea-overlay-eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--color-accent-end); }
+  .idea-overlay-body { flex: 1 1 auto; overflow-y: auto; padding: 22px; }
+  /* 오버레이 안의 카드는 항상 펼친 상태로 보이게, hover 검정 무효 */
+  .idea-overlay-body .idea-card { background: var(--color-surface) !important; cursor: default; }
+  .idea-overlay-body .idea-card .expand-icon { display: none; }
+  @media (max-width: 640px) {
+    .idea-overlay-panel { width: calc(100% - 44px); border-left: none; }
+    .idea-overlay-x { left: -42px; }
+  }
+
   /* ===== 데스크톱: 좌(원화면 3/4) + 우(강팀 회의창 1/4) 2단 ===== */
   @media (min-width: 1024px) {
     .flip-arrow { display: none !important; }
@@ -211,8 +294,10 @@
           Google로 로그인
         </button>
         <div id="user-info" class="hidden">
-          <button id="favorites-btn" class="favorites-btn" title="관심 아이디어 보기">
+          <button id="favorites-btn" class="header-heart-btn" title="관심 아이디어">🤍</button>
+          <button id="profile-btn" class="favorites-btn" title="내 활동 (내 아이디어)">
             <img id="user-photo" src="" alt="" class="user-avatar">
+            <span id="profile-badge" class="profile-badge hidden">0</span>
           </button>
           <span id="user-name"></span>
           <button id="logout-btn" class="btn-logout" onclick="window.appAuth.logout()">로그아웃</button>
@@ -331,6 +416,12 @@
             <span class="char-count"><span id="desc-count">0</span>/1000</span>
           </div>
 
+          <div class="form-group">
+            <label for="idea-contact">연락처 (선택)</label>
+            <p class="contact-note">공감을 받아서 제작에 들어가면 먼저 연락드립니다. 원하시면 연락처를 적어주세요.</p>
+            <input type="text" id="idea-contact" placeholder="이메일 · 전화번호 · 카톡ID 등 (관리자만 확인)" maxlength="120">
+          </div>
+
           <div class="form-group image-attach-row">
             <button type="button" id="image-add-btn" class="image-add-btn" title="이미지첨부" aria-label="이미지 첨부">
               <span class="plus-icon">+</span>
@@ -385,6 +476,17 @@
     </div>
   </div>
 
+  <!-- 내 활동 (내가 올린 아이디어) -->
+  <div id="activity-modal" class="modal-backdrop hidden">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3>내 활동 — 내 아이디어 ✍️</h3>
+        <button id="activity-modal-close" class="modal-close" aria-label="닫기">×</button>
+      </div>
+      <div id="activity-list" class="modal-body"></div>
+    </div>
+  </div>
+
   <div id="share-success-modal" class="modal-backdrop hidden">
     <div class="modal-window share-success">
       <button id="share-success-close" class="modal-close" aria-label="닫기">×</button>
@@ -422,10 +524,10 @@
     </div>
 
     <textarea id="team-input" class="tw-input" rows="10" maxlength="1500"
-      placeholder="예시입력1: 강사와 학생이 수업때 파일전송과 원격케어를 쉽게 할 수 있는 앱을 Crownyclass.com에 만들어놨어 더 쓸수밖에 없도록 하는 추가 아이디어와 홍보 아이디어를 알려줘&#10;&#10;예시입력2: 밑에서 위로 점프해서 올라가는 흔한 게임을 만들었어 귀여운 스타일이야 어떻게 하면 더 재미있게 할 수 있을지 추가 아이디어와 홍보 아이디어를 알려줘"></textarea>
+      placeholder="예시: 강사와 학생이 컴퓨터수업때 파일전송과 원격케어를 쉽게할 수 있는 무료앱을 crownyclass.com에 만들어놨어 6개월간 직접 사용해봤는데 너무 좋아 전국에 다른선생님들도 알려주고 싶어 좋은 아이디어 있어?"></textarea>
 
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
-    <div class="tw-quota">무료 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
+    <div class="tw-quota">질문 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
 
     <a class="tw-follow" href="https://www.threads.net/@kkm450815" target="_blank" rel="noopener">
       <span class="tw-follow-ic">＠</span> 스친추가 <span class="tw-follow-tag">@kkm450815</span>
@@ -438,6 +540,17 @@
 </div><!-- /flip-rotor -->
 <button id="to-appter" class="flip-arrow flip-arrow-left" type="button" aria-label="Appter 화면 보기">←</button>
 <button id="to-team" class="flip-arrow flip-arrow-right" type="button" aria-label="강팀 회의창 보기">강팀 →</button>
+  <!-- 아이디어 상세 오버레이 (카드 클릭 시 우측에서 슬라이드 인 / 닫기 시 강팀회의창 복귀) -->
+  <div id="idea-overlay" class="idea-overlay hidden" aria-hidden="true">
+    <aside class="idea-overlay-panel">
+      <button type="button" id="idea-overlay-close" class="idea-overlay-x" aria-label="닫기">✕</button>
+      <div class="idea-overlay-head">
+        <span class="idea-overlay-eyebrow">아이디어 상세</span>
+      </div>
+      <div id="idea-overlay-body" class="idea-overlay-body"></div>
+    </aside>
+  </div>
+
 </div><!-- /flip-scene -->
 
   <!-- 작성폼 모달 글루 (가산 전용: 열기/닫기만. app.js 핸들러는 손대지 않음) -->

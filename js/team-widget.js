@@ -6,9 +6,11 @@
   var CREATOR_THREADS = "kkm450815";
   // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
-  var FREE_ANON = 3;               // 익명 무료 횟수 (캐시 저장)
+  var FREE_ANON = 3;               // 익명 질문 횟수 (캐시 저장)
+  var REGEN_MS = 12 * 60 * 60 * 1000;  // 12시간마다 질문 1회 재충전
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
+  var LS_REGEN = "appter_team_regen";  // 마지막 재충전 기준 시각
   var LS_FOLLOW = "appter_followed_kkm"; // 스친추가 적립 1회 플래그
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
 
@@ -34,27 +36,117 @@
     if (ref) localStorage.setItem("appter_came_from_ref", ref);
   } catch (e) {}
 
-  // ---- 무료 횟수 ----
+  // ---- 질문 횟수 ----
+  var adminGrant = 0; // 관리자가 회원관리에서 부여한 추가 질문 횟수 (Firestore)
   function used() { return parseInt(localStorage.getItem(LS_COUNT) || "0", 10) || 0; }
   function bonus() { return parseInt(localStorage.getItem(LS_BONUS) || "0", 10) || 0; }
-  function remaining() { return Math.max(0, FREE_ANON + bonus() - used()); }
+  function remaining() { return Math.max(0, FREE_ANON + bonus() + adminGrant - used()); }
+
+  // 12시간마다 질문 1회 자동 재충전 (기본 3회 한도까지 회복)
+  function applyRegen() {
+    var u = used();
+    if (u <= 0) { localStorage.removeItem(LS_REGEN); return; }
+    var last = parseInt(localStorage.getItem(LS_REGEN) || "0", 10);
+    if (!last) { localStorage.setItem(LS_REGEN, String(Date.now())); return; }
+    var periods = Math.floor((Date.now() - last) / REGEN_MS);
+    if (periods > 0) {
+      var give = Math.min(periods, u);
+      localStorage.setItem(LS_COUNT, String(u - give));
+      localStorage.setItem(LS_REGEN, String(last + give * REGEN_MS));
+      if (used() <= 0) localStorage.removeItem(LS_REGEN);
+    }
+  }
+  // 다음 재충전까지 남은 ms (없으면 0)
+  function nextRegenMs() {
+    var last = parseInt(localStorage.getItem(LS_REGEN) || "0", 10);
+    if (!last || used() <= 0) return 0;
+    return Math.max(0, (last + REGEN_MS) - Date.now());
+  }
+  function fmtRegen() {
+    var ms = nextRegenMs();
+    if (!ms) return "";
+    var h = Math.ceil(ms / (60 * 60 * 1000));
+    if (h <= 1) return "약 1시간 이내";
+    return "약 " + h + "시간 뒤";
+  }
+
   function renderQuota() {
+    applyRegen();
     if (remainEl) remainEl.textContent = remaining();
     if (remaining() <= 0) {
       runBtn.disabled = true;
-      runBtn.textContent = "무료 소진 — 아래 '더 받기'";
-    } else if (!running && runBtn.textContent.indexOf("무료 소진") === 0) {
+      runBtn.textContent = "질문 소진 · " + (fmtRegen() || "12시간 뒤") + " 1회 충전";
+    } else if (!running && runBtn.textContent.indexOf("질문 소진") === 0) {
       runBtn.disabled = false;
       runBtn.textContent = "→ 강팀 회의시작해";
     }
   }
   function consumeOne() {
     localStorage.setItem(LS_COUNT, String(used() + 1));
+    // 재충전 기준 시각 시작 (처음 소진 시)
+    if (used() >= FREE_ANON + bonus() + adminGrant && !localStorage.getItem(LS_REGEN)) {
+      localStorage.setItem(LS_REGEN, String(Date.now()));
+    }
     renderQuota();
   }
   function addBonus(n) {
     localStorage.setItem(LS_BONUS, String(bonus() + n));
     renderQuota();
+  }
+
+  // ---- 로그인 사용자 회의 내역 ----
+  function currentUid() {
+    var u = window.__currentUser;
+    return (u && u.uid) ? u.uid : null;
+  }
+  var historyCache = [];   // 최근 회의 목록 (최신순)
+
+  // html 조각에서 회의 제목 추출 (tw-m-title) — 없으면 프롬프트 앞부분
+  function extractTitle(html, prompt) {
+    var m = /class="tw-m-title"[^>]*>([\s\S]*?)<\/div>/i.exec(html || "");
+    if (m) {
+      var t = m[1].replace(/<[^>]+>/g, "").trim();
+      if (t) return t;
+    }
+    return (prompt || "강팀 회의").slice(0, 40);
+  }
+
+  function fmtStamp(createdAt) {
+    var d;
+    if (createdAt && typeof createdAt.toDate === "function") d = createdAt.toDate();
+    else if (typeof createdAt === "number") d = new Date(createdAt);
+    else d = new Date();
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return { date: d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()),
+             time: p(d.getHours()) + ":" + p(d.getMinutes()) };
+  }
+
+  function historyListHtml() {
+    if (!historyCache.length) return '';
+    var rows = historyCache.map(function (m, i) {
+      var s = fmtStamp(m.createdAt);
+      return '<button type="button" class="tw-hist-item" data-hidx="' + i + '">' +
+        '<span class="tw-hist-when">' + s.date + ' ' + s.time + '</span>' +
+        '<span class="tw-hist-title">' + esc(m.title || "강팀 회의") + '</span></button>';
+    }).join("");
+    return '<div class="tw-history"><div class="tw-history-head">내 회의 내역</div>' +
+      '<div class="tw-history-list">' + rows + '</div></div>';
+  }
+
+  function loadHistory() {
+    var uid = currentUid();
+    if (!uid || !window.appMeetings) { historyCache = []; return Promise.resolve([]); }
+    return window.appMeetings.list(uid).then(function (list) {
+      historyCache = list || [];
+      return historyCache;
+    });
+  }
+
+  // 저장된 회의 열기 (횟수 차감·재저장 없이)
+  function openSaved(idx) {
+    var m = historyCache[idx];
+    if (!m) return;
+    renderResult(m.html, m.title, false, true);
   }
 
   // 내 추천 id (익명 게스트 — 로그인 붙으면 UID로 교체)
@@ -186,10 +278,11 @@
       '</div></div>';
   }
 
-  function renderResult(html, title, isDemo) {
+  function renderResult(html, title, isDemo, fromHistory) {
     resultEl.innerHTML =
+      historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
-      (remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
+      (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
       '<div class="tw-result-body">' + metaHtml() + html + "</div>" +
       '<div class="tw-share">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
@@ -199,7 +292,26 @@
     resultEl.classList.remove("hidden");
     resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { shareMeeting(title, "threads"); });
     resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareMeeting(title, "other"); });
+    bindHistoryClicks();
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function bindHistoryClicks() {
+    var items = resultEl.querySelectorAll(".tw-hist-item");
+    for (var i = 0; i < items.length; i++) {
+      items[i].addEventListener("click", function () {
+        openSaved(parseInt(this.getAttribute("data-hidx"), 10));
+      });
+    }
+  }
+
+  // 결과 없이 내역만 보여주기 (로그인 후 목록 열기)
+  function showHistoryOnly() {
+    if (!historyCache.length) return;
+    resultEl.innerHTML = historyListHtml() +
+      '<div class="tw-hist-hint">지난 회의를 눌러 다시 열어볼 수 있어요.</div>';
+    resultEl.classList.remove("hidden");
+    bindHistoryClicks();
   }
 
   function demoMeetingHtml(prompt) {
@@ -228,12 +340,18 @@
   var loadTimer = null;
 
   function quotaNoticeHtml(remain) {
-    if (remain <= 1) {
-      return '<div class="tw-notice tw-warn">이제 <b>' + Math.max(0, remain) + '회</b> 남았습니다. ' +
-        'SNS에 퍼가지 않으시면 <b>0회</b>가 되어 더 사용하실 수 없어요. 퍼가실 때마다 <b>3회씩</b> 늘어나요! (하루 최대 3번)</div>';
+    if (remain <= 0) {
+      var when = fmtRegen() || "약 12시간 뒤";
+      return '<div class="tw-notice tw-warn">질문 횟수를 모두 사용했어요.<br>' +
+        '<b>' + when + '</b> 질문 1회가 자동으로 충전돼요. ' +
+        'SNS에 공유하면 바로 <b>3회</b>를 더 받을 수 있어요!</div>';
     }
-    return '<div class="tw-notice">체험 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
-      '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. 퍼가기 적립은 하루 최대 <b>3번</b>까지예요.</div>';
+    if (remain <= 1) {
+      return '<div class="tw-notice tw-warn">이용 가능한 질문이 <b>' + Math.max(0, remain) + '회</b> 남았습니다.<br>' +
+        'SNS에 공유하고 <b>3회</b> 더 이용해 보세요! (하루 최대 3회 추가) · 12시간마다 1회 자동 충전</div>';
+    }
+    return '<div class="tw-notice">질문 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
+      '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. (퍼가기 적립은 하루 최대 <b>3번(9회질문)</b>)</div>';
   }
 
   function showLoading(afterRemain) {
@@ -290,28 +408,66 @@
 
       if (!html) { html = demoMeetingHtml(prompt); isDemo = true; }
       consumeOne();
-      renderResult(html, prompt, isDemo);
+
+      // 로그인 사용자면 회의 내역 저장 후 목록 갱신
+      var uid = currentUid();
+      var title = extractTitle(html, prompt);
+      if (!isDemo && uid && window.appMeetings) {
+        try {
+          await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html });
+          await loadHistory();
+        } catch (e) { /* 저장 실패해도 결과는 보여줌 */ }
+      }
+      renderResult(html, title, isDemo);
     } finally {
       stopLoading();
       running = false;
-      runBtn.textContent = remaining() > 0 ? orig : "무료 소진 — 아래 '더 받기'";
-      runBtn.disabled = remaining() <= 0;
+      renderQuota();
+      if (remaining() > 0) runBtn.textContent = orig;
     }
   });
 
   // ---- 더 받기 (체험 3회 → 가입·로그인 후 SNS 퍼가기 1회당 +3회, 하루 최대 3번) ----
   function showMore() {
     var loggedIn = !!(window.appAuth && window.appAuth.getCurrentUser && window.appAuth.getCurrentUser());
+    var regen = fmtRegen() ? "\n(" + fmtRegen() + " 질문 1회가 자동 충전돼요)" : "";
     var msg = loggedIn
-      ? "무료 횟수를 다 썼어요.\n\nSNS로 퍼가실 때마다 3회씩 더 드려요 (하루 최대 3번):\n" + myRefLink()
-      : "체험 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 퍼가실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번)\n\n지금 가입할까요?";
+      ? "질문 횟수를 다 썼어요.\n\nSNS로 공유하실 때마다 3회씩 더 드려요 (하루 최대 3번(9회질문)):\n" + myRefLink() + regen
+      : "질문 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 공유하실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번(9회질문))" + regen + "\n\n지금 가입할까요?";
     if (loggedIn) {
-      shareMeeting("Appter 강팀 무료 회의", "other");
+      shareMeeting("Appter 강팀 질문 결과", "other");
     } else {
       if (confirm(msg) && window.appAuth && window.appAuth.loginWithGoogle) window.appAuth.loginWithGoogle();
     }
   }
   if (moreBtn) moreBtn.addEventListener("click", showMore);
+
+  // ---- 로그인 감지 → 회의 내역 미리 로드 (plain script라 폴링으로 감시) ----
+  var lastUid = null;
+  setInterval(function () {
+    var uid = currentUid();
+    if (uid === lastUid) return;
+    lastUid = uid;
+    if (uid) {
+      // 관리자 부여 무료 횟수 반영
+      if (window.appMeetings && window.appMeetings.grant) {
+        window.appMeetings.grant(uid).then(function (g) {
+          adminGrant = g || 0;
+          renderQuota();
+        });
+      }
+      loadHistory().then(function () {
+        // 결과창이 비어 있을 때만 내역 목록을 띄운다 (열람 중 방해 X)
+        if (historyCache.length && (resultEl.classList.contains("hidden") || !resultEl.innerHTML.trim())) {
+          showHistoryOnly();
+        }
+      });
+    } else {
+      historyCache = [];
+      adminGrant = 0;
+      renderQuota();
+    }
+  }, 1500);
 
   // ---- 스친추가 적립: 버튼 눌러 스레드 프로필 열면 1회에 한해 +3회 ----
   var followBtn = document.querySelector(".tw-follow");
@@ -323,4 +479,6 @@
   });
 
   renderQuota();
+  // 12시간 재충전·카운트다운 갱신 (1분마다)
+  setInterval(renderQuota, 60000);
 })();

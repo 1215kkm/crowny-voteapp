@@ -31,7 +31,9 @@ import {
   personaPostIdea,
   aggregateUserActivities,
   listSubscribers,
-  listEmailsByIdea
+  listEmailsByIdea,
+  getUserTeamGrant,
+  setUserTeamGrant
 } from "./firestore.js";
 import { COUNTRIES, countryName, countryFlagEmoji } from "./countries.js";
 import { escapeHtml } from "./utils.js";
@@ -432,10 +434,12 @@ function renderAdminIdeas() {
         <span class="muted">${escapeHtml(i.authorName || '')}</span>
         <span class="muted">${new Date(i.createdAt?.toMillis?.() || 0).toLocaleString("ko-KR")}</span>
         <span class="muted">상태: ${i.status || 'waiting'}</span>
+        ${i.contact ? '<span class="badge-contact" title="연락처 제공">📇 연락처</span>' : ''}
         ${i.isAi ? '<span class="badge-ai">AI</span>' : ''}
         <button class="btn-mini btn-text" data-action="toggle-admin">펼치기/접기</button>
       </div>
       <div class="admin-idea-body hidden">
+        ${i.contact ? `<div class="admin-contact">📇 연락처: <strong>${escapeHtml(i.contact)}</strong></div>` : ''}
         <label>제목 <input class="adm-input" data-field="title" value="${escapeHtml(i.title)}"></label>
         <label>설명 <textarea class="adm-input" data-field="description" rows="4">${escapeHtml(i.description || '')}</textarea></label>
         <label>상태
@@ -1003,6 +1007,13 @@ function filterMembers() {
         <span class="member-counts">
           글 ${m.ideas.length} · 댓글 ${m.comments.length} · 관심 ${m.likes.length} · 대기 ${m.waitlists.length}
         </span>
+        <span class="member-grant">
+          <label>강팀 무료 추가</label>
+          <input type="number" class="adm-input member-grant-input" min="0" max="9999" value="0" style="width:70px;">
+          <button class="btn-mini btn-comment-submit" data-action="grant-save">저장</button>
+          <button class="btn-mini btn-text" data-action="grant-plus">+10</button>
+          <button class="btn-mini btn-text" data-action="grant-reset">리셋</button>
+        </span>
         <button class="btn-mini btn-text" data-action="toggle-member">펼치기</button>
       </div>
       <div class="member-body hidden">
@@ -1017,6 +1028,27 @@ function filterMembers() {
       body.classList.toggle("hidden");
       btn.textContent = body.classList.contains("hidden") ? "펼치기" : "접기";
     });
+  });
+
+  // 강팀 무료 추가 횟수 조절
+  membersListEl.querySelectorAll(".member-row").forEach((row) => {
+    const uid = row.dataset.uid;
+    const input = row.querySelector(".member-grant-input");
+    // 현재 부여값 채우기
+    getUserTeamGrant(uid).then((g) => { if (input) input.value = g || 0; }).catch(() => {});
+
+    async function save(n) {
+      try {
+        const val = await setUserTeamGrant(uid, n);
+        if (input) input.value = val;
+        showToast(`${row.querySelector("strong")?.textContent || "회원"} 강팀 무료 추가: ${val}회`, "success");
+      } catch (e) {
+        showToast("저장 실패: " + (e.message || e), "");
+      }
+    }
+    row.querySelector('[data-action="grant-save"]').addEventListener("click", () => save(input.value));
+    row.querySelector('[data-action="grant-plus"]').addEventListener("click", () => save((parseInt(input.value, 10) || 0) + 10));
+    row.querySelector('[data-action="grant-reset"]').addEventListener("click", () => save(0));
   });
 }
 

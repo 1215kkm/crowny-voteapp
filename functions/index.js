@@ -72,7 +72,10 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 <div class="tw-m-sum"><b>정리</b><ul><li>결정: 한 줄</li><li>아뱅 아이디어: ① … ② … ③ …</li><li>다음 액션: 한 줄</li></ul></div>`;
 
 function stripFences(html) {
-  return String(html || "").replace(/^```html\s*/i, "").replace(/```$/i, "").trim();
+  let s = String(html || "").trim();
+  s = s.replace(/^```(?:html)?\s*/i, ""); // 앞쪽 ```html / ``` 제거
+  s = s.replace(/\s*```$/i, "");          // 뒤쪽 ``` (앞 공백·개행 포함) 제거
+  return s.trim();
 }
 
 // ── Claude (기본) ─────────────────────────────────────────────────

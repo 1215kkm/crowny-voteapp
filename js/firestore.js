@@ -121,7 +121,7 @@ export async function getTodayPostCount(uid) {
   return count;
 }
 
-export async function addIdea(title, description, user, imageDataList) {
+export async function addIdea(title, description, user, imageDataList, contact) {
   const todayCount = await getTodayPostCount(user.uid);
   if (todayCount >= DAILY_POST_LIMIT) {
     const err = new Error(`하루에 최대 ${DAILY_POST_LIMIT}개까지만 등록할 수 있습니다.`);
@@ -150,6 +150,9 @@ export async function addIdea(title, description, user, imageDataList) {
 
   if (images.length > 0) {
     payload.imageDataList = images;
+  }
+  if (typeof contact === "string" && contact.trim()) {
+    payload.contact = contact.trim().slice(0, 200);
   }
 
   const docRef = await addDoc(collection(db, "ideas"), payload);
@@ -583,6 +586,65 @@ export async function getSettings() {
 
 export async function setSettings(fields) {
   await _sd(_d(db, "settings", "admin"), fields, { merge: true });
+}
+
+// ---- 강팀 회의 내역 (로그인 사용자별 저장) ----
+
+export async function addMeeting({ uid, title, prompt, html }) {
+  if (!uid) return null;
+  const ref = await _add(_c(db, "meetings"), {
+    uid,
+    title: String(title || "").slice(0, 200),
+    prompt: String(prompt || "").slice(0, 2000),
+    html: String(html || "").slice(0, 60000),
+    createdAt: _st()
+  });
+  return ref.id;
+}
+
+export async function listMeetings(uid, max = 50) {
+  if (!uid) return [];
+  const q = _q(_c(db, "meetings"), _w("uid", "==", uid), _o("createdAt", "desc"), _l(max));
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+// ---- 강팀 무료 횟수 관리자 부여 (users/{uid}.teamGrant) ----
+
+export async function getUserTeamGrant(uid) {
+  if (!uid) return 0;
+  try {
+    const snap = await _gdoc(_d(db, "users", uid));
+    if (!snap.exists()) return 0;
+    const v = snap.data().teamGrant;
+    return typeof v === "number" ? v : 0;
+  } catch (e) { return 0; }
+}
+
+export async function setUserTeamGrant(uid, n) {
+  if (!uid) return;
+  const val = Math.max(0, Math.floor(Number(n) || 0));
+  await _sd(_d(db, "users", uid), { teamGrant: val }, { merge: true });
+  return val;
+}
+
+// ---- 내가 올린 아이디어 (프로필 → 내 활동) ----
+
+export async function getUserIdeas(uid, max = 50) {
+  if (!uid) return [];
+  const q = _q(_c(db, "ideas"), _w("authorUid", "==", uid), _l(max));
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  // 최근순 (createdAt desc) — 인덱스 없이 클라이언트 정렬
+  list.sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return tb - ta;
+  });
+  return list;
 }
 
 // ---- 스케줄 큐 (자동 댓글) ----

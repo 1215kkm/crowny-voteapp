@@ -2986,3 +2986,11 @@ html[data-theme="dark"] .section-header h2 { color: var(--color-text); }
   #content { grid-template-columns: 1fr; margin: 8px auto 0; }
   .section-header { flex-direction: row; align-items: center; }
 }
+
+/* 아이디어 작성 폼 연락처 안내 + 관리자 연락처 표시 */
+.contact-note { font-size: 13px; color: var(--color-text-light); margin: 2px 0 8px; line-height: 1.5; }
+.badge-contact { display: inline-block; font-size: 11px; font-weight: 700; color: #fff;
+  background: #0d9c84; padding: 2px 7px; border-radius: 9999px; }
+.admin-contact { background: rgba(13,156,132,0.12); border: 1px solid rgba(13,156,132,0.4);
+  border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 14px; color: var(--color-text); }
+.admin-contact strong { color: #0d9c84; }

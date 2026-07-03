@@ -26,7 +26,11 @@ import {
   THRESHOLD_FREE_MIXED,
   meetsDesignThreshold,
   userUpdateOwnIdea,
-  userDeleteOwnIdea
+  userDeleteOwnIdea,
+  addMeeting,
+  listMeetings,
+  getUserIdeas,
+  getUserTeamGrant
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { escapeHtml } from "./utils.js";
@@ -74,6 +78,7 @@ const subscribeSuccess = document.getElementById("subscribe-success");
 
 const ideaTitle = document.getElementById("idea-title");
 const ideaDesc = document.getElementById("idea-desc");
+const ideaContact = document.getElementById("idea-contact");
 const titleCount = document.getElementById("title-count");
 const descCount = document.getElementById("desc-count");
 const submitBtn = document.getElementById("submit-btn");
@@ -87,6 +92,27 @@ const favBtn = document.getElementById("favorites-btn");
 const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
+
+// 프로필(내 활동) + 목표 배지
+const profileBtn = document.getElementById("profile-btn");
+const profileBadge = document.getElementById("profile-badge");
+const activityModal = document.getElementById("activity-modal");
+const activityModalClose = document.getElementById("activity-modal-close");
+const activityList = document.getElementById("activity-list");
+
+// 아이디어 상세 오버레이
+const ideaOverlay = document.getElementById("idea-overlay");
+const ideaOverlayBody = document.getElementById("idea-overlay-body");
+const ideaOverlayClose = document.getElementById("idea-overlay-close");
+let overlayIdeaId = null;          // 현재 오버레이에 열린 아이디어 id
+let overlayCommentUnsub = null;    // 오버레이 댓글 구독 해제
+
+// 플레인 스크립트(team-widget.js)에서 쓰도록 회의 내역 API를 전역 노출
+window.appMeetings = {
+  add: (data) => addMeeting(data).catch((e) => { console.warn("meeting save failed", e && e.message); return null; }),
+  list: (uid) => listMeetings(uid).catch(() => []),
+  grant: (uid) => getUserTeamGrant(uid).catch(() => 0)  // 관리자 부여 추가 무료 횟수
+};
 const shareModal = document.getElementById("share-success-modal");
 const shareModalClose = document.getElementById("share-success-close");
 const shareModalGoal = document.getElementById("share-success-goal");
@@ -249,11 +275,18 @@ if (imageInput) imageInput.addEventListener("change", handleImageSelect);
 ideaForm.addEventListener("submit", handleSubmit);
 ideasContainer.addEventListener("click", handleIdeasClick);
 
-// ---- 관심 모달 ----
+// ---- 관심 모달 (하트 버튼) ----
 if (favBtn) favBtn.addEventListener("click", openFavoritesModal);
 if (favModalClose) favModalClose.addEventListener("click", closeFavoritesModal);
 if (favModal) {
   favModal.addEventListener("click", (e) => { if (e.target === favModal) closeFavoritesModal(); });
+}
+
+// ---- 내 활동 모달 (프로필 버튼) ----
+if (profileBtn) profileBtn.addEventListener("click", openActivityModal);
+if (activityModalClose) activityModalClose.addEventListener("click", () => activityModal.classList.add("hidden"));
+if (activityModal) {
+  activityModal.addEventListener("click", (e) => { if (e.target === activityModal) activityModal.classList.add("hidden"); });
 }
 
 // ---- 등록 성공 공유 모달 ----
@@ -277,6 +310,7 @@ async function handleAuthState(user) {
     userPhoto.src = user.photoURL || "";
     userPhoto.alt = user.displayName || "";
     userName.textContent = user.displayName || "사용자";
+    updateProfileBadge(user);
 
     if (subscribeEmailForm) subscribeEmailForm.classList.add("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.remove("hidden");
@@ -319,6 +353,7 @@ async function handleAuthState(user) {
   } else {
     loginBtn.classList.remove("hidden");
     userInfo.classList.add("hidden");
+    if (profileBadge) profileBadge.classList.add("hidden");
     if (subscribeEmailForm) subscribeEmailForm.classList.remove("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
     userWaitlistMap = {}; userLikeMap = {};
@@ -414,6 +449,17 @@ function renderIdeas(ideas) {
       card.classList.add("expanded");
       const cached = commentsCacheMap[expandedCardId];
       if (cached) renderInlineComments(card, cached);
+    }
+  }
+  // 오버레이가 열려 있으면 최신 수치로 다시 그리고, 목록의 해당 카드는 active 유지
+  if (overlayIdeaId) {
+    const still = ideas.some((i) => i.id === overlayIdeaId);
+    if (still) {
+      renderOverlay();
+      const listCard = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(overlayIdeaId)}"]`);
+      if (listCard) listCard.classList.add("active");
+    } else {
+      closeIdeaOverlay();
     }
   }
 }
@@ -603,10 +649,72 @@ async function handleIdeasClick(e) {
   // 2) 텍스트영역 또는 input 클릭은 펼침 토글에 영향 없도록
   if (e.target.closest("textarea, input")) return;
 
-  // 3) 카드 클릭 → 토글
+  // 3) 목록의 카드 클릭 → 우측 상세 오버레이로 (오버레이 안의 카드 클릭은 무시)
   const card = e.target.closest(".idea-card");
-  if (card) toggleAccordion(card);
+  if (card && !card.closest(".idea-overlay-body")) openIdeaOverlay(card.dataset.id);
 }
+
+// ---- 아이디어 상세 오버레이 ----
+
+function openIdeaOverlay(ideaId) {
+  const idea = currentRealIdeas.find((i) => i.id === ideaId);
+  if (!idea || !ideaOverlay || !ideaOverlayBody) return;
+
+  overlayIdeaId = ideaId;
+  renderOverlay();
+
+  // 댓글 실시간 구독 (오버레이 전용)
+  if (overlayCommentUnsub) { overlayCommentUnsub(); overlayCommentUnsub = null; }
+  try {
+    overlayCommentUnsub = subscribeToComments(ideaId, (comments) => {
+      commentsCacheMap[ideaId] = comments;
+      const c = ideaOverlayBody.querySelector(".idea-card");
+      if (c) renderInlineComments(c, comments);
+    });
+  } catch (e) { /* ignore */ }
+
+  ideasContainer.querySelectorAll(".idea-card.active").forEach((c) => c.classList.remove("active"));
+  const listCard = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(ideaId)}"]`);
+  if (listCard) listCard.classList.add("active");
+
+  ideaOverlay.classList.remove("hidden");
+  ideaOverlay.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(() => ideaOverlay.classList.add("show"));
+}
+
+function renderOverlay() {
+  if (!overlayIdeaId) return;
+  const idea = currentRealIdeas.find((i) => i.id === overlayIdeaId);
+  if (!idea) { closeIdeaOverlay(); return; }
+  const card = createIdeaCard(idea);
+  card.classList.add("expanded");
+  ideaOverlayBody.innerHTML = "";
+  ideaOverlayBody.appendChild(card);
+  const cached = commentsCacheMap[overlayIdeaId];
+  if (cached) renderInlineComments(card, cached);
+}
+
+function closeIdeaOverlay() {
+  if (!ideaOverlay) return;
+  if (overlayCommentUnsub) { overlayCommentUnsub(); overlayCommentUnsub = null; }
+  if (overlayIdeaId) {
+    const listCard = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(overlayIdeaId)}"]`);
+    if (listCard) listCard.classList.remove("active");
+  }
+  overlayIdeaId = null;
+  ideaOverlay.classList.remove("show");
+  ideaOverlay.setAttribute("aria-hidden", "true");
+  setTimeout(() => ideaOverlay.classList.add("hidden"), 320);
+}
+
+if (ideaOverlayClose) ideaOverlayClose.addEventListener("click", closeIdeaOverlay);
+if (ideaOverlay) {
+  // 오버레이 안의 버튼도 기존 액션 핸들러로 처리 (btn.closest('.idea-card')가 오버레이 카드를 잡음)
+  ideaOverlayBody.addEventListener("click", handleIdeasClick);
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ideaOverlay && !ideaOverlay.classList.contains("hidden")) closeIdeaOverlay();
+});
 
 function toggleAccordion(card) {
   const ideaId = card.dataset.id;
@@ -1019,8 +1127,9 @@ async function submitIdea(title, desc, user) {
   submitBtn.textContent = "제출 중...";
   try {
     const images = pendingImages.map((p) => p.dataUrl);
-    const newId = await addIdea(title, desc, user, images);
-    ideaTitle.value = ""; ideaDesc.value = "";
+    const contact = ideaContact ? ideaContact.value.trim() : "";
+    const newId = await addIdea(title, desc, user, images, contact);
+    ideaTitle.value = ""; ideaDesc.value = ""; if (ideaContact) ideaContact.value = "";
     titleCount.textContent = "0"; descCount.textContent = "0";
     clearImagePreviews();
     clearDraft(DRAFT_KEY);
@@ -1118,6 +1227,70 @@ async function openFavoritesModal() {
 }
 
 function closeFavoritesModal() { if (favModal) favModal.classList.add("hidden"); }
+
+// ---- 내 활동 (내가 올린 아이디어) + 목표 배지 ----
+
+// 아이디어 하나가 설계 진입까지 남은 최소 인원 (0=충족)
+function remainingToGoal(idea) {
+  const paid = idea.paidWaitlistCount || 0;
+  const free = idea.freeWaitlistCount || 0;
+  if (meetsDesignThreshold(paid, free)) return 0;
+  const remA = Math.max(0, THRESHOLD_PAID_ALONE - paid);
+  const remB = Math.max(0, THRESHOLD_PAID_MIXED - paid) + Math.max(0, THRESHOLD_FREE_MIXED - free);
+  return Math.min(remA, remB);
+}
+
+async function updateProfileBadge(user) {
+  if (!profileBadge) return;
+  if (!user) { profileBadge.classList.add("hidden"); return; }
+  try {
+    const mine = await getUserIdeas(user.uid);
+    const pending = mine.map(remainingToGoal).filter((n) => n > 0);
+    if (pending.length === 0) { profileBadge.classList.add("hidden"); return; }
+    const min = Math.min(...pending);
+    profileBadge.textContent = min;
+    profileBadge.title = `목표 관심인원까지 ${min}명 남음`;
+    profileBadge.classList.remove("hidden");
+  } catch (e) {
+    profileBadge.classList.add("hidden");
+  }
+}
+
+async function openActivityModal() {
+  if (!activityModal) return;
+  const user = getCurrentUser();
+  if (!user) { showToast("로그인 후 사용할 수 있어요", "info"); return; }
+  activityModal.classList.remove("hidden");
+  activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">불러오는 중...</p>';
+  try {
+    const mine = await getUserIdeas(user.uid);
+    if (mine.length === 0) {
+      activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">아직 올린 아이디어가 없어요.</p>';
+      return;
+    }
+    activityList.innerHTML = mine.map((i) => {
+      const paid = i.paidWaitlistCount || 0, free = i.freeWaitlistCount || 0;
+      const rem = remainingToGoal(i);
+      const goal = rem === 0
+        ? '<span class="fav-goal met">설계 진입 조건 충족 ✓</span>'
+        : `<span class="fav-goal">목표까지 <b>${rem}명</b> 남음</span>`;
+      return `<button type="button" class="fav-item activity-item" data-id="${escapeHtml(i.id)}">
+        <div class="fav-item-title">${escapeHtml(i.title)}</div>
+        <div class="fav-item-sub">💎 ${paid} · 👥 ${free} · 💬 ${i.commentCount || 0}  ·  ${goal}</div>
+      </button>`;
+    }).join("");
+    activityList.querySelectorAll(".activity-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        activityModal.classList.add("hidden");
+        const id = el.dataset.id;
+        if (currentRealIdeas.some((x) => x.id === id)) openIdeaOverlay(id);
+        else window.location.href = `idea.html?id=${encodeURIComponent(id)}`;
+      });
+    });
+  } catch (e) {
+    activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">불러오기에 실패했어요.</p>';
+  }
+}
 
 
 
