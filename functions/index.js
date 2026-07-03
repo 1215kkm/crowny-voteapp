@@ -168,6 +168,7 @@ exports.onInquiryCreated = onDocumentCreated(
   },
   async (event) => {
     const data = event.data && event.data.data();
+    console.log("[inquiry] triggered, hasData:", !!data);
     if (!data) return;
 
     const text =
@@ -181,15 +182,19 @@ exports.onInquiryCreated = onDocumentCreated(
     try {
       const token = TELEGRAM_BOT_TOKEN.value();
       const chat = TELEGRAM_CHAT_ID.value();
+      console.log("[inquiry] tg tokenLen:", token ? token.length : 0, "chat:", chat);
       if (token && chat && token.indexOf("placeholder") === -1 && chat.indexOf("placeholder") === -1) {
         const r = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chat, text })
         });
-        if (!r.ok) console.error("telegram", r.status, (await r.text()).slice(0, 200));
+        console.log("[inquiry] telegram status:", r.status);
+        if (!r.ok) console.error("[inquiry] telegram body:", (await r.text()).slice(0, 200));
+      } else {
+        console.log("[inquiry] telegram skipped (placeholder/empty)");
       }
-    } catch (e) { console.error("telegram failed:", e && e.message); }
+    } catch (e) { console.error("[inquiry] telegram failed:", e && e.message); }
 
     // 2) 이메일 (mail 컬렉션 → Trigger Email 확장이 발송)
     try {
