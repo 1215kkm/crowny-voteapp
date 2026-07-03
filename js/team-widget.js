@@ -6,9 +6,11 @@
   var CREATOR_THREADS = "kkm450815";
   // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
-  var FREE_ANON = 3;               // 익명 무료 횟수 (캐시 저장)
+  var FREE_ANON = 3;               // 익명 질문 횟수 (캐시 저장)
+  var REGEN_MS = 6 * 60 * 60 * 1000;   // 6시간마다 질문 1회 재충전
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
+  var LS_REGEN = "appter_team_regen";  // 마지막 재충전 기준 시각
   var LS_FOLLOW = "appter_followed_kkm"; // 스친추가 적립 1회 플래그
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
 
@@ -34,23 +36,57 @@
     if (ref) localStorage.setItem("appter_came_from_ref", ref);
   } catch (e) {}
 
-  // ---- 무료 횟수 ----
-  var adminGrant = 0; // 관리자가 회원관리에서 부여한 추가 무료 횟수 (Firestore)
+  // ---- 질문 횟수 ----
+  var adminGrant = 0; // 관리자가 회원관리에서 부여한 추가 질문 횟수 (Firestore)
   function used() { return parseInt(localStorage.getItem(LS_COUNT) || "0", 10) || 0; }
   function bonus() { return parseInt(localStorage.getItem(LS_BONUS) || "0", 10) || 0; }
   function remaining() { return Math.max(0, FREE_ANON + bonus() + adminGrant - used()); }
+
+  // 6시간마다 질문 1회 자동 재충전 (기본 3회 한도까지 회복)
+  function applyRegen() {
+    var u = used();
+    if (u <= 0) { localStorage.removeItem(LS_REGEN); return; }
+    var last = parseInt(localStorage.getItem(LS_REGEN) || "0", 10);
+    if (!last) { localStorage.setItem(LS_REGEN, String(Date.now())); return; }
+    var periods = Math.floor((Date.now() - last) / REGEN_MS);
+    if (periods > 0) {
+      var give = Math.min(periods, u);
+      localStorage.setItem(LS_COUNT, String(u - give));
+      localStorage.setItem(LS_REGEN, String(last + give * REGEN_MS));
+      if (used() <= 0) localStorage.removeItem(LS_REGEN);
+    }
+  }
+  // 다음 재충전까지 남은 ms (없으면 0)
+  function nextRegenMs() {
+    var last = parseInt(localStorage.getItem(LS_REGEN) || "0", 10);
+    if (!last || used() <= 0) return 0;
+    return Math.max(0, (last + REGEN_MS) - Date.now());
+  }
+  function fmtRegen() {
+    var ms = nextRegenMs();
+    if (!ms) return "";
+    var h = Math.ceil(ms / (60 * 60 * 1000));
+    if (h <= 1) return "약 1시간 이내";
+    return "약 " + h + "시간 뒤";
+  }
+
   function renderQuota() {
+    applyRegen();
     if (remainEl) remainEl.textContent = remaining();
     if (remaining() <= 0) {
       runBtn.disabled = true;
-      runBtn.textContent = "무료 소진 — 아래 '더 받기'";
-    } else if (!running && runBtn.textContent.indexOf("무료 소진") === 0) {
+      runBtn.textContent = "질문 소진 · " + (fmtRegen() || "6시간 뒤") + " 1회 충전";
+    } else if (!running && runBtn.textContent.indexOf("질문 소진") === 0) {
       runBtn.disabled = false;
       runBtn.textContent = "→ 강팀 회의시작해";
     }
   }
   function consumeOne() {
     localStorage.setItem(LS_COUNT, String(used() + 1));
+    // 재충전 기준 시각 시작 (처음 소진 시)
+    if (used() >= FREE_ANON + bonus() + adminGrant && !localStorage.getItem(LS_REGEN)) {
+      localStorage.setItem(LS_REGEN, String(Date.now()));
+    }
     renderQuota();
   }
   function addBonus(n) {
@@ -304,12 +340,18 @@
   var loadTimer = null;
 
   function quotaNoticeHtml(remain) {
-    if (remain <= 1) {
-      return '<div class="tw-notice tw-warn">이용 가능 횟수가 <b>' + Math.max(0, remain) + '회</b> 남았습니다.<br>' +
-        'SNS에 공유하고 <b>3회</b> 더 이용해 보세요! (하루 최대 3회 추가)</div>';
+    if (remain <= 0) {
+      var when = fmtRegen() || "약 6시간 뒤";
+      return '<div class="tw-notice tw-warn">질문 횟수를 모두 사용했어요.<br>' +
+        '<b>' + when + '</b> 질문 1회가 자동으로 충전돼요. ' +
+        'SNS에 공유하면 바로 <b>3회</b>를 더 받을 수 있어요!</div>';
     }
-    return '<div class="tw-notice">체험 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
-      '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. 퍼가기 적립은 하루 최대 <b>3번</b>까지예요.</div>';
+    if (remain <= 1) {
+      return '<div class="tw-notice tw-warn">이용 가능한 질문이 <b>' + Math.max(0, remain) + '회</b> 남았습니다.<br>' +
+        'SNS에 공유하고 <b>3회</b> 더 이용해 보세요! (하루 최대 3회 추가) · 6시간마다 1회 자동 충전</div>';
+    }
+    return '<div class="tw-notice">질문 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
+      '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. (퍼가기 적립은 하루 최대 <b>3번(9회질문)</b>)</div>';
   }
 
   function showLoading(afterRemain) {
@@ -380,19 +422,20 @@
     } finally {
       stopLoading();
       running = false;
-      runBtn.textContent = remaining() > 0 ? orig : "무료 소진 — 아래 '더 받기'";
-      runBtn.disabled = remaining() <= 0;
+      renderQuota();
+      if (remaining() > 0) runBtn.textContent = orig;
     }
   });
 
   // ---- 더 받기 (체험 3회 → 가입·로그인 후 SNS 퍼가기 1회당 +3회, 하루 최대 3번) ----
   function showMore() {
     var loggedIn = !!(window.appAuth && window.appAuth.getCurrentUser && window.appAuth.getCurrentUser());
+    var regen = fmtRegen() ? "\n(" + fmtRegen() + " 질문 1회가 자동 충전돼요)" : "";
     var msg = loggedIn
-      ? "무료 횟수를 다 썼어요.\n\nSNS로 퍼가실 때마다 3회씩 더 드려요 (하루 최대 3번):\n" + myRefLink()
-      : "체험 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 퍼가실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번)\n\n지금 가입할까요?";
+      ? "질문 횟수를 다 썼어요.\n\nSNS로 공유하실 때마다 3회씩 더 드려요 (하루 최대 3번(9회질문)):\n" + myRefLink() + regen
+      : "질문 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 공유하실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번(9회질문))" + regen + "\n\n지금 가입할까요?";
     if (loggedIn) {
-      shareMeeting("Appter 강팀 무료 회의", "other");
+      shareMeeting("Appter 강팀 질문 결과", "other");
     } else {
       if (confirm(msg) && window.appAuth && window.appAuth.loginWithGoogle) window.appAuth.loginWithGoogle();
     }
@@ -436,4 +479,6 @@
   });
 
   renderQuota();
+  // 6시간 재충전·카운트다운 갱신 (1분마다)
+  setInterval(renderQuota, 60000);
 })();
