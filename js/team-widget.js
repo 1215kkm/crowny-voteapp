@@ -6,13 +6,46 @@
   var CREATOR_THREADS = "kkm450815";
   // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
-  var FREE_ANON = 3;               // 익명 질문 횟수 (캐시 저장)
+  var FREE_ANON = 3;               // 익명 기본 질문 횟수 (관리자 설정으로 덮임)
+  var followBonusN = 3;            // 스친추가 보너스 (관리자 설정)
+  var signupBonusN = 0;           // 가입(로그인) 보너스 (관리자 설정)
+  var shareBonusN = 3;            // SNS 공유 보너스 (관리자 설정)
   var REGEN_MS = 12 * 60 * 60 * 1000;  // 12시간마다 질문 1회 재충전
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
   var LS_REGEN = "appter_team_regen";  // 마지막 재충전 기준 시각
   var LS_FOLLOW = "appter_followed_kkm"; // 스친추가 적립 1회 플래그
+  var LS_SIGNUP = "appter_signup_bonus"; // 가입 보너스 지급 플래그
+  var LS_SHARE_DAY = "appter_share_day"; // 공유 보너스 집계 날짜
+  var LS_SHARE_CNT = "appter_share_cnt"; // 오늘 공유 보너스 지급 횟수
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
+
+  // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드
+  function loadConfig() {
+    if (!(window.appMeetings && window.appMeetings.config)) return;
+    window.appMeetings.config().then(function (c) {
+      if (!c) return;
+      FREE_ANON = c.freeBase;
+      followBonusN = c.followBonus;
+      signupBonusN = c.signupBonus;
+      shareBonusN = c.shareBonus;
+      renderQuota();
+    });
+  }
+
+  // SNS 공유 시 보너스 (하루 최대 3번)
+  function grantShareBonus() {
+    if (shareBonusN <= 0) return;
+    var today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(LS_SHARE_DAY) !== today) {
+      localStorage.setItem(LS_SHARE_DAY, today);
+      localStorage.setItem(LS_SHARE_CNT, "0");
+    }
+    var cnt = parseInt(localStorage.getItem(LS_SHARE_CNT) || "0", 10) || 0;
+    if (cnt >= 3) return;
+    localStorage.setItem(LS_SHARE_CNT, String(cnt + 1));
+    addBonus(shareBonusN);
+  }
 
   var rotor = document.getElementById("flip-rotor");
   var toAppter = document.getElementById("to-appter");
@@ -233,6 +266,7 @@
   // 모바일: 공유시트(navigator.share)에 이미지 파일 자동 첨부 → 스레드/인스타 앱 선택.
   // PC: 윈도우 공유창엔 스레드가 없으므로 이미지 자동 저장 + 스레드 글쓰기 창(문구 채워짐)을 연다.
   function shareMeeting(title, mode) {
+    grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
     return captureMeetingBlob().then(function (blob) {
       if (isMobileDevice() && blob && navigator.canShare) {
@@ -456,6 +490,11 @@
           renderQuota();
         });
       }
+      // 가입(로그인) 보너스 — 이 기기에서 1회만
+      if (!localStorage.getItem(LS_SIGNUP) && signupBonusN > 0) {
+        localStorage.setItem(LS_SIGNUP, "1");
+        addBonus(signupBonusN);
+      }
       loadHistory().then(function () {
         // 결과창이 비어 있을 때만 내역 목록을 띄운다 (열람 중 방해 X)
         if (historyCache.length && (resultEl.classList.contains("hidden") || !resultEl.innerHTML.trim())) {
@@ -473,12 +512,16 @@
   var followBtn = document.querySelector(".tw-follow");
   if (followBtn) followBtn.addEventListener("click", function () {
     if (localStorage.getItem(LS_FOLLOW)) return;
+    if (followBonusN <= 0) return;
     localStorage.setItem(LS_FOLLOW, "1");
-    addBonus(3);
-    setTimeout(function () { alert("스친추가 고마워요! 회의 3회가 추가됐어요."); }, 400);
+    addBonus(followBonusN);
+    setTimeout(function () { alert("스친추가 고마워요! 질문 " + followBonusN + "회가 추가됐어요."); }, 400);
   });
 
   renderQuota();
+  // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
+  loadConfig();
+  setTimeout(loadConfig, 800);
   // 12시간 재충전·카운트다운 갱신 (1분마다)
   setInterval(renderQuota, 60000);
 })();

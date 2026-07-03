@@ -69,6 +69,7 @@ const sections = {
   ideas: document.getElementById("tab-ideas"),
   personas: document.getElementById("tab-personas"),
   ai: document.getElementById("tab-ai"),
+  team: document.getElementById("tab-team"),
   members: document.getElementById("tab-members"),
   emails: document.getElementById("tab-emails"),
   bans: document.getElementById("tab-bans"),
@@ -100,6 +101,41 @@ const autoCommentToggle = document.getElementById("auto-comment-toggle");
 const autoPostToggle = document.getElementById("auto-post-toggle");
 const settingsSave = document.getElementById("settings-save");
 const meetingProviderSelect = document.getElementById("meeting-provider-select");
+
+// 강팀 회의 질문 횟수 설정
+const teamFreeBase = document.getElementById("team-free-base");
+const teamSignupBonus = document.getElementById("team-signup-bonus");
+const teamFollowBonus = document.getElementById("team-follow-bonus");
+const teamShareBonus = document.getElementById("team-share-bonus");
+const teamSettingsSave = document.getElementById("team-settings-save");
+
+async function loadTeamSettings() {
+  try {
+    const sv = await getSettings();
+    if (teamFreeBase) teamFreeBase.value = (sv.teamFreeBase ?? 3);
+    if (teamSignupBonus) teamSignupBonus.value = (sv.teamSignupBonus ?? 0);
+    if (teamFollowBonus) teamFollowBonus.value = (sv.teamFollowBonus ?? 3);
+    if (teamShareBonus) teamShareBonus.value = (sv.teamShareBonus ?? 3);
+  } catch (e) { /* ignore */ }
+}
+function clampNum(el, def) {
+  const n = Math.max(0, Math.min(999, Math.floor(Number(el?.value)) || 0));
+  return isNaN(n) ? def : n;
+}
+teamSettingsSave?.addEventListener("click", async () => {
+  try {
+    await setSettings({
+      teamFreeBase: clampNum(teamFreeBase, 3),
+      teamSignupBonus: clampNum(teamSignupBonus, 0),
+      teamFollowBonus: clampNum(teamFollowBonus, 3),
+      teamShareBonus: clampNum(teamShareBonus, 3)
+    });
+    showToast("강팀 회의 설정을 저장했어요", "success");
+  } catch (e) {
+    showToast("저장 실패: " + (e.message || e), "");
+  }
+});
+loadTeamSettings();
 const aiTargetIdea = document.getElementById("ai-target-idea");
 const aiCommentCount = document.getElementById("ai-comment-count");
 const aiGenComments = document.getElementById("ai-gen-comments");

@@ -53,6 +53,7 @@
         <button class="admin-tab" data-tab="ideas">글 관리</button>
         <button class="admin-tab" data-tab="personas">가상 인물</button>
         <button class="admin-tab" data-tab="ai">AI 자동화</button>
+        <button class="admin-tab" data-tab="team">강팀 회의 설정</button>
         <button class="admin-tab" data-tab="members">회원 관리</button>
         <button class="admin-tab" data-tab="emails">메일 리스트</button>
         <button class="admin-tab" data-tab="bans">사용자 차단</button>
@@ -116,6 +117,31 @@
           <textarea id="p-bio" placeholder="추가 소개 (선택)" rows="2" maxlength="500"></textarea>
           <button type="submit" class="btn-mini btn-comment-submit">인물 추가</button>
         </form>
+      </section>
+
+      <!-- 강팀 회의 설정 -->
+      <section id="tab-team" class="admin-section hidden">
+        <h2>강팀 회의 질문 횟수 설정</h2>
+        <p class="admin-help">비회원·회원이 강팀에게 질문할 수 있는 횟수를 조절합니다. 저장 즉시 사이트에 반영됩니다.</p>
+        <div class="team-settings">
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>기본 무료 횟수</strong><small>로그인 없이 처음 사용할 수 있는 횟수</small></span>
+            <input type="number" id="team-free-base" class="adm-input" min="0" max="999" value="3">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>가입(로그인) 보너스</strong><small>구글 로그인하면 추가로 주는 횟수 (계정당 1회)</small></span>
+            <input type="number" id="team-signup-bonus" class="adm-input" min="0" max="999" value="0">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>스친추가 보너스</strong><small>@kkm450815 스레드 친구추가 시 (1회 한정)</small></span>
+            <input type="number" id="team-follow-bonus" class="adm-input" min="0" max="999" value="3">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>SNS 공유 보너스</strong><small>회의 결과를 SNS에 퍼갈 때마다 (하루 최대 3번)</small></span>
+            <input type="number" id="team-share-bonus" class="adm-input" min="0" max="999" value="3">
+          </label>
+          <button id="team-settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
+        </div>
       </section>
 
       <!-- 회원 관리 -->

@@ -31,7 +31,8 @@ import {
   listMeetings,
   getUserIdeas,
   getUserTeamGrant,
-  addInquiry
+  addInquiry,
+  getTeamConfig
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { escapeHtml } from "./utils.js";
@@ -112,7 +113,8 @@ let overlayCommentUnsub = null;    // 오버레이 댓글 구독 해제
 window.appMeetings = {
   add: (data) => addMeeting(data).catch((e) => { console.warn("meeting save failed", e && e.message); return null; }),
   list: (uid) => listMeetings(uid).catch(() => []),
-  grant: (uid) => getUserTeamGrant(uid).catch(() => 0)  // 관리자 부여 추가 무료 횟수
+  grant: (uid) => getUserTeamGrant(uid).catch(() => 0),  // 관리자 부여 추가 무료 횟수
+  config: () => getTeamConfig().catch(() => ({ freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3 }))
 };
 const shareModal = document.getElementById("share-success-modal");
 const shareModalClose = document.getElementById("share-success-close");

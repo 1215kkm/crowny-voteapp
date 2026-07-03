@@ -611,6 +611,24 @@ export async function listMeetings(uid, max = 50) {
   return list;
 }
 
+// ---- 강팀 회의 질문 횟수 설정 (settings/admin, 누구나 읽기) ----
+
+export async function getTeamConfig() {
+  const num = (v, d) => (typeof v === "number" && v >= 0 ? v : d);
+  try {
+    const snap = await _gdoc(_d(db, "settings", "admin"));
+    const d = snap.exists() ? snap.data() : {};
+    return {
+      freeBase: num(d.teamFreeBase, 3),
+      signupBonus: num(d.teamSignupBonus, 0),
+      followBonus: num(d.teamFollowBonus, 3),
+      shareBonus: num(d.teamShareBonus, 3)
+    };
+  } catch (e) {
+    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3 };
+  }
+}
+
 // ---- 문의 (누구나 생성) ----
 
 export async function addInquiry({ name, contact, message }) {
