@@ -280,37 +280,52 @@
     return false;
   }
 
-  // 회의 화면 이미지를 자동 첨부해서 공유.
-  // 모바일: 공유시트(navigator.share)에 이미지 파일 자동 첨부 → 스레드/인스타 앱 선택.
-  // PC: 윈도우 공유창엔 스레드가 없으므로 이미지 자동 저장 + 스레드 글쓰기 창(문구 채워짐)을 연다.
+  // 회의 화면 이미지 + 공유 문구(멘트)를 함께 스레드/인스타로.
+  // 데스크톱: 클릭 즉시(제스처 유효) 멘트가 채워진 스레드 작성창을 먼저 열고, 이미지는 뒤이어 저장(첨부용).
+  // 모바일: 공유시트(navigator.share)에 이미지+문구를 함께 전달.
   function shareMeeting(title, mode) {
     grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
+
+    if (!isMobileDevice()) {
+      // 팝업 차단을 피하려면 window.open을 async(이미지 캡처) 이전, 클릭 제스처 안에서 호출해야 한다
+      var win = null;
+      if (mode === "threads") {
+        win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+      } else {
+        copyText(caption);
+      }
+      captureMeetingBlob().then(function (blob) {
+        if (blob) downloadBlob(blob, "강팀회의록.png");
+        if (mode === "threads") {
+          if (win) {
+            alert("스레드 작성창을 열었어요(멘트 자동 입력). 방금 저장된 회의 이미지를 글에 첨부해 주세요!");
+          } else {
+            copyText(caption);
+            alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣고, 저장된 이미지를 첨부하세요.");
+          }
+        } else {
+          alert("공유 문구를 복사하고 회의 이미지를 저장했어요. 인스타/스레드에 붙여넣고 이미지를 첨부하세요!");
+        }
+      });
+      return;
+    }
+
+    // 모바일: 이미지 + 문구를 공유시트로 함께 (앱에서 스레드/인스타 선택)
     return captureMeetingBlob().then(function (blob) {
-      if (isMobileDevice() && blob && navigator.canShare) {
+      if (blob && navigator.canShare) {
         var file = new File([blob], "강팀회의록.png", { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           return navigator.share({ files: [file], text: caption }).catch(function (e) {
             if (e && e.name === "AbortError") return;
-            fallbackShare(blob, caption, mode);
+            copyText(caption); if (blob) downloadBlob(blob, "강팀회의록.png");
+            alert("공유 문구를 복사하고 이미지를 저장했어요.");
           });
         }
       }
-      fallbackShare(blob, caption, mode);
+      if (navigator.share) return navigator.share({ text: caption }).catch(function () {});
+      copyText(caption); if (blob) downloadBlob(blob, "강팀회의록.png");
     });
-  }
-
-  function fallbackShare(blob, caption, mode) {
-    if (blob) downloadBlob(blob, "강팀회의록.png");
-    if (mode === "threads") {
-      if (blob) alert("회의 화면 이미지를 저장했어요. 스레드 글에 첨부해 주세요!");
-      openThreadsIntent(caption);
-    } else {
-      copyText(caption);
-      alert(blob
-        ? "회의 화면 이미지를 저장하고 공유 문구를 복사했어요. 인스타/스레드에 붙여넣고 이미지를 첨부하세요!"
-        : "공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
-    }
   }
 
   // ---- 결과 렌더 ----
