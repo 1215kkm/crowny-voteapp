@@ -87,6 +87,13 @@ const favBtn = document.getElementById("favorites-btn");
 const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
+
+// 아이디어 상세 오버레이
+const ideaOverlay = document.getElementById("idea-overlay");
+const ideaOverlayBody = document.getElementById("idea-overlay-body");
+const ideaOverlayClose = document.getElementById("idea-overlay-close");
+let overlayIdeaId = null;          // 현재 오버레이에 열린 아이디어 id
+let overlayCommentUnsub = null;    // 오버레이 댓글 구독 해제
 const shareModal = document.getElementById("share-success-modal");
 const shareModalClose = document.getElementById("share-success-close");
 const shareModalGoal = document.getElementById("share-success-goal");
@@ -416,6 +423,17 @@ function renderIdeas(ideas) {
       if (cached) renderInlineComments(card, cached);
     }
   }
+  // 오버레이가 열려 있으면 최신 수치로 다시 그리고, 목록의 해당 카드는 active 유지
+  if (overlayIdeaId) {
+    const still = ideas.some((i) => i.id === overlayIdeaId);
+    if (still) {
+      renderOverlay();
+      const listCard = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(overlayIdeaId)}"]`);
+      if (listCard) listCard.classList.add("active");
+    } else {
+      closeIdeaOverlay();
+    }
+  }
 }
 
 function statusLabel(status) {
@@ -603,10 +621,75 @@ async function handleIdeasClick(e) {
   // 2) 텍스트영역 또는 input 클릭은 펼침 토글에 영향 없도록
   if (e.target.closest("textarea, input")) return;
 
-  // 3) 카드 클릭 → 토글
+  // 3) 목록의 카드 클릭 → 우측 상세 오버레이로 (오버레이 안의 카드 클릭은 무시)
   const card = e.target.closest(".idea-card");
-  if (card) toggleAccordion(card);
+  if (card && !card.closest(".idea-overlay-body")) openIdeaOverlay(card.dataset.id);
 }
+
+// ---- 아이디어 상세 오버레이 ----
+
+function openIdeaOverlay(ideaId) {
+  const idea = currentRealIdeas.find((i) => i.id === ideaId);
+  if (!idea || !ideaOverlay || !ideaOverlayBody) return;
+
+  overlayIdeaId = ideaId;
+  renderOverlay();
+
+  // 댓글 실시간 구독 (오버레이 전용)
+  if (overlayCommentUnsub) { overlayCommentUnsub(); overlayCommentUnsub = null; }
+  try {
+    overlayCommentUnsub = subscribeToComments(ideaId, (comments) => {
+      commentsCacheMap[ideaId] = comments;
+      const c = ideaOverlayBody.querySelector(".idea-card");
+      if (c) renderInlineComments(c, comments);
+    });
+  } catch (e) { /* ignore */ }
+
+  ideasContainer.querySelectorAll(".idea-card.active").forEach((c) => c.classList.remove("active"));
+  const listCard = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(ideaId)}"]`);
+  if (listCard) listCard.classList.add("active");
+
+  ideaOverlay.classList.remove("hidden");
+  ideaOverlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  requestAnimationFrame(() => ideaOverlay.classList.add("show"));
+}
+
+function renderOverlay() {
+  if (!overlayIdeaId) return;
+  const idea = currentRealIdeas.find((i) => i.id === overlayIdeaId);
+  if (!idea) { closeIdeaOverlay(); return; }
+  const card = createIdeaCard(idea);
+  card.classList.add("expanded");
+  ideaOverlayBody.innerHTML = "";
+  ideaOverlayBody.appendChild(card);
+  const cached = commentsCacheMap[overlayIdeaId];
+  if (cached) renderInlineComments(card, cached);
+}
+
+function closeIdeaOverlay() {
+  if (!ideaOverlay) return;
+  if (overlayCommentUnsub) { overlayCommentUnsub(); overlayCommentUnsub = null; }
+  if (overlayIdeaId) {
+    const listCard = ideasContainer.querySelector(`.idea-card[data-id="${cssEscape(overlayIdeaId)}"]`);
+    if (listCard) listCard.classList.remove("active");
+  }
+  overlayIdeaId = null;
+  ideaOverlay.classList.remove("show");
+  ideaOverlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+  setTimeout(() => ideaOverlay.classList.add("hidden"), 320);
+}
+
+if (ideaOverlayClose) ideaOverlayClose.addEventListener("click", closeIdeaOverlay);
+if (ideaOverlay) {
+  ideaOverlay.querySelector(".idea-overlay-backdrop")?.addEventListener("click", closeIdeaOverlay);
+  // 오버레이 안의 버튼도 기존 액션 핸들러로 처리 (btn.closest('.idea-card')가 오버레이 카드를 잡음)
+  ideaOverlayBody.addEventListener("click", handleIdeasClick);
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && ideaOverlay && !ideaOverlay.classList.contains("hidden")) closeIdeaOverlay();
+});
 
 function toggleAccordion(card) {
   const ideaId = card.dataset.id;
