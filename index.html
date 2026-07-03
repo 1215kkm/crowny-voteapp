@@ -164,6 +164,32 @@
   .tw-m-sum > b { color: var(--color-accent-start); }
   .tw-m-sum ul { margin: 6px 0 0 18px; }
   .tw-m-sum li { margin: 3px 0; }
+  /* 주제맞춤 시각화 (div/CSS만) */
+  .tw-viz { margin: 12px 0; padding: 12px 14px; background: rgba(138,56,245,0.05);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+  .tw-viz-t { font-size: 13px; font-weight: 800; color: var(--color-accent-start); margin-bottom: 8px; }
+  .tw-cmp { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  .tw-cmp-l { font-size: 12px; color: var(--color-text-light); min-width: 52px; }
+  .tw-cmp-v { font-size: 12px; font-weight: 700; min-width: 38px; text-align: right; color: var(--color-text); }
+  .tw-bar { flex: 1; height: 18px; background: rgba(128,128,128,0.18); border-radius: 6px; overflow: hidden; }
+  .tw-bar.big { height: 14px; }
+  .tw-bar-fill { height: 100%; border-radius: 6px; }
+  .tw-bar-fill.dim { background: #94a3b8; }
+  .tw-bar-fill.grad { background: linear-gradient(90deg, #8a38f5, #d53a6b); }
+  .tw-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .tw-node { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
+    background: rgba(138,56,245,0.12); color: var(--color-text); }
+  .tw-node.on { background: linear-gradient(90deg, #8a38f5, #d53a6b); color: #fff; }
+  .tw-arr { color: #8a38f5; font-weight: 800; }
+  .tw-mtx { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tw-cell { padding: 10px; border-radius: 8px; background: rgba(128,128,128,0.10); font-size: 12px; font-weight: 700; color: var(--color-text); }
+  .tw-cell span { display: block; font-weight: 500; font-size: 11px; color: var(--color-text-light); margin-top: 2px; }
+  .tw-cell.hi { background: rgba(138,56,245,0.15); }
+  .tw-cell.lo { opacity: .55; }
+  .tw-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tw-steps span { font-size: 11px; padding: 3px 9px; border-radius: 999px;
+    background: rgba(128,128,128,0.14); color: var(--color-text-light); }
+  .tw-steps span.done { background: rgba(138,56,245,0.15); color: var(--color-text); }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   .tw-share-btn { flex: 1; border: none; cursor: pointer; font-family: inherit; font-size: 16px;
     font-weight: 700; padding: 12px; border-radius: var(--radius-md); color: #fff;

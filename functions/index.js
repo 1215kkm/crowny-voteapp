@@ -88,13 +88,28 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
   ③ 새로운 사람이 안 써보고는 못 배기게 끌어들이는 심리 아이디어(경쟁·인정·도파민·손실회피·희소성·사회적 증거 등 어떤 심리를 어떻게 건드리는지 명시).
 - 마지막은 강대표의 결정 한 줄 + 정리 박스.
 
-출력은 **아래 HTML 조각만** 내놔라. 마크다운/코드펜스/설명 금지. 허용 태그는 div·b·span·ul·li, class는 아래 것만.
+[시각화 — 전문가 회의처럼 보이게]
+회의 주제에 딱 맞는 시각화 블록을 정리박스 바로 위에 **1~2개만** 넣어라(억지로 넣지 말 것 — 관련 숫자·흐름·비교가 회의에서 실제로 나왔을 때만. 없으면 생략). 아래 템플릿을 그대로 복사해 라벨·숫자·너비%만 실제 내용으로 바꿔라. class·구조·인라인 style은 절대 바꾸지 마라. div·span에 아래 예시의 인라인 style 그대로 쓰는 건 허용.
+주제→시각화 선택 기준: 제품/게임개선→흐름도+비교바 / 성장·친구유도→흐름도(순환은 마지막 화살표 ↻)+비교바 / 마케팅→매트릭스+막대 / 비즈전략→비교바+흐름도 / 기술·리스크→매트릭스+프로그레스.
+- 비교바(목표vs현재·before/after·CAC vs LTV):
+<div class="tw-viz"><div class="tw-viz-t">리텐션</div><div class="tw-cmp"><span class="tw-cmp-l">현재</span><div class="tw-bar"><div class="tw-bar-fill dim" style="width:30%"></div></div><span class="tw-cmp-v">30%</span></div><div class="tw-cmp"><span class="tw-cmp-l">목표</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:45%"></div></div><span class="tw-cmp-v">45%</span></div></div>
+- 랭킹 막대(채널별 ROAS·항목 크기순, tw-cmp 행을 여러 개):
+<div class="tw-viz"><div class="tw-viz-t">채널별 효율</div><div class="tw-cmp"><span class="tw-cmp-l">인스타</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:90%"></div></div><span class="tw-cmp-v">3.2</span></div><div class="tw-cmp"><span class="tw-cmp-l">유튜브</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:55%"></div></div><span class="tw-cmp-v">2.0</span></div></div>
+- 흐름도(Juice·심리경로·수익경로 / 순환이면 마지막 화살표만 ↻):
+<div class="tw-viz"><div class="tw-viz-t">Juice 흐름</div><div class="tw-flow"><span class="tw-node">점프 입력</span><span class="tw-arr">→</span><span class="tw-node">화면 흔들림·소리</span><span class="tw-arr">→</span><span class="tw-node on">"오 재밌다"</span></div></div>
+- 2×2 매트릭스(효과×노력·리스크. hi=최우선, lo=버림):
+<div class="tw-viz"><div class="tw-viz-t">우선순위 (효과×노력)</div><div class="tw-mtx"><div class="tw-cell hi">지금 착수<span>효과↑ 노력↓</span></div><div class="tw-cell">계획 세워<span>효과↑ 노력↑</span></div><div class="tw-cell">틈틈이<span>효과↓ 노력↓</span></div><div class="tw-cell lo">보류<span>효과↓ 노력↑</span></div></div></div>
+- 단계 프로그레스(목표 진행·적립 단계. done=완료):
+<div class="tw-viz"><div class="tw-viz-t">목표까지</div><div class="tw-bar big"><div class="tw-bar-fill grad" style="width:66%"></div></div><div class="tw-steps"><span class="done">가입</span><span class="done">첫 회의</span><span>공유</span><span>친구초대</span></div></div>
+
+출력은 **아래 HTML 조각만** 내놔라. 마크다운/코드펜스/설명 금지. 허용 태그는 div·b·span·ul·li(div·span엔 위 시각화 예시의 인라인 style 허용). class는 아래 목록 + 위 tw-viz 계열만.
 멤버별 class: 강대표=daepyo, 강디=gdi, 강개발=gdev, 강체크=gchk, 아뱅=abang.
 <div class="tw-m-title">(안건을 한 줄로 요약한 회의 제목)</div>
 <div class="tw-m-act daepyo"><b>강대표</b> "회의 여는 한 줄." <span class="tw-think">(속마음)</span></div>
 (구현 관점 3~5줄: 강디·강개발·강체크 발언 — <div class="tw-m-act gdi|gdev|gchk"><b>이름</b> "대사"</div>)
 (홍보마케팅 관점 3~5줄: 아뱅 아이디어 3종 중심 + 다른 멤버 반응 — class는 abang 등)
 <div class="tw-m-act daepyo"><b>강대표</b> "결정 한 줄."</div>
+(여기에 주제 맞는 시각화 tw-viz 블록 1~2개 — 관련 숫자·흐름이 있을 때만)
 <div class="tw-m-sum"><b>정리</b><ul><li>결정: 한 줄</li><li>아뱅 아이디어: ① … ② … ③ …</li><li>다음 액션: 한 줄</li></ul></div>`;
 
 function stripFences(html) {
@@ -363,6 +378,28 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .tw-think{color:#8b8fa0;font-style:italic;font-size:14px}
 .tw-m-sum{margin-top:14px;font-size:15px;background:rgba(138,56,245,.06);border:1px solid var(--line);border-left:3px solid var(--acc1);border-radius:10px;padding:12px 16px}
 .tw-m-sum>b{color:var(--acc1)}.tw-m-sum ul{margin:6px 0 0 18px}.tw-m-sum li{margin:3px 0}
+.tw-viz{margin:12px 0;padding:12px 14px;background:rgba(138,56,245,.05);border:1px solid var(--line);border-radius:10px}
+.tw-viz-t{font-size:13px;font-weight:800;color:var(--acc1);margin-bottom:8px}
+.tw-cmp{display:flex;align-items:center;gap:8px;margin:5px 0}
+.tw-cmp-l{font-size:12px;color:var(--dim);min-width:52px}
+.tw-cmp-v{font-size:12px;font-weight:700;min-width:38px;text-align:right;color:var(--ink)}
+.tw-bar{flex:1;height:18px;background:rgba(128,128,128,.18);border-radius:6px;overflow:hidden}
+.tw-bar.big{height:14px}
+.tw-bar-fill{height:100%;border-radius:6px}
+.tw-bar-fill.dim{background:#94a3b8}
+.tw-bar-fill.grad{background:linear-gradient(90deg,#8a38f5,#d53a6b)}
+.tw-flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.tw-node{font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;background:rgba(138,56,245,.12);color:var(--ink)}
+.tw-node.on{background:linear-gradient(90deg,#8a38f5,#d53a6b);color:#fff}
+.tw-arr{color:#8a38f5;font-weight:800}
+.tw-mtx{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tw-cell{padding:10px;border-radius:8px;background:rgba(128,128,128,.10);font-size:12px;font-weight:700;color:var(--ink)}
+.tw-cell span{display:block;font-weight:500;font-size:11px;color:var(--dim);margin-top:2px}
+.tw-cell.hi{background:rgba(138,56,245,.15)}
+.tw-cell.lo{opacity:.55}
+.tw-steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tw-steps span{font-size:11px;padding:3px 9px;border-radius:999px;background:rgba(128,128,128,.14);color:var(--dim)}
+.tw-steps span.done{background:rgba(138,56,245,.15);color:var(--ink)}
 .cta{display:block;text-align:center;margin:22px auto 0;max-width:360px;background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:12px;box-shadow:0 8px 24px rgba(213,58,107,.3)}
 .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}
 </style></head><body>
