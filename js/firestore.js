@@ -608,6 +608,25 @@ export async function listMeetings(uid, max = 50) {
   return list;
 }
 
+// ---- 강팀 무료 횟수 관리자 부여 (users/{uid}.teamGrant) ----
+
+export async function getUserTeamGrant(uid) {
+  if (!uid) return 0;
+  try {
+    const snap = await _gdoc(_d(db, "users", uid));
+    if (!snap.exists()) return 0;
+    const v = snap.data().teamGrant;
+    return typeof v === "number" ? v : 0;
+  } catch (e) { return 0; }
+}
+
+export async function setUserTeamGrant(uid, n) {
+  if (!uid) return;
+  const val = Math.max(0, Math.floor(Number(n) || 0));
+  await _sd(_d(db, "users", uid), { teamGrant: val }, { merge: true });
+  return val;
+}
+
 // ---- 내가 올린 아이디어 (프로필 → 내 활동) ----
 
 export async function getUserIdeas(uid, max = 50) {

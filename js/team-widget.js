@@ -35,9 +35,10 @@
   } catch (e) {}
 
   // ---- 무료 횟수 ----
+  var adminGrant = 0; // 관리자가 회원관리에서 부여한 추가 무료 횟수 (Firestore)
   function used() { return parseInt(localStorage.getItem(LS_COUNT) || "0", 10) || 0; }
   function bonus() { return parseInt(localStorage.getItem(LS_BONUS) || "0", 10) || 0; }
-  function remaining() { return Math.max(0, FREE_ANON + bonus() - used()); }
+  function remaining() { return Math.max(0, FREE_ANON + bonus() + adminGrant - used()); }
   function renderQuota() {
     if (remainEl) remainEl.textContent = remaining();
     if (remaining() <= 0) {
@@ -405,6 +406,13 @@
     if (uid === lastUid) return;
     lastUid = uid;
     if (uid) {
+      // 관리자 부여 무료 횟수 반영
+      if (window.appMeetings && window.appMeetings.grant) {
+        window.appMeetings.grant(uid).then(function (g) {
+          adminGrant = g || 0;
+          renderQuota();
+        });
+      }
       loadHistory().then(function () {
         // 결과창이 비어 있을 때만 내역 목록을 띄운다 (열람 중 방해 X)
         if (historyCache.length && (resultEl.classList.contains("hidden") || !resultEl.innerHTML.trim())) {
@@ -413,6 +421,8 @@
       });
     } else {
       historyCache = [];
+      adminGrant = 0;
+      renderQuota();
     }
   }, 1500);
 

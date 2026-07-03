@@ -169,6 +169,13 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ---- 사용자 문서 (강팀 무료 횟수 부여 등) ----
+    match /users/{uid} {
+      // 본인 또는 관리자 읽기, 쓰기는 관리자만 (사용자 자가 부여 방지)
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+
     // ---- 사용자별 관심 미러 컬렉션 ----
     match /users/{uid}/likes/{ideaId} {
       // 본인만 읽고 쓰기
