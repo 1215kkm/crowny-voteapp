@@ -229,8 +229,8 @@
 
   function quotaNoticeHtml(remain) {
     if (remain <= 1) {
-      return '<div class="tw-notice tw-warn">이제 <b>' + Math.max(0, remain) + '회</b> 남았습니다. ' +
-        'SNS에 퍼가지 않으시면 <b>0회</b>가 되어 더 사용하실 수 없어요. 퍼가실 때마다 <b>3회씩</b> 늘어나요! (하루 최대 3번)</div>';
+      return '<div class="tw-notice tw-warn">이용 가능 횟수가 <b>' + Math.max(0, remain) + '회</b> 남았습니다.<br>' +
+        'SNS에 공유하고 <b>3회</b> 더 이용해 보세요! (하루 최대 3회 추가)</div>';
     }
     return '<div class="tw-notice">체험 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
       '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. 퍼가기 적립은 하루 최대 <b>3번</b>까지예요.</div>';
