@@ -200,6 +200,12 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- 추천 실유입 기록 (Cloud Function만 기록, 클라 쓰기 금지) ----
+    match /referrals/{sharerUid}/{document=**} {
+      allow read: if isAdmin();
+      allow write: if false; // admin SDK(함수)만 — 클라 위조 차단
+    }
+
     // ---- 강팀 회의 내역 (본인 것만 읽고 생성) ----
     match /meetings/{id} {
       allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);

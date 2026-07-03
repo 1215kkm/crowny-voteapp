@@ -62,11 +62,27 @@
   if (toAppter) toAppter.addEventListener("click", function () { rotor.classList.add("show-appter"); });
   if (toTeam) toTeam.addEventListener("click", function () { rotor.classList.remove("show-appter"); });
 
-  // URL ?ref= 로 들어온 방문 기록 (추천 검증용 — 백엔드에서 집계 예정)
+  // 방문자 영구 id (analytics와 동일 키 공유)
+  function visitorId() {
+    try {
+      var v = localStorage.getItem("appter_visitor_id");
+      if (!v) { v = "v_" + Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem("appter_visitor_id", v); }
+      return v;
+    } catch (e) { return ""; }
+  }
+
+  // URL ?ref=<공유자uid> 로 들어오면 실유입 보상 요청 (서버가 자기제외·중복·상한 판정)
   try {
     var p = new URLSearchParams(location.search);
     var ref = p.get("ref");
-    if (ref) localStorage.setItem("appter_came_from_ref", ref);
+    if (ref) {
+      localStorage.setItem("appter_came_from_ref", ref);
+      setTimeout(function () {
+        if (window.appMeetings && window.appMeetings.recordVisit) {
+          window.appMeetings.recordVisit(ref, visitorId());
+        }
+      }, 1200);
+    }
   } catch (e) {}
 
   // ---- 질문 횟수 ----
@@ -182,8 +198,10 @@
     renderResult(m.html, m.title, false, true);
   }
 
-  // 내 추천 id (익명 게스트 — 로그인 붙으면 UID로 교체)
+  // 내 추천 id — 로그인 시 uid(실유입 크레딧 대상), 익명은 게스트 id(크레딧 안 됨)
   function myRefId() {
+    var u = window.__currentUser;
+    if (u && u.uid) return u.uid;
     var id = localStorage.getItem(LS_REF);
     if (!id) {
       id = "g" + Math.random().toString(36).slice(2, 9);
@@ -429,9 +447,17 @@
     try {
       var html = null, isDemo = false;
       try {
+        var headers = { "Content-Type": "application/json" };
+        // App Check 토큰(설정돼 있으면) — 스크립트 직접 호출 방지
+        try {
+          if (window.appMeetings && window.appMeetings.appCheckToken) {
+            var tk = await window.appMeetings.appCheckToken();
+            if (tk) headers["X-Firebase-AppCheck"] = tk;
+          }
+        } catch (e) {}
         var res = await fetch(MEETING_API, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: headers,
           body: JSON.stringify({ prompt: prompt, ref: myRefId() })
         });
         if (res.ok) {

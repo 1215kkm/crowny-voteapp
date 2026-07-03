@@ -107,6 +107,10 @@ const teamFreeBase = document.getElementById("team-free-base");
 const teamSignupBonus = document.getElementById("team-signup-bonus");
 const teamFollowBonus = document.getElementById("team-follow-bonus");
 const teamShareBonus = document.getElementById("team-share-bonus");
+const teamReferralBonus = document.getElementById("team-referral-bonus");
+const teamVisitBonus = document.getElementById("team-visit-bonus");
+const teamVisitCap = document.getElementById("team-visit-cap");
+const teamAppcheckEnforce = document.getElementById("team-appcheck-enforce");
 const teamSettingsSave = document.getElementById("team-settings-save");
 
 async function loadTeamSettings() {
@@ -116,6 +120,10 @@ async function loadTeamSettings() {
     if (teamSignupBonus) teamSignupBonus.value = (sv.teamSignupBonus ?? 0);
     if (teamFollowBonus) teamFollowBonus.value = (sv.teamFollowBonus ?? 3);
     if (teamShareBonus) teamShareBonus.value = (sv.teamShareBonus ?? 3);
+    if (teamReferralBonus) teamReferralBonus.value = (sv.teamReferralBonus ?? 5);
+    if (teamVisitBonus) teamVisitBonus.value = (sv.teamVisitBonus ?? 1);
+    if (teamVisitCap) teamVisitCap.value = (sv.teamVisitDailyCap ?? 5);
+    if (teamAppcheckEnforce) teamAppcheckEnforce.checked = !!sv.appCheckEnforce;
   } catch (e) { /* ignore */ }
 }
 function clampNum(el, def) {
@@ -128,7 +136,11 @@ teamSettingsSave?.addEventListener("click", async () => {
       teamFreeBase: clampNum(teamFreeBase, 3),
       teamSignupBonus: clampNum(teamSignupBonus, 0),
       teamFollowBonus: clampNum(teamFollowBonus, 3),
-      teamShareBonus: clampNum(teamShareBonus, 3)
+      teamShareBonus: clampNum(teamShareBonus, 3),
+      teamReferralBonus: clampNum(teamReferralBonus, 5),
+      teamVisitBonus: clampNum(teamVisitBonus, 1),
+      teamVisitDailyCap: clampNum(teamVisitCap, 5),
+      appCheckEnforce: !!(teamAppcheckEnforce && teamAppcheckEnforce.checked)
     });
     showToast("강팀 회의 설정을 저장했어요", "success");
   } catch (e) {

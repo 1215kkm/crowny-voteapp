@@ -3,7 +3,7 @@
 // 사용 모델은 관리자 페이지(AI 탭 → 강팀 회의 모델)에서 Firestore settings/admin.meetingProvider로 전환.
 // 선택한 모델이 실패하면 자동으로 다른 모델로 폴백.
 
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const Anthropic = require("@anthropic-ai/sdk");
@@ -31,6 +31,24 @@ async function getMeetingProvider() {
     _providerCache.fetchedAt = now;
   }
   return _providerCache.value;
+}
+
+// App Check 소프트 검증 (헤더 토큰 유효성) + enforce 플래그(settings/admin.appCheckEnforce)
+async function verifyAppCheck(req) {
+  const token = req.header && req.header("X-Firebase-AppCheck");
+  if (!token) return false;
+  try { await admin.appCheck().verifyToken(token); return true; }
+  catch (e) { console.warn("appcheck verify failed:", e && e.message); return false; }
+}
+let _enforceCache = { value: false, at: 0 };
+async function getAppCheckEnforce() {
+  const now = Date.now();
+  if (now - _enforceCache.at < 60000) return _enforceCache.value;
+  try {
+    const snap = await admin.firestore().doc("settings/admin").get();
+    _enforceCache = { value: !!(snap.exists && snap.data().appCheckEnforce), at: now };
+  } catch (e) { _enforceCache.at = now; }
+  return _enforceCache.value;
 }
 
 const CLAUDE_MODEL = "claude-haiku-4-5";
@@ -136,6 +154,12 @@ exports.runMeeting = onRequest(
     if (!prompt) { res.status(400).json({ error: "prompt required" }); return; }
     if (prompt.length > 2000) { res.status(400).json({ error: "prompt too long" }); return; }
 
+    // App Check: 토큰 검증 실패 + enforce ON이면 차단 (스크립트 직접 호출 방지)
+    const appCheckOk = await verifyAppCheck(req);
+    if (!appCheckOk && await getAppCheckEnforce()) {
+      res.status(401).json({ error: "app_check_required" }); return;
+    }
+
     // 관리자 설정에 따라 기본 모델 선택, 실패 시 반대 모델로 폴백
     const provider = await getMeetingProvider();
     const runners = provider === "claude"
@@ -207,5 +231,69 @@ exports.onInquiryCreated = onDocumentCreated(
         }
       });
     } catch (e) { console.error("mail write failed:", e && e.message); }
+  }
+);
+
+// ── 가입 추천 보상: 신규 로그인 1회, 추천 스레드 ID 입력 시 refBonus += N ──
+exports.claimSignup = onCall(
+  { region: "us-central1" },   // App Check는 runMeeting에서 단계적 적용, 콜러블은 auth로 보호
+  async (request) => {
+    const uid = request.auth && request.auth.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    const refThreadsId = String((request.data && request.data.refThreadsId) || "")
+      .replace(/^@/, "").slice(0, 60).trim();
+    const db = admin.firestore();
+    const userRef = db.doc("users/" + uid);
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const d = snap.exists ? snap.data() : {};
+      if (d.signupClaimed) return { granted: 0, already: true };
+      const sset = await tx.get(db.doc("settings/admin"));
+      const bonus = (sset.exists && typeof sset.data().teamReferralBonus === "number")
+        ? sset.data().teamReferralBonus : 5;
+      const give = refThreadsId ? bonus : 0;
+      tx.set(userRef, {
+        signupClaimed: true,
+        referredBy: refThreadsId || null,
+        signupAt: admin.firestore.FieldValue.serverTimestamp(),
+        refBonus: admin.firestore.FieldValue.increment(give)
+      }, { merge: true });
+      return { granted: give, already: false };
+    });
+  }
+);
+
+// ── 실유입 보상: ?ref=<sharerUid> 링크로 새 방문자 착지 시 공유자에게 +N ──
+exports.recordReferralVisit = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const sharerUid = String((request.data && request.data.sharerUid) || "").trim();
+    const visitorId = String((request.data && request.data.visitorId) || "").slice(0, 80).trim();
+    if (!sharerUid || !visitorId) return { credited: false, reason: "missing" };
+    // 자기 자신 제외 (로그인 방문자 uid == 공유자, 또는 visitorId == 공유자 uid)
+    const callerUid = request.auth && request.auth.uid;
+    if (callerUid === sharerUid || visitorId === sharerUid) return { credited: false, reason: "self" };
+
+    const db = admin.firestore();
+    const day = new Date().toISOString().slice(0, 10);
+    const dedupRef = db.doc("referrals/" + sharerUid + "/visits/" + visitorId + "_" + day);
+    const dayRef = db.doc("referrals/" + sharerUid + "/days/" + day);
+    const userRef = db.doc("users/" + sharerUid);
+
+    return await db.runTransaction(async (tx) => {
+      const dedup = await tx.get(dedupRef);
+      if (dedup.exists) return { credited: false, reason: "dup" };
+      const sset = await tx.get(db.doc("settings/admin"));
+      const s = sset.exists ? sset.data() : {};
+      const visitBonus = typeof s.teamVisitBonus === "number" ? s.teamVisitBonus : 1;
+      const cap = typeof s.teamVisitDailyCap === "number" ? s.teamVisitDailyCap : 5;
+      const dayCnt = await tx.get(dayRef);
+      const already = dayCnt.exists ? (dayCnt.data().count || 0) : 0;
+      tx.set(dedupRef, { at: admin.firestore.FieldValue.serverTimestamp() });
+      if (visitBonus <= 0 || already >= cap) return { credited: false, reason: "cap" };
+      tx.set(dayRef, { count: already + 1 }, { merge: true });
+      tx.set(userRef, { refBonus: admin.firestore.FieldValue.increment(visitBonus) }, { merge: true });
+      return { credited: true, bonus: visitBonus };
+    });
   }
 );

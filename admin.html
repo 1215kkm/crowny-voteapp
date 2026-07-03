@@ -137,8 +137,24 @@
             <input type="number" id="team-follow-bonus" class="adm-input" min="0" max="999" value="3">
           </label>
           <label class="team-set-row">
-            <span class="team-set-label"><strong>SNS 공유 보너스</strong><small>회의 결과를 SNS에 퍼갈 때마다 (하루 최대 3번)</small></span>
+            <span class="team-set-label"><strong>SNS 공유 보너스</strong><small>회의 결과를 SNS에 퍼갈 때마다 (하루 최대 3번, 즉시 지급)</small></span>
             <input type="number" id="team-share-bonus" class="adm-input" min="0" max="999" value="3">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>가입 추천 보너스</strong><small>가입 시 추천 스레드 아이디를 적으면 (계정당 1회, 9회 위에 추가)</small></span>
+            <input type="number" id="team-referral-bonus" class="adm-input" min="0" max="999" value="5">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>실유입 보상</strong><small>내 공유 링크로 새 방문자가 실제 들어올 때 공유자에게 (로그인 필요)</small></span>
+            <input type="number" id="team-visit-bonus" class="adm-input" min="0" max="999" value="1">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>실유입 하루 상한</strong><small>공유자 1인당 실유입 보상 하루 최대</small></span>
+            <input type="number" id="team-visit-cap" class="adm-input" min="0" max="999" value="5">
+          </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>App Check 강제(enforce)</strong><small>켜면 App Check 토큰 없는 요청(스크립트 직접 호출)을 차단. Firebase 콘솔에서 App Check 설정·확인 후 켜세요.</small></span>
+            <input type="checkbox" id="team-appcheck-enforce">
           </label>
           <button id="team-settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
         </div>

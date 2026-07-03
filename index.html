@@ -477,6 +477,26 @@
     </div>
   </div>
 
+  <!-- 첫 로그인 추천 스레드 ID -->
+  <div id="referral-modal" class="modal-backdrop hidden">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3>추천인이 있나요? 🎁</h3>
+        <button id="referral-skip" class="modal-close" aria-label="건너뛰기">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="contact-note">추천해준 분의 <b>스레드 아이디</b>를 적으면 강팀에게 질문할 수 있는 횟수를 더 드려요. (선택)</p>
+        <div class="form-group">
+          <input type="text" id="referral-input" placeholder="예: @친구아이디" maxlength="60">
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="referral-submit" class="btn-submit" style="flex:1;">추천받고 질문 더 받기</button>
+          <button id="referral-skip2" class="btn-mini btn-text">건너뛰기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 내 활동 (내가 올린 아이디어) -->
   <div id="activity-modal" class="modal-backdrop hidden">
     <div class="modal-window">
