@@ -78,6 +78,7 @@ const subscribeSuccess = document.getElementById("subscribe-success");
 
 const ideaTitle = document.getElementById("idea-title");
 const ideaDesc = document.getElementById("idea-desc");
+const ideaContact = document.getElementById("idea-contact");
 const titleCount = document.getElementById("title-count");
 const descCount = document.getElementById("desc-count");
 const submitBtn = document.getElementById("submit-btn");
@@ -1126,8 +1127,9 @@ async function submitIdea(title, desc, user) {
   submitBtn.textContent = "제출 중...";
   try {
     const images = pendingImages.map((p) => p.dataUrl);
-    const newId = await addIdea(title, desc, user, images);
-    ideaTitle.value = ""; ideaDesc.value = "";
+    const contact = ideaContact ? ideaContact.value.trim() : "";
+    const newId = await addIdea(title, desc, user, images, contact);
+    ideaTitle.value = ""; ideaDesc.value = ""; if (ideaContact) ideaContact.value = "";
     titleCount.textContent = "0"; descCount.textContent = "0";
     clearImagePreviews();
     clearDraft(DRAFT_KEY);

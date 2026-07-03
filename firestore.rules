@@ -37,6 +37,9 @@ service cloud.firestore {
         && (!('imageDataList' in request.resource.data)
             || (request.resource.data.imageDataList is list
                 && request.resource.data.imageDataList.size() <= 5))
+        && (!('contact' in request.resource.data)
+            || (request.resource.data.contact is string
+                && request.resource.data.contact.size() <= 200))
       );
 
       allow update: if isAdmin()

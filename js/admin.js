@@ -434,10 +434,12 @@ function renderAdminIdeas() {
         <span class="muted">${escapeHtml(i.authorName || '')}</span>
         <span class="muted">${new Date(i.createdAt?.toMillis?.() || 0).toLocaleString("ko-KR")}</span>
         <span class="muted">상태: ${i.status || 'waiting'}</span>
+        ${i.contact ? '<span class="badge-contact" title="연락처 제공">📇 연락처</span>' : ''}
         ${i.isAi ? '<span class="badge-ai">AI</span>' : ''}
         <button class="btn-mini btn-text" data-action="toggle-admin">펼치기/접기</button>
       </div>
       <div class="admin-idea-body hidden">
+        ${i.contact ? `<div class="admin-contact">📇 연락처: <strong>${escapeHtml(i.contact)}</strong></div>` : ''}
         <label>제목 <input class="adm-input" data-field="title" value="${escapeHtml(i.title)}"></label>
         <label>설명 <textarea class="adm-input" data-field="description" rows="4">${escapeHtml(i.description || '')}</textarea></label>
         <label>상태

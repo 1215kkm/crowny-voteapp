@@ -121,7 +121,7 @@ export async function getTodayPostCount(uid) {
   return count;
 }
 
-export async function addIdea(title, description, user, imageDataList) {
+export async function addIdea(title, description, user, imageDataList, contact) {
   const todayCount = await getTodayPostCount(user.uid);
   if (todayCount >= DAILY_POST_LIMIT) {
     const err = new Error(`하루에 최대 ${DAILY_POST_LIMIT}개까지만 등록할 수 있습니다.`);
@@ -150,6 +150,9 @@ export async function addIdea(title, description, user, imageDataList) {
 
   if (images.length > 0) {
     payload.imageDataList = images;
+  }
+  if (typeof contact === "string" && contact.trim()) {
+    payload.contact = contact.trim().slice(0, 200);
   }
 
   const docRef = await addDoc(collection(db, "ideas"), payload);

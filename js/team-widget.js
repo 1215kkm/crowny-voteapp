@@ -7,7 +7,7 @@
   // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
   var FREE_ANON = 3;               // 익명 질문 횟수 (캐시 저장)
-  var REGEN_MS = 6 * 60 * 60 * 1000;   // 6시간마다 질문 1회 재충전
+  var REGEN_MS = 12 * 60 * 60 * 1000;  // 12시간마다 질문 1회 재충전
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
   var LS_REGEN = "appter_team_regen";  // 마지막 재충전 기준 시각
@@ -42,7 +42,7 @@
   function bonus() { return parseInt(localStorage.getItem(LS_BONUS) || "0", 10) || 0; }
   function remaining() { return Math.max(0, FREE_ANON + bonus() + adminGrant - used()); }
 
-  // 6시간마다 질문 1회 자동 재충전 (기본 3회 한도까지 회복)
+  // 12시간마다 질문 1회 자동 재충전 (기본 3회 한도까지 회복)
   function applyRegen() {
     var u = used();
     if (u <= 0) { localStorage.removeItem(LS_REGEN); return; }
@@ -75,7 +75,7 @@
     if (remainEl) remainEl.textContent = remaining();
     if (remaining() <= 0) {
       runBtn.disabled = true;
-      runBtn.textContent = "질문 소진 · " + (fmtRegen() || "6시간 뒤") + " 1회 충전";
+      runBtn.textContent = "질문 소진 · " + (fmtRegen() || "12시간 뒤") + " 1회 충전";
     } else if (!running && runBtn.textContent.indexOf("질문 소진") === 0) {
       runBtn.disabled = false;
       runBtn.textContent = "→ 강팀 회의시작해";
@@ -341,14 +341,14 @@
 
   function quotaNoticeHtml(remain) {
     if (remain <= 0) {
-      var when = fmtRegen() || "약 6시간 뒤";
+      var when = fmtRegen() || "약 12시간 뒤";
       return '<div class="tw-notice tw-warn">질문 횟수를 모두 사용했어요.<br>' +
         '<b>' + when + '</b> 질문 1회가 자동으로 충전돼요. ' +
         'SNS에 공유하면 바로 <b>3회</b>를 더 받을 수 있어요!</div>';
     }
     if (remain <= 1) {
       return '<div class="tw-notice tw-warn">이용 가능한 질문이 <b>' + Math.max(0, remain) + '회</b> 남았습니다.<br>' +
-        'SNS에 공유하고 <b>3회</b> 더 이용해 보세요! (하루 최대 3회 추가) · 6시간마다 1회 자동 충전</div>';
+        'SNS에 공유하고 <b>3회</b> 더 이용해 보세요! (하루 최대 3회 추가) · 12시간마다 1회 자동 충전</div>';
     }
     return '<div class="tw-notice">질문 <b>3회</b> 중 <b>' + remain + '회</b> 남았습니다. ' +
       '가입·로그인 후 SNS로 퍼가실 때마다 <b>3회씩</b> 더 늘어나요. (퍼가기 적립은 하루 최대 <b>3번(9회질문)</b>)</div>';
@@ -479,6 +479,6 @@
   });
 
   renderQuota();
-  // 6시간 재충전·카운트다운 갱신 (1분마다)
+  // 12시간 재충전·카운트다운 갱신 (1분마다)
   setInterval(renderQuota, 60000);
 })();
