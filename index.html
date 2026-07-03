@@ -167,6 +167,22 @@
   .tw-credit { text-align: center; font-size: 16px; color: var(--color-text-light); margin-top: 10px; }
   .tw-credit a { color: var(--color-accent-start); text-decoration: none; font-weight: 700; }
 
+  /* ===== 헤더: 하트 버튼 + 프로필 배지 ===== */
+  .header-heart-btn { background: none; border: none; cursor: pointer; font-size: 22px;
+    line-height: 1; padding: 4px; border-radius: 50%; }
+  .header-heart-btn:hover { transform: scale(1.12); }
+  #profile-btn { position: relative; }
+  .profile-badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px;
+    padding: 0 5px; border-radius: 9px; background: var(--color-accent-end); color: #fff;
+    font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+    box-shadow: 0 0 0 2px var(--color-bg); }
+  .profile-badge.hidden { display: none; }
+  .activity-item { display: block; width: 100%; text-align: left; cursor: pointer; }
+  .fav-item-sub { font-size: 13px; color: var(--color-text-light); margin-top: 3px; }
+  .fav-goal { color: var(--color-accent-end); font-weight: 700; }
+  .fav-goal b { color: var(--color-accent-end); }
+  .fav-goal.met { color: var(--color-success, #16a34a); }
+
   /* ===== 아이디어 카드: hover/클릭 시 배경 검정 ===== */
   #ideas-container .idea-card:hover,
   #ideas-container .idea-card.active,
@@ -275,8 +291,10 @@
           Google로 로그인
         </button>
         <div id="user-info" class="hidden">
-          <button id="favorites-btn" class="favorites-btn" title="관심 아이디어 보기">
+          <button id="favorites-btn" class="header-heart-btn" title="관심 아이디어">🤍</button>
+          <button id="profile-btn" class="favorites-btn" title="내 활동 (내 아이디어)">
             <img id="user-photo" src="" alt="" class="user-avatar">
+            <span id="profile-badge" class="profile-badge hidden">0</span>
           </button>
           <span id="user-name"></span>
           <button id="logout-btn" class="btn-logout" onclick="window.appAuth.logout()">로그아웃</button>
@@ -446,6 +464,17 @@
         <button id="favorites-modal-close" class="modal-close" aria-label="닫기">×</button>
       </div>
       <div id="favorites-list" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- 내 활동 (내가 올린 아이디어) -->
+  <div id="activity-modal" class="modal-backdrop hidden">
+    <div class="modal-window">
+      <div class="modal-head">
+        <h3>내 활동 — 내 아이디어 ✍️</h3>
+        <button id="activity-modal-close" class="modal-close" aria-label="닫기">×</button>
+      </div>
+      <div id="activity-list" class="modal-body"></div>
     </div>
   </div>
 

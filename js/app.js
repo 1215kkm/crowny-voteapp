@@ -91,6 +91,13 @@ const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
 
+// 프로필(내 활동) + 목표 배지
+const profileBtn = document.getElementById("profile-btn");
+const profileBadge = document.getElementById("profile-badge");
+const activityModal = document.getElementById("activity-modal");
+const activityModalClose = document.getElementById("activity-modal-close");
+const activityList = document.getElementById("activity-list");
+
 // 아이디어 상세 오버레이
 const ideaOverlay = document.getElementById("idea-overlay");
 const ideaOverlayBody = document.getElementById("idea-overlay-body");
@@ -265,11 +272,18 @@ if (imageInput) imageInput.addEventListener("change", handleImageSelect);
 ideaForm.addEventListener("submit", handleSubmit);
 ideasContainer.addEventListener("click", handleIdeasClick);
 
-// ---- 관심 모달 ----
+// ---- 관심 모달 (하트 버튼) ----
 if (favBtn) favBtn.addEventListener("click", openFavoritesModal);
 if (favModalClose) favModalClose.addEventListener("click", closeFavoritesModal);
 if (favModal) {
   favModal.addEventListener("click", (e) => { if (e.target === favModal) closeFavoritesModal(); });
+}
+
+// ---- 내 활동 모달 (프로필 버튼) ----
+if (profileBtn) profileBtn.addEventListener("click", openActivityModal);
+if (activityModalClose) activityModalClose.addEventListener("click", () => activityModal.classList.add("hidden"));
+if (activityModal) {
+  activityModal.addEventListener("click", (e) => { if (e.target === activityModal) activityModal.classList.add("hidden"); });
 }
 
 // ---- 등록 성공 공유 모달 ----
@@ -293,6 +307,7 @@ async function handleAuthState(user) {
     userPhoto.src = user.photoURL || "";
     userPhoto.alt = user.displayName || "";
     userName.textContent = user.displayName || "사용자";
+    updateProfileBadge(user);
 
     if (subscribeEmailForm) subscribeEmailForm.classList.add("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.remove("hidden");
@@ -335,6 +350,7 @@ async function handleAuthState(user) {
   } else {
     loginBtn.classList.remove("hidden");
     userInfo.classList.add("hidden");
+    if (profileBadge) profileBadge.classList.add("hidden");
     if (subscribeEmailForm) subscribeEmailForm.classList.remove("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.add("hidden");
     userWaitlistMap = {}; userLikeMap = {};
@@ -1210,6 +1226,70 @@ async function openFavoritesModal() {
 }
 
 function closeFavoritesModal() { if (favModal) favModal.classList.add("hidden"); }
+
+// ---- 내 활동 (내가 올린 아이디어) + 목표 배지 ----
+
+// 아이디어 하나가 설계 진입까지 남은 최소 인원 (0=충족)
+function remainingToGoal(idea) {
+  const paid = idea.paidWaitlistCount || 0;
+  const free = idea.freeWaitlistCount || 0;
+  if (meetsDesignThreshold(paid, free)) return 0;
+  const remA = Math.max(0, THRESHOLD_PAID_ALONE - paid);
+  const remB = Math.max(0, THRESHOLD_PAID_MIXED - paid) + Math.max(0, THRESHOLD_FREE_MIXED - free);
+  return Math.min(remA, remB);
+}
+
+async function updateProfileBadge(user) {
+  if (!profileBadge) return;
+  if (!user) { profileBadge.classList.add("hidden"); return; }
+  try {
+    const mine = await getUserIdeas(user.uid);
+    const pending = mine.map(remainingToGoal).filter((n) => n > 0);
+    if (pending.length === 0) { profileBadge.classList.add("hidden"); return; }
+    const min = Math.min(...pending);
+    profileBadge.textContent = min;
+    profileBadge.title = `목표 관심인원까지 ${min}명 남음`;
+    profileBadge.classList.remove("hidden");
+  } catch (e) {
+    profileBadge.classList.add("hidden");
+  }
+}
+
+async function openActivityModal() {
+  if (!activityModal) return;
+  const user = getCurrentUser();
+  if (!user) { showToast("로그인 후 사용할 수 있어요", "info"); return; }
+  activityModal.classList.remove("hidden");
+  activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">불러오는 중...</p>';
+  try {
+    const mine = await getUserIdeas(user.uid);
+    if (mine.length === 0) {
+      activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">아직 올린 아이디어가 없어요.</p>';
+      return;
+    }
+    activityList.innerHTML = mine.map((i) => {
+      const paid = i.paidWaitlistCount || 0, free = i.freeWaitlistCount || 0;
+      const rem = remainingToGoal(i);
+      const goal = rem === 0
+        ? '<span class="fav-goal met">설계 진입 조건 충족 ✓</span>'
+        : `<span class="fav-goal">목표까지 <b>${rem}명</b> 남음</span>`;
+      return `<button type="button" class="fav-item activity-item" data-id="${escapeHtml(i.id)}">
+        <div class="fav-item-title">${escapeHtml(i.title)}</div>
+        <div class="fav-item-sub">💎 ${paid} · 👥 ${free} · 💬 ${i.commentCount || 0}  ·  ${goal}</div>
+      </button>`;
+    }).join("");
+    activityList.querySelectorAll(".activity-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        activityModal.classList.add("hidden");
+        const id = el.dataset.id;
+        if (currentRealIdeas.some((x) => x.id === id)) openIdeaOverlay(id);
+        else window.location.href = `idea.html?id=${encodeURIComponent(id)}`;
+      });
+    });
+  } catch (e) {
+    activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">불러오기에 실패했어요.</p>';
+  }
+}
 
 
 
