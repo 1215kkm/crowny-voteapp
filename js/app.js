@@ -30,9 +30,13 @@ import {
   addMeeting,
   listMeetings,
   getUserIdeas,
-  getUserTeamGrant
+  getUserTeamGrant,
+  addInquiry,
+  getTeamConfig,
+  getUserProfileFlags
 } from "./firestore.js";
-import { isPlaceholder } from "./firebase-config.js";
+import { isPlaceholder, functions, getAppCheckToken } from "./firebase-config.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 import { escapeHtml } from "./utils.js";
 import { trackEvent } from "./analytics.js";
 import { loadDraft, saveDraft, clearDraft } from "./draft-store.js";
@@ -111,7 +115,12 @@ let overlayCommentUnsub = null;    // 오버레이 댓글 구독 해제
 window.appMeetings = {
   add: (data) => addMeeting(data).catch((e) => { console.warn("meeting save failed", e && e.message); return null; }),
   list: (uid) => listMeetings(uid).catch(() => []),
-  grant: (uid) => getUserTeamGrant(uid).catch(() => 0)  // 관리자 부여 추가 무료 횟수
+  grant: (uid) => getUserTeamGrant(uid).catch(() => 0),  // 관리자 부여 + 추천·실유입 보상 합산
+  config: () => getTeamConfig().catch(() => ({ freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5 })),
+  appCheckToken: () => getAppCheckToken().catch(() => ""),
+  recordVisit: (sharerUid, visitorId) => (functions
+    ? httpsCallable(functions, "recordReferralVisit")({ sharerUid, visitorId }).then((r) => r.data).catch(() => null)
+    : Promise.resolve(null))
 };
 const shareModal = document.getElementById("share-success-modal");
 const shareModalClose = document.getElementById("share-success-close");
@@ -311,6 +320,7 @@ async function handleAuthState(user) {
     userPhoto.alt = user.displayName || "";
     userName.textContent = user.displayName || "사용자";
     updateProfileBadge(user);
+    maybeOpenReferralModal(user);
 
     if (subscribeEmailForm) subscribeEmailForm.classList.add("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.remove("hidden");
@@ -1227,6 +1237,40 @@ async function openFavoritesModal() {
 }
 
 function closeFavoritesModal() { if (favModal) favModal.classList.add("hidden"); }
+
+// ---- 첫 로그인 추천 스레드 ID (계정당 1회) ----
+const referralModal = document.getElementById("referral-modal");
+const referralInput = document.getElementById("referral-input");
+let referralShownThisSession = false;
+
+async function maybeOpenReferralModal(user) {
+  if (!referralModal || !user || referralShownThisSession) return;
+  try {
+    const flags = await getUserProfileFlags(user.uid);
+    if (flags.signupClaimed) return; // 이미 처리됨
+  } catch (e) { return; }
+  referralShownThisSession = true;
+  if (referralInput) referralInput.value = "";
+  referralModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+  setTimeout(() => referralInput?.focus(), 60);
+}
+
+async function submitReferral(refThreadsId) {
+  if (referralModal) referralModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  try {
+    if (functions) {
+      const res = await httpsCallable(functions, "claimSignup")({ refThreadsId: refThreadsId || "" });
+      const granted = res?.data?.granted || 0;
+      if (granted > 0) showToast(`추천 확인! 강팀 질문 ${granted}회가 추가됐어요 🎉`, "success");
+    }
+  } catch (e) { /* signupClaimed 세팅 실패해도 조용히 */ }
+}
+
+document.getElementById("referral-submit")?.addEventListener("click", () => submitReferral(referralInput?.value || ""));
+document.getElementById("referral-skip")?.addEventListener("click", () => submitReferral(""));
+document.getElementById("referral-skip2")?.addEventListener("click", () => submitReferral(""));
 
 // ---- 내 활동 (내가 올린 아이디어) + 목표 배지 ----
 

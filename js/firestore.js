@@ -611,6 +611,41 @@ export async function listMeetings(uid, max = 50) {
   return list;
 }
 
+// ---- 강팀 회의 질문 횟수 설정 (settings/admin, 누구나 읽기) ----
+
+export async function getTeamConfig() {
+  const num = (v, d) => (typeof v === "number" && v >= 0 ? v : d);
+  try {
+    const snap = await _gdoc(_d(db, "settings", "admin"));
+    const d = snap.exists() ? snap.data() : {};
+    return {
+      freeBase: num(d.teamFreeBase, 3),
+      signupBonus: num(d.teamSignupBonus, 0),
+      followBonus: num(d.teamFollowBonus, 3),
+      shareBonus: num(d.teamShareBonus, 3),
+      referralBonus: num(d.teamReferralBonus, 5),
+      visitBonus: num(d.teamVisitBonus, 1),
+      visitDailyCap: num(d.teamVisitDailyCap, 5)
+    };
+  } catch (e) {
+    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5 };
+  }
+}
+
+// ---- 문의 (누구나 생성) ----
+
+export async function addInquiry({ name, contact, message }) {
+  const payload = {
+    name: String(name || "").slice(0, 100),
+    contact: String(contact || "").slice(0, 200),
+    message: String(message || "").slice(0, 3000),
+    page: (typeof location !== "undefined" ? location.pathname : ""),
+    createdAt: serverTimestamp()
+  };
+  const ref = await addDoc(collection(db, "inquiries"), payload);
+  return ref.id;
+}
+
 // ---- 강팀 무료 횟수 관리자 부여 (users/{uid}.teamGrant) ----
 
 export async function getUserTeamGrant(uid) {
@@ -618,9 +653,21 @@ export async function getUserTeamGrant(uid) {
   try {
     const snap = await _gdoc(_d(db, "users", uid));
     if (!snap.exists()) return 0;
-    const v = snap.data().teamGrant;
-    return typeof v === "number" ? v : 0;
+    const d = snap.data();
+    const g = typeof d.teamGrant === "number" ? d.teamGrant : 0;   // 관리자 부여
+    const r = typeof d.refBonus === "number" ? d.refBonus : 0;      // 추천·실유입 보상
+    return g + r;
   } catch (e) { return 0; }
+}
+
+// 신규 로그인 여부 판별용: users 문서 존재 + signupClaimed 여부
+export async function getUserProfileFlags(uid) {
+  if (!uid) return { exists: false, signupClaimed: false };
+  try {
+    const snap = await _gdoc(_d(db, "users", uid));
+    if (!snap.exists()) return { exists: false, signupClaimed: false };
+    return { exists: true, signupClaimed: !!snap.data().signupClaimed };
+  } catch (e) { return { exists: false, signupClaimed: false }; }
 }
 
 export async function setUserTeamGrant(uid, n) {

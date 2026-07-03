@@ -3,7 +3,8 @@
 // 사용 모델은 관리자 페이지(AI 탭 → 강팀 회의 모델)에서 Firestore settings/admin.meetingProvider로 전환.
 // 선택한 모델이 실패하면 자동으로 다른 모델로 폴백.
 
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const Anthropic = require("@anthropic-ai/sdk");
 const admin = require("firebase-admin");
@@ -12,6 +13,9 @@ admin.initializeApp();
 
 const ANTHROPIC_KEY = defineSecret("ANTHROPIC_KEY");
 const GEMINI_KEY = defineSecret("GEMINI_KEY");
+const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
+const TELEGRAM_CHAT_ID = defineSecret("TELEGRAM_CHAT_ID");
+const NOTIFY_EMAIL = "rute20002@gmail.com";
 
 // 관리자 설정(meetingProvider) — 매 요청 Firestore를 때리지 않게 60초 캐시
 let _providerCache = { value: "gemini", fetchedAt: 0 };
@@ -29,6 +33,24 @@ async function getMeetingProvider() {
   return _providerCache.value;
 }
 
+// App Check 소프트 검증 (헤더 토큰 유효성) + enforce 플래그(settings/admin.appCheckEnforce)
+async function verifyAppCheck(req) {
+  const token = req.header && req.header("X-Firebase-AppCheck");
+  if (!token) return false;
+  try { await admin.appCheck().verifyToken(token); return true; }
+  catch (e) { console.warn("appcheck verify failed:", e && e.message); return false; }
+}
+let _enforceCache = { value: false, at: 0 };
+async function getAppCheckEnforce() {
+  const now = Date.now();
+  if (now - _enforceCache.at < 60000) return _enforceCache.value;
+  try {
+    const snap = await admin.firestore().doc("settings/admin").get();
+    _enforceCache = { value: !!(snap.exists && snap.data().appCheckEnforce), at: now };
+  } catch (e) { _enforceCache.at = now; }
+  return _enforceCache.value;
+}
+
 const CLAUDE_MODEL = "claude-haiku-4-5";
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -41,7 +63,7 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 - 강디: 26세 여, 신입 디자이너. 실력은 아직인데 본인은 모름 — 자신감 넘침. "이거 완전 예쁘죠?", "제가 봤을 때는요~" 근거 약한데 밀어붙이고, 지적받으면 살짝 위축.
 - 강개발: 35세 개발자. 직설·건조, 감정 안 섞음. 된다/안된다와 비용·시간을 정확히. "됩니다. 2시간.", "그거 안 됩니다. 이유는—" 비현실적인 안엔 속으로 한숨.
 - 강체크: 28세 여, QA·보안. 까칠·꼼꼼, 날카롭게 파고듦. "이거 여기서 깨져요.", "증거는요?" 팀이 실력은 인정하지만 속으론 살짝 무서워함. 사실은 팀이 잘 되길 바라서 세게 봄.
-- 아뱅: 자문위원, 마케터·아이디어뱅크. 굉장히 긍정·재미·호전적, 농담 잘함. "오~ 그거 재밌는데?", "야, 이거 뒤집자!" 반대 전문 — 팀이 한 방향으로 쏠리면 "잠깐, 반대로 가면?"
+- 아뱅: 자문위원, 마케터·아이디어뱅크. 굉장히 긍정·재미·호전적, 농담 잘함. "오~ 그거 재밌는데?", "이거 완전 다르게 가보면 어때요?" 반대 전문 — 팀이 한 방향으로 쏠리면 "잠깐, 반대로 생각하면요?"(단, 발언은 늘 쉬운 일상어로)
 
 관계 다이내믹(자연스럽게 드러나게):
 - 강디가 자신 있게 내놓으면 강체크가 날카롭게 지적(인신공격 X, 아이디어 공격 O), 강디는 살짝 위축되지만 배운다.
@@ -53,9 +75,13 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 
 회의 규칙:
 - 사용자의 앱/상황을 읽고 '구현'과 '홍보마케팅' 두 관점으로 회의.
-- 전원 찬성 금지(최소 1명은 반대·의문). 쉬운 말. 어려운 전문용어는 괄호로 풀이. 각 발언 1~2문장.
+- 전원 찬성 금지(최소 1명은 반대·의문). 각 발언 1~2문장.
+- **어린이에게 설명하듯 아주 쉽고 친근하게 말하라.** 초등학생도 한 번에 알아듣는 말투로, 어려운 개념은 쉬운 비유로 풀어라. 처음 보는 낯선 사람이 읽어도 설명 없이 이해되게:
+  · 업계·개발 은어 금지 — '판을 뒤집다', '진짜 구멍', '오염', '클라(클라이언트)', '콘솔', '붙이다(추가하다)', '던지다', '태우다' 같은 표현 대신 누구나 아는 보통 말로 풀어 써라.
+  · 어려운 전문용어는 꼭 필요할 때만, 바로 뒤에 괄호로 쉬운 풀이. (예: "API(다른 프로그램과 연결하는 창구)")
+  · 사용자가 말하지 않은 특정 서비스명·사이트주소·파일이름·회사 내부 도구나 디자인 이름을 지어내거나 언급하지 마라. 색·폰트는 "밝은 보라-분홍 계열" 처럼 일반적으로만.
 - 발언 중 2~3개 뒤에는 속마음을 <span class="tw-think">(속마음 내용)</span>으로 붙여라 — '속:' 라벨 없이 괄호만.
-- 강개발은 반드시 숫자로 말한다: 구현 시간("3시간", "2일"), 비용은 규모 가정과 함께 구체적으로("코스튬 30종, 이미지 1장 200KB면 총 6MB — 저장비 사실상 0원. 트래픽은 일 사용자 1만 명 기준 월 약 몇 천 원" 식). "비용이 좀 듭니다" 같은 막연한 말 금지.
+- 강개발은 작업량을 반드시 **두 경우로 나눠** 말한다: "사람이 직접 만들면 약 ○○, AI 도구로 만들면 약 ○○" (예: "사람 손으로는 2~3일, AI로 뼈대 잡으면 반나절이면 돼요"). 비용도 규모 가정과 함께 구체적으로("이미지 30장, 장당 200KB면 총 6MB라 저장비는 거의 0원, 사용자 하루 1만 명 기준 월 몇 천 원" 식). "비용이 좀 듭니다" 같은 막연한 말 금지.
 - 아뱅은 반드시 자기만의 새 아이디어 3종을 내놔라 — 남의 안에 동의·맞장구만 하는 것 금지:
   ① 지금 바로 적용할 눈앞의 아이디어
   ② 확장성 아이디어
@@ -128,6 +154,12 @@ exports.runMeeting = onRequest(
     if (!prompt) { res.status(400).json({ error: "prompt required" }); return; }
     if (prompt.length > 2000) { res.status(400).json({ error: "prompt too long" }); return; }
 
+    // App Check: 토큰 검증 실패 + enforce ON이면 차단 (스크립트 직접 호출 방지)
+    const appCheckOk = await verifyAppCheck(req);
+    if (!appCheckOk && await getAppCheckEnforce()) {
+      res.status(401).json({ error: "app_check_required" }); return;
+    }
+
     // 관리자 설정에 따라 기본 모델 선택, 실패 시 반대 모델로 폴백
     const provider = await getMeetingProvider();
     const runners = provider === "claude"
@@ -148,5 +180,120 @@ exports.runMeeting = onRequest(
     if (!html) { res.status(500).json({ error: "generation_failed" }); return; }
     res.set("Cache-Control", "no-store");
     res.json({ html });
+  }
+);
+
+// ── 문의 알림: 새 inquiries 문서 생성 시 텔레그램 + 이메일 ──────────
+exports.onInquiryCreated = onDocumentCreated(
+  {
+    document: "inquiries/{id}",
+    region: "us-central1",
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID]
+  },
+  async (event) => {
+    const data = event.data && event.data.data();
+    console.log("[inquiry] triggered, hasData:", !!data);
+    if (!data) return;
+
+    const text =
+      "📨 Appter 새 문의\n" +
+      "이름: " + (data.name || "-") + "\n" +
+      "연락처: " + (data.contact || "-") + "\n" +
+      "페이지: " + (data.page || "-") + "\n\n" +
+      (data.message || "");
+
+    // 1) 텔레그램 (토큰·chat id가 실제 값일 때만)
+    try {
+      const token = TELEGRAM_BOT_TOKEN.value();
+      const chat = TELEGRAM_CHAT_ID.value();
+      console.log("[inquiry] tg tokenLen:", token ? token.length : 0, "chat:", chat);
+      if (token && chat && token.indexOf("placeholder") === -1 && chat.indexOf("placeholder") === -1) {
+        const r = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chat, text })
+        });
+        console.log("[inquiry] telegram status:", r.status);
+        if (!r.ok) console.error("[inquiry] telegram body:", (await r.text()).slice(0, 200));
+      } else {
+        console.log("[inquiry] telegram skipped (placeholder/empty)");
+      }
+    } catch (e) { console.error("[inquiry] telegram failed:", e && e.message); }
+
+    // 2) 이메일 (mail 컬렉션 → Trigger Email 확장이 발송)
+    try {
+      await admin.firestore().collection("mail").add({
+        to: NOTIFY_EMAIL,
+        message: {
+          subject: "[Appter] 새 문의",
+          text: text,
+          html: text.replace(/\n/g, "<br>")
+        }
+      });
+    } catch (e) { console.error("mail write failed:", e && e.message); }
+  }
+);
+
+// ── 가입 추천 보상: 신규 로그인 1회, 추천 스레드 ID 입력 시 refBonus += N ──
+exports.claimSignup = onCall(
+  { region: "us-central1" },   // App Check는 runMeeting에서 단계적 적용, 콜러블은 auth로 보호
+  async (request) => {
+    const uid = request.auth && request.auth.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    const refThreadsId = String((request.data && request.data.refThreadsId) || "")
+      .replace(/^@/, "").slice(0, 60).trim();
+    const db = admin.firestore();
+    const userRef = db.doc("users/" + uid);
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      const d = snap.exists ? snap.data() : {};
+      if (d.signupClaimed) return { granted: 0, already: true };
+      const sset = await tx.get(db.doc("settings/admin"));
+      const bonus = (sset.exists && typeof sset.data().teamReferralBonus === "number")
+        ? sset.data().teamReferralBonus : 5;
+      const give = refThreadsId ? bonus : 0;
+      tx.set(userRef, {
+        signupClaimed: true,
+        referredBy: refThreadsId || null,
+        signupAt: admin.firestore.FieldValue.serverTimestamp(),
+        refBonus: admin.firestore.FieldValue.increment(give)
+      }, { merge: true });
+      return { granted: give, already: false };
+    });
+  }
+);
+
+// ── 실유입 보상: ?ref=<sharerUid> 링크로 새 방문자 착지 시 공유자에게 +N ──
+exports.recordReferralVisit = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const sharerUid = String((request.data && request.data.sharerUid) || "").trim();
+    const visitorId = String((request.data && request.data.visitorId) || "").slice(0, 80).trim();
+    if (!sharerUid || !visitorId) return { credited: false, reason: "missing" };
+    // 자기 자신 제외 (로그인 방문자 uid == 공유자, 또는 visitorId == 공유자 uid)
+    const callerUid = request.auth && request.auth.uid;
+    if (callerUid === sharerUid || visitorId === sharerUid) return { credited: false, reason: "self" };
+
+    const db = admin.firestore();
+    const day = new Date().toISOString().slice(0, 10);
+    const dedupRef = db.doc("referrals/" + sharerUid + "/visits/" + visitorId + "_" + day);
+    const dayRef = db.doc("referrals/" + sharerUid + "/days/" + day);
+    const userRef = db.doc("users/" + sharerUid);
+
+    return await db.runTransaction(async (tx) => {
+      const dedup = await tx.get(dedupRef);
+      if (dedup.exists) return { credited: false, reason: "dup" };
+      const sset = await tx.get(db.doc("settings/admin"));
+      const s = sset.exists ? sset.data() : {};
+      const visitBonus = typeof s.teamVisitBonus === "number" ? s.teamVisitBonus : 1;
+      const cap = typeof s.teamVisitDailyCap === "number" ? s.teamVisitDailyCap : 5;
+      const dayCnt = await tx.get(dayRef);
+      const already = dayCnt.exists ? (dayCnt.data().count || 0) : 0;
+      tx.set(dedupRef, { at: admin.firestore.FieldValue.serverTimestamp() });
+      if (visitBonus <= 0 || already >= cap) return { credited: false, reason: "cap" };
+      tx.set(dayRef, { count: already + 1 }, { merge: true });
+      tx.set(userRef, { refBonus: admin.firestore.FieldValue.increment(visitBonus) }, { merge: true });
+      return { credited: true, bonus: visitBonus };
+    });
   }
 );
