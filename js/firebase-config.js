@@ -12,7 +12,7 @@ import { getFunctions } from "https://www.gstatic.com/firebasejs/10.12.0/firebas
 import { initializeAppCheck, ReCaptchaV3Provider, getToken } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
 
 // Firebase 콘솔 → App Check → reCAPTCHA v3 사이트키. 비어 있으면 App Check 미적용(사이트 정상 동작).
-const APPCHECK_SITE_KEY = "";
+const APPCHECK_SITE_KEY = "6LdweEItAAAAAEoNc5TTKT43f3W5HekKtMUU_Xfe";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA2qYgn9-sFX3k0W1kDjV9eZjgo9ozsT3Y",
