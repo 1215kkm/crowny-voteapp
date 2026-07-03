@@ -97,6 +97,7 @@ const aiBanner = document.getElementById("ai-status-banner");
 const autoCommentToggle = document.getElementById("auto-comment-toggle");
 const autoPostToggle = document.getElementById("auto-post-toggle");
 const settingsSave = document.getElementById("settings-save");
+const meetingProviderSelect = document.getElementById("meeting-provider-select");
 const aiTargetIdea = document.getElementById("ai-target-idea");
 const aiCommentCount = document.getElementById("ai-comment-count");
 const aiGenComments = document.getElementById("ai-gen-comments");
@@ -534,6 +535,7 @@ async function loadSettings() {
     autoCommentToggle.checked = !!sv.autoCommentEnabled;
     autoPostToggle.checked = !!sv.autoPostEnabled;
     if (autoLikeToggle) autoLikeToggle.checked = !!sv.autoLikeEnabled;
+    if (meetingProviderSelect) meetingProviderSelect.value = sv.meetingProvider === "claude" ? "claude" : "gemini";
   } catch (e) { /* ignore */ }
 }
 
@@ -542,7 +544,8 @@ settingsSave?.addEventListener("click", async () => {
     await setSettings({
       autoCommentEnabled: autoCommentToggle.checked,
       autoPostEnabled: autoPostToggle.checked,
-      autoLikeEnabled: autoLikeToggle?.checked || false
+      autoLikeEnabled: autoLikeToggle?.checked || false,
+      meetingProvider: meetingProviderSelect?.value === "claude" ? "claude" : "gemini"
     });
     showToast("설정 저장됐어요", "success");
   } catch (e) {
