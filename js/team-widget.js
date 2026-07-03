@@ -238,13 +238,18 @@
     var body = resultEl && resultEl.querySelector(".tw-result-body");
     if (!body) return Promise.resolve(null);
     return loadH2C().then(function () {
-      var bg = getComputedStyle(document.body).backgroundColor;
-      if (!bg || bg === "rgba(0, 0, 0, 0)") bg = "#0b0a14";
+      // 저장 이미지는 항상 라이트모드 색상 (다크여도)
       var pad = document.createElement("div");
-      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:560px;padding:26px;box-sizing:border-box;background:" + bg;
+      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:560px;padding:26px;box-sizing:border-box;background:#ffffff";
+      var light = {
+        "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-subtle": "#f9fafb",
+        "--color-border": "#eaecf0", "--color-text": "#101828", "--color-text-secondary": "#475467",
+        "--color-text-light": "#667085", "--color-accent-start": "#8a38f5", "--color-accent-end": "#d53a6b"
+      };
+      for (var k in light) pad.style.setProperty(k, light[k]);
       pad.appendChild(body.cloneNode(true));
       document.body.appendChild(pad);
-      return window.html2canvas(pad, { scale: 2, backgroundColor: bg, useCORS: true })
+      return window.html2canvas(pad, { scale: 2, backgroundColor: "#ffffff", useCORS: true })
         .then(function (canvas) {
           return new Promise(function (res) { canvas.toBlob(res, "image/png"); });
         })
@@ -280,49 +285,68 @@
     return false;
   }
 
-  // 회의 화면 이미지를 자동 첨부해서 공유.
-  // 모바일: 공유시트(navigator.share)에 이미지 파일 자동 첨부 → 스레드/인스타 앱 선택.
-  // PC: 윈도우 공유창엔 스레드가 없으므로 이미지 자동 저장 + 스레드 글쓰기 창(문구 채워짐)을 연다.
+  // 회의 화면 이미지 + 공유 문구(멘트)를 함께 스레드/인스타로.
+  // 데스크톱: 클릭 즉시(제스처 유효) 멘트가 채워진 스레드 작성창을 먼저 열고, 이미지는 뒤이어 저장(첨부용).
+  // 모바일: 공유시트(navigator.share)에 이미지+문구를 함께 전달.
   function shareMeeting(title, mode) {
     grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
+
+    if (!isMobileDevice()) {
+      // 팝업 차단을 피하려면 window.open을 async(이미지 캡처) 이전, 클릭 제스처 안에서 호출해야 한다
+      var win = null;
+      if (mode === "threads") {
+        win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+      } else {
+        copyText(caption);
+      }
+      captureMeetingBlob().then(function (blob) {
+        if (blob) downloadBlob(blob, "강팀회의록.png");
+        if (mode === "threads") {
+          if (win) {
+            alert("스레드 작성창을 열었어요(멘트 자동 입력). 방금 저장된 회의 이미지를 글에 첨부해 주세요!");
+          } else {
+            copyText(caption);
+            alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣고, 저장된 이미지를 첨부하세요.");
+          }
+        } else {
+          alert("공유 문구를 복사하고 회의 이미지를 저장했어요. 인스타/스레드에 붙여넣고 이미지를 첨부하세요!");
+        }
+      });
+      return;
+    }
+
+    // 모바일: 이미지 + 문구를 공유시트로 함께 (앱에서 스레드/인스타 선택)
     return captureMeetingBlob().then(function (blob) {
-      if (isMobileDevice() && blob && navigator.canShare) {
+      if (blob && navigator.canShare) {
         var file = new File([blob], "강팀회의록.png", { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           return navigator.share({ files: [file], text: caption }).catch(function (e) {
             if (e && e.name === "AbortError") return;
-            fallbackShare(blob, caption, mode);
+            copyText(caption); if (blob) downloadBlob(blob, "강팀회의록.png");
+            alert("공유 문구를 복사하고 이미지를 저장했어요.");
           });
         }
       }
-      fallbackShare(blob, caption, mode);
+      if (navigator.share) return navigator.share({ text: caption }).catch(function () {});
+      copyText(caption); if (blob) downloadBlob(blob, "강팀회의록.png");
     });
-  }
-
-  function fallbackShare(blob, caption, mode) {
-    if (blob) downloadBlob(blob, "강팀회의록.png");
-    if (mode === "threads") {
-      if (blob) alert("회의 화면 이미지를 저장했어요. 스레드 글에 첨부해 주세요!");
-      openThreadsIntent(caption);
-    } else {
-      copyText(caption);
-      alert(blob
-        ? "회의 화면 이미지를 저장하고 공유 문구를 복사했어요. 인스타/스레드에 붙여넣고 이미지를 첨부하세요!"
-        : "공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
-    }
   }
 
   // ---- 결과 렌더 ----
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
-  // 회의록 헤더 — 라벨 + 날짜시간 + 참여 멤버 칩 (강팀 회의록 양식)
-  function metaHtml() {
+  // 회의록 헤더 — 라벨 → 강팀 주소 → 제목 → 날짜·안건 → 참여 칩 (강팀 회의록 양식)
+  function metaHtml(title) {
     var d = new Date();
     function p(n) { return (n < 10 ? "0" : "") + n; }
     var dt = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
-    return '<div class="tw-m-meta">' +
-      '<span class="tw-m-label">강팀 회의록</span><span class="tw-m-date">' + dt + '</span>' +
+    var t = esc(title || "강팀 회의");
+    return '<div class="tw-m-head">' +
+      '<div class="tw-m-label">강팀 회의록</div>' +
+      '<div class="tw-m-addr">강팀 주소 : <a href="https://appter.co.kr" target="_blank" rel="noopener">appter.co.kr</a></div>' +
+      '<div class="tw-m-h1">' + t + '</div>' +
+      '<div class="tw-m-sub">' + dt + ' · 안건: ' + t + '</div>' +
       '<div class="tw-m-members"><span class="tw-m-mlabel">참여</span>' +
         '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
         '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
@@ -331,11 +355,13 @@
   }
 
   function renderResult(html, title, isDemo, fromHistory) {
+    // 제목은 헤더로 옮기므로 본문의 tw-m-title 은 제거(중복 방지)
+    var bodyHtml = String(html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
     resultEl.innerHTML =
       historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
       (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
-      '<div class="tw-result-body">' + metaHtml() + html + "</div>" +
+      '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
       '<div class="tw-share">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
         '<button type="button" class="tw-share-btn tw-share-other">인스타·기타 공유</button>' +
