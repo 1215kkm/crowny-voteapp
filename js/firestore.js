@@ -585,6 +585,46 @@ export async function setSettings(fields) {
   await _sd(_d(db, "settings", "admin"), fields, { merge: true });
 }
 
+// ---- 강팀 회의 내역 (로그인 사용자별 저장) ----
+
+export async function addMeeting({ uid, title, prompt, html }) {
+  if (!uid) return null;
+  const ref = await _add(_c(db, "meetings"), {
+    uid,
+    title: String(title || "").slice(0, 200),
+    prompt: String(prompt || "").slice(0, 2000),
+    html: String(html || "").slice(0, 60000),
+    createdAt: _st()
+  });
+  return ref.id;
+}
+
+export async function listMeetings(uid, max = 50) {
+  if (!uid) return [];
+  const q = _q(_c(db, "meetings"), _w("uid", "==", uid), _o("createdAt", "desc"), _l(max));
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+// ---- 내가 올린 아이디어 (프로필 → 내 활동) ----
+
+export async function getUserIdeas(uid, max = 50) {
+  if (!uid) return [];
+  const q = _q(_c(db, "ideas"), _w("authorUid", "==", uid), _l(max));
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  // 최근순 (createdAt desc) — 인덱스 없이 클라이언트 정렬
+  list.sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return tb - ta;
+  });
+  return list;
+}
+
 // ---- 스케줄 큐 (자동 댓글) ----
 
 export async function enqueueScheduledComment({ ideaId, text, authorName, authorPhoto, authorUid, scheduledAt }) {

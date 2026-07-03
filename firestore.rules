@@ -178,6 +178,19 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- 강팀 회의 내역 (본인 것만 읽고 생성) ----
+    match /meetings/{id} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create: if isAdmin() || (
+        request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.html is string
+        && request.resource.data.html.size() <= 60000
+      );
+      allow delete: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow update: if false;
+    }
+
     // ---- 분석 이벤트 ----
     match /events/{id} {
       // 익명 방문/행동 기록(앱 특성상 비로그인 분석 필요). 인증을 요구할 수 없으므로

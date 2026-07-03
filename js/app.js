@@ -26,7 +26,10 @@ import {
   THRESHOLD_FREE_MIXED,
   meetsDesignThreshold,
   userUpdateOwnIdea,
-  userDeleteOwnIdea
+  userDeleteOwnIdea,
+  addMeeting,
+  listMeetings,
+  getUserIdeas
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { escapeHtml } from "./utils.js";
@@ -94,6 +97,12 @@ const ideaOverlayBody = document.getElementById("idea-overlay-body");
 const ideaOverlayClose = document.getElementById("idea-overlay-close");
 let overlayIdeaId = null;          // 현재 오버레이에 열린 아이디어 id
 let overlayCommentUnsub = null;    // 오버레이 댓글 구독 해제
+
+// 플레인 스크립트(team-widget.js)에서 쓰도록 회의 내역 API를 전역 노출
+window.appMeetings = {
+  add: (data) => addMeeting(data).catch((e) => { console.warn("meeting save failed", e && e.message); return null; }),
+  list: (uid) => listMeetings(uid).catch(() => [])
+};
 const shareModal = document.getElementById("share-success-modal");
 const shareModalClose = document.getElementById("share-success-close");
 const shareModalGoal = document.getElementById("share-success-goal");

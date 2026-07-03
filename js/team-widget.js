@@ -57,6 +57,61 @@
     renderQuota();
   }
 
+  // ---- 로그인 사용자 회의 내역 ----
+  function currentUid() {
+    var u = window.__currentUser;
+    return (u && u.uid) ? u.uid : null;
+  }
+  var historyCache = [];   // 최근 회의 목록 (최신순)
+
+  // html 조각에서 회의 제목 추출 (tw-m-title) — 없으면 프롬프트 앞부분
+  function extractTitle(html, prompt) {
+    var m = /class="tw-m-title"[^>]*>([\s\S]*?)<\/div>/i.exec(html || "");
+    if (m) {
+      var t = m[1].replace(/<[^>]+>/g, "").trim();
+      if (t) return t;
+    }
+    return (prompt || "강팀 회의").slice(0, 40);
+  }
+
+  function fmtStamp(createdAt) {
+    var d;
+    if (createdAt && typeof createdAt.toDate === "function") d = createdAt.toDate();
+    else if (typeof createdAt === "number") d = new Date(createdAt);
+    else d = new Date();
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return { date: d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()),
+             time: p(d.getHours()) + ":" + p(d.getMinutes()) };
+  }
+
+  function historyListHtml() {
+    if (!historyCache.length) return '';
+    var rows = historyCache.map(function (m, i) {
+      var s = fmtStamp(m.createdAt);
+      return '<button type="button" class="tw-hist-item" data-hidx="' + i + '">' +
+        '<span class="tw-hist-when">' + s.date + ' ' + s.time + '</span>' +
+        '<span class="tw-hist-title">' + esc(m.title || "강팀 회의") + '</span></button>';
+    }).join("");
+    return '<div class="tw-history"><div class="tw-history-head">내 회의 내역</div>' +
+      '<div class="tw-history-list">' + rows + '</div></div>';
+  }
+
+  function loadHistory() {
+    var uid = currentUid();
+    if (!uid || !window.appMeetings) { historyCache = []; return Promise.resolve([]); }
+    return window.appMeetings.list(uid).then(function (list) {
+      historyCache = list || [];
+      return historyCache;
+    });
+  }
+
+  // 저장된 회의 열기 (횟수 차감·재저장 없이)
+  function openSaved(idx) {
+    var m = historyCache[idx];
+    if (!m) return;
+    renderResult(m.html, m.title, false, true);
+  }
+
   // 내 추천 id (익명 게스트 — 로그인 붙으면 UID로 교체)
   function myRefId() {
     var id = localStorage.getItem(LS_REF);
@@ -186,10 +241,11 @@
       '</div></div>';
   }
 
-  function renderResult(html, title, isDemo) {
+  function renderResult(html, title, isDemo, fromHistory) {
     resultEl.innerHTML =
+      historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
-      (remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
+      (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
       '<div class="tw-result-body">' + metaHtml() + html + "</div>" +
       '<div class="tw-share">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
@@ -199,7 +255,26 @@
     resultEl.classList.remove("hidden");
     resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { shareMeeting(title, "threads"); });
     resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareMeeting(title, "other"); });
+    bindHistoryClicks();
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function bindHistoryClicks() {
+    var items = resultEl.querySelectorAll(".tw-hist-item");
+    for (var i = 0; i < items.length; i++) {
+      items[i].addEventListener("click", function () {
+        openSaved(parseInt(this.getAttribute("data-hidx"), 10));
+      });
+    }
+  }
+
+  // 결과 없이 내역만 보여주기 (로그인 후 목록 열기)
+  function showHistoryOnly() {
+    if (!historyCache.length) return;
+    resultEl.innerHTML = historyListHtml() +
+      '<div class="tw-hist-hint">지난 회의를 눌러 다시 열어볼 수 있어요.</div>';
+    resultEl.classList.remove("hidden");
+    bindHistoryClicks();
   }
 
   function demoMeetingHtml(prompt) {
@@ -290,7 +365,17 @@
 
       if (!html) { html = demoMeetingHtml(prompt); isDemo = true; }
       consumeOne();
-      renderResult(html, prompt, isDemo);
+
+      // 로그인 사용자면 회의 내역 저장 후 목록 갱신
+      var uid = currentUid();
+      var title = extractTitle(html, prompt);
+      if (!isDemo && uid && window.appMeetings) {
+        try {
+          await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html });
+          await loadHistory();
+        } catch (e) { /* 저장 실패해도 결과는 보여줌 */ }
+      }
+      renderResult(html, title, isDemo);
     } finally {
       stopLoading();
       running = false;
@@ -312,6 +397,24 @@
     }
   }
   if (moreBtn) moreBtn.addEventListener("click", showMore);
+
+  // ---- 로그인 감지 → 회의 내역 미리 로드 (plain script라 폴링으로 감시) ----
+  var lastUid = null;
+  setInterval(function () {
+    var uid = currentUid();
+    if (uid === lastUid) return;
+    lastUid = uid;
+    if (uid) {
+      loadHistory().then(function () {
+        // 결과창이 비어 있을 때만 내역 목록을 띄운다 (열람 중 방해 X)
+        if (historyCache.length && (resultEl.classList.contains("hidden") || !resultEl.innerHTML.trim())) {
+          showHistoryOnly();
+        }
+      });
+    } else {
+      historyCache = [];
+    }
+  }, 1500);
 
   // ---- 스친추가 적립: 버튼 눌러 스레드 프로필 열면 1회에 한해 +3회 ----
   var followBtn = document.querySelector(".tw-follow");
