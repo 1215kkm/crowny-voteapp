@@ -4,6 +4,7 @@
 // 선택한 모델이 실패하면 자동으로 다른 모델로 폴백.
 
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const Anthropic = require("@anthropic-ai/sdk");
 const admin = require("firebase-admin");
@@ -12,6 +13,9 @@ admin.initializeApp();
 
 const ANTHROPIC_KEY = defineSecret("ANTHROPIC_KEY");
 const GEMINI_KEY = defineSecret("GEMINI_KEY");
+const TELEGRAM_BOT_TOKEN = defineSecret("TELEGRAM_BOT_TOKEN");
+const TELEGRAM_CHAT_ID = defineSecret("TELEGRAM_CHAT_ID");
+const NOTIFY_EMAIL = "rute20002@gmail.com";
 
 // 관리자 설정(meetingProvider) — 매 요청 Firestore를 때리지 않게 60초 캐시
 let _providerCache = { value: "gemini", fetchedAt: 0 };
@@ -148,5 +152,51 @@ exports.runMeeting = onRequest(
     if (!html) { res.status(500).json({ error: "generation_failed" }); return; }
     res.set("Cache-Control", "no-store");
     res.json({ html });
+  }
+);
+
+// ── 문의 알림: 새 inquiries 문서 생성 시 텔레그램 + 이메일 ──────────
+exports.onInquiryCreated = onDocumentCreated(
+  {
+    document: "inquiries/{id}",
+    region: "us-central1",
+    secrets: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID]
+  },
+  async (event) => {
+    const data = event.data && event.data.data();
+    if (!data) return;
+
+    const text =
+      "📨 Appter 새 문의\n" +
+      "이름: " + (data.name || "-") + "\n" +
+      "연락처: " + (data.contact || "-") + "\n" +
+      "페이지: " + (data.page || "-") + "\n\n" +
+      (data.message || "");
+
+    // 1) 텔레그램 (토큰·chat id가 실제 값일 때만)
+    try {
+      const token = TELEGRAM_BOT_TOKEN.value();
+      const chat = TELEGRAM_CHAT_ID.value();
+      if (token && chat && token.indexOf("placeholder") === -1 && chat.indexOf("placeholder") === -1) {
+        const r = await fetch("https://api.telegram.org/bot" + token + "/sendMessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chat, text })
+        });
+        if (!r.ok) console.error("telegram", r.status, (await r.text()).slice(0, 200));
+      }
+    } catch (e) { console.error("telegram failed:", e && e.message); }
+
+    // 2) 이메일 (mail 컬렉션 → Trigger Email 확장이 발송)
+    try {
+      await admin.firestore().collection("mail").add({
+        to: NOTIFY_EMAIL,
+        message: {
+          subject: "[Appter] 새 문의",
+          text: text,
+          html: text.replace(/\n/g, "<br>")
+        }
+      });
+    } catch (e) { console.error("mail write failed:", e && e.message); }
   }
 );

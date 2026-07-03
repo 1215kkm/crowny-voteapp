@@ -188,6 +188,18 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- 문의 (누구나 생성, 관리자만 열람) ----
+    match /inquiries/{id} {
+      allow create: if request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() <= 3000
+        && (!('name' in request.resource.data) || request.resource.data.name.size() <= 100)
+        && (!('contact' in request.resource.data) || request.resource.data.contact.size() <= 200)
+        && request.resource.data.keys().size() <= 8;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
     // ---- 강팀 회의 내역 (본인 것만 읽고 생성) ----
     match /meetings/{id} {
       allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);

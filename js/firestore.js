@@ -611,6 +611,20 @@ export async function listMeetings(uid, max = 50) {
   return list;
 }
 
+// ---- 문의 (누구나 생성) ----
+
+export async function addInquiry({ name, contact, message }) {
+  const payload = {
+    name: String(name || "").slice(0, 100),
+    contact: String(contact || "").slice(0, 200),
+    message: String(message || "").slice(0, 3000),
+    page: (typeof location !== "undefined" ? location.pathname : ""),
+    createdAt: serverTimestamp()
+  };
+  const ref = await addDoc(collection(db, "inquiries"), payload);
+  return ref.id;
+}
+
 // ---- 강팀 무료 횟수 관리자 부여 (users/{uid}.teamGrant) ----
 
 export async function getUserTeamGrant(uid) {

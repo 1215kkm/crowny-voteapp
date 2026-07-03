@@ -30,7 +30,8 @@ import {
   addMeeting,
   listMeetings,
   getUserIdeas,
-  getUserTeamGrant
+  getUserTeamGrant,
+  addInquiry
 } from "./firestore.js";
 import { isPlaceholder } from "./firebase-config.js";
 import { escapeHtml } from "./utils.js";
