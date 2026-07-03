@@ -238,13 +238,18 @@
     var body = resultEl && resultEl.querySelector(".tw-result-body");
     if (!body) return Promise.resolve(null);
     return loadH2C().then(function () {
-      var bg = getComputedStyle(document.body).backgroundColor;
-      if (!bg || bg === "rgba(0, 0, 0, 0)") bg = "#0b0a14";
+      // 저장 이미지는 항상 라이트모드 색상 (다크여도)
       var pad = document.createElement("div");
-      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:560px;padding:26px;box-sizing:border-box;background:" + bg;
+      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:560px;padding:26px;box-sizing:border-box;background:#ffffff";
+      var light = {
+        "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-subtle": "#f9fafb",
+        "--color-border": "#eaecf0", "--color-text": "#101828", "--color-text-secondary": "#475467",
+        "--color-text-light": "#667085", "--color-accent-start": "#8a38f5", "--color-accent-end": "#d53a6b"
+      };
+      for (var k in light) pad.style.setProperty(k, light[k]);
       pad.appendChild(body.cloneNode(true));
       document.body.appendChild(pad);
-      return window.html2canvas(pad, { scale: 2, backgroundColor: bg, useCORS: true })
+      return window.html2canvas(pad, { scale: 2, backgroundColor: "#ffffff", useCORS: true })
         .then(function (canvas) {
           return new Promise(function (res) { canvas.toBlob(res, "image/png"); });
         })
@@ -331,13 +336,17 @@
   // ---- 결과 렌더 ----
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
-  // 회의록 헤더 — 라벨 + 날짜시간 + 참여 멤버 칩 (강팀 회의록 양식)
-  function metaHtml() {
+  // 회의록 헤더 — 라벨 → 강팀 주소 → 제목 → 날짜·안건 → 참여 칩 (강팀 회의록 양식)
+  function metaHtml(title) {
     var d = new Date();
     function p(n) { return (n < 10 ? "0" : "") + n; }
     var dt = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
-    return '<div class="tw-m-meta">' +
-      '<span class="tw-m-label">강팀 회의록</span><span class="tw-m-date">' + dt + '</span>' +
+    var t = esc(title || "강팀 회의");
+    return '<div class="tw-m-head">' +
+      '<div class="tw-m-label">강팀 회의록</div>' +
+      '<div class="tw-m-addr">강팀 주소 : <a href="https://appter.co.kr" target="_blank" rel="noopener">appter.co.kr</a></div>' +
+      '<div class="tw-m-h1">' + t + '</div>' +
+      '<div class="tw-m-sub">' + dt + ' · 안건: ' + t + '</div>' +
       '<div class="tw-m-members"><span class="tw-m-mlabel">참여</span>' +
         '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
         '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
@@ -346,11 +355,13 @@
   }
 
   function renderResult(html, title, isDemo, fromHistory) {
+    // 제목은 헤더로 옮기므로 본문의 tw-m-title 은 제거(중복 방지)
+    var bodyHtml = String(html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
     resultEl.innerHTML =
       historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
       (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
-      '<div class="tw-result-body">' + metaHtml() + html + "</div>" +
+      '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
       '<div class="tw-share">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
         '<button type="button" class="tw-share-btn tw-share-other">인스타·기타 공유</button>' +
