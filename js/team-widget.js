@@ -19,6 +19,8 @@
   var LS_SHARE_DAY = "appter_share_day"; // 공유 보너스 집계 날짜
   var LS_SHARE_CNT = "appter_share_cnt"; // 오늘 공유 보너스 지급 횟수
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
+  var MEETING_BASE = "https://crowny-appter.web.app/m/"; // 공유 회의 뷰어
+  var currentMeetingId = null;         // 현재 표시중 회의 id (저장된 경우)
 
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드
   function loadConfig() {
@@ -195,6 +197,7 @@
   function openSaved(idx) {
     var m = historyCache[idx];
     if (!m) return;
+    currentMeetingId = m.id || null;
     renderResult(m.html, m.title, false, true);
   }
 
@@ -238,9 +241,9 @@
     var body = resultEl && resultEl.querySelector(".tw-result-body");
     if (!body) return Promise.resolve(null);
     return loadH2C().then(function () {
-      // 저장 이미지는 항상 라이트모드 색상 (다크여도)
+      // 저장 이미지는 항상 라이트모드 색상 + 모바일 폭(글자 크게 보이게)
       var pad = document.createElement("div");
-      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:560px;padding:26px;box-sizing:border-box;background:#ffffff";
+      pad.style.cssText = "position:fixed;left:-99999px;top:0;width:400px;padding:22px;box-sizing:border-box;background:#ffffff;font-size:16px";
       var light = {
         "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-subtle": "#f9fafb",
         "--color-border": "#eaecf0", "--color-text": "#101828", "--color-text-secondary": "#475467",
@@ -249,12 +252,48 @@
       for (var k in light) pad.style.setProperty(k, light[k]);
       pad.appendChild(body.cloneNode(true));
       document.body.appendChild(pad);
-      return window.html2canvas(pad, { scale: 2, backgroundColor: "#ffffff", useCORS: true })
+      var SCALE = 2;
+      return window.html2canvas(pad, { scale: SCALE, backgroundColor: "#ffffff", useCORS: true })
         .then(function (canvas) {
-          return new Promise(function (res) { canvas.toBlob(res, "image/png"); });
+          return new Promise(function (res) { finishCanvas(canvas).toBlob(res, "image/png"); });
         })
         .finally(function () { document.body.removeChild(pad); });
     }).catch(function () { return null; });
+  }
+
+  // 높이 5000px로 제한 + 하단에 큰 URL 배너(잘렸으면 "전체는 링크에서")
+  function finishCanvas(src) {
+    var W = src.width;
+    var footerH = Math.round(W * 0.42);        // 폭 비례 배너 높이
+    var maxTotal = 5000;
+    var maxContent = maxTotal - footerH;
+    var cropped = src.height > maxContent;
+    var contentH = cropped ? maxContent : src.height;
+    var out = document.createElement("canvas");
+    out.width = W; out.height = contentH + footerH;
+    var ctx = out.getContext("2d");
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(src, 0, 0, W, contentH, 0, 0, W, contentH);
+    if (cropped) {
+      var fade = ctx.createLinearGradient(0, contentH - 140, 0, contentH);
+      fade.addColorStop(0, "rgba(255,255,255,0)"); fade.addColorStop(1, "#ffffff");
+      ctx.fillStyle = fade; ctx.fillRect(0, contentH - 140, W, 140);
+    }
+    // 하단 배너
+    var fy = contentH;
+    var g = ctx.createLinearGradient(0, fy, W, fy + footerH);
+    g.addColorStop(0, "#8a38f5"); g.addColorStop(1, "#d53a6b");
+    ctx.fillStyle = g; ctx.fillRect(0, fy, W, footerH);
+    ctx.textAlign = "center"; ctx.fillStyle = "#ffffff";
+    var cx = W / 2;
+    var line1 = cropped ? "회의가 길어요! 전체 회의는 여기서 👇" : "나도 강팀에게 무료로 물어보기 👇";
+    ctx.font = "bold " + Math.round(W * 0.045) + "px Pretendard, -apple-system, sans-serif";
+    ctx.fillText(line1, cx, fy + footerH * 0.34);
+    ctx.font = "800 " + Math.round(W * 0.075) + "px Pretendard, -apple-system, sans-serif";
+    ctx.fillText("appter.co.kr", cx, fy + footerH * 0.60);
+    ctx.font = Math.round(W * 0.033) + "px Pretendard, -apple-system, sans-serif";
+    ctx.fillText("강팀 AI 5명이 회의해서 아이디어를 만들어줘요", cx, fy + footerH * 0.82);
+    return out;
   }
 
   function downloadBlob(blob, name) {
@@ -498,9 +537,11 @@
       // 로그인 사용자면 회의 내역 저장 후 목록 갱신
       var uid = currentUid();
       var title = extractTitle(html, prompt);
+      currentMeetingId = null;
       if (!isDemo && uid && window.appMeetings) {
         try {
-          await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html });
+          var savedId = await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html });
+          currentMeetingId = savedId || null;
           await loadHistory();
         } catch (e) { /* 저장 실패해도 결과는 보여줌 */ }
       }
