@@ -204,31 +204,34 @@
   #ideas-container .idea-card.active .status-badge,
   #ideas-container .idea-card.active .btn-mini { color: #fff; }
 
-  /* ===== 아이디어 상세 오버레이 ===== */
-  .idea-overlay { position: fixed; inset: 0; z-index: 120; }
+  /* ===== 아이디어 상세 오버레이 (딤 없음 · 회의창보다 50px 큰 폭) ===== */
+  .idea-overlay { position: fixed; inset: 0; z-index: 120; pointer-events: none; }
   .idea-overlay.hidden { display: none; }
-  .idea-overlay-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5);
-    opacity: 0; transition: opacity .28s ease; }
-  .idea-overlay.show .idea-overlay-backdrop { opacity: 1; }
-  .idea-overlay-panel { position: absolute; top: 0; right: 0; bottom: 0;
-    width: min(760px, 94vw); background: var(--color-bg); border-left: 1px solid var(--color-border);
-    box-shadow: -12px 0 40px rgba(0,0,0,0.45); display: flex; flex-direction: column;
-    transform: translateX(100%); transition: transform .32s cubic-bezier(.2,.8,.2,1); overflow: hidden; }
+  /* 강팀 회의창(25%, min 320px)보다 약 50px 넓게 */
+  .idea-overlay-panel { pointer-events: auto; position: absolute; top: 0; right: 0; bottom: 0;
+    width: min(94vw, max(370px, calc(25% + 50px)));
+    background: var(--color-bg); border-left: 1px solid var(--color-border);
+    box-shadow: -12px 0 40px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .32s cubic-bezier(.2,.8,.2,1); overflow: visible; }
   .idea-overlay.show .idea-overlay-panel { transform: translateX(0); }
-  .idea-overlay-head { display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 22px; border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
+  /* 중앙 왼쪽 바깥 X 버튼 */
+  .idea-overlay-x { pointer-events: auto; position: absolute; left: -44px; top: 50%;
+    transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text);
+    font-size: 18px; font-weight: 700; cursor: pointer; box-shadow: -4px 0 16px rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center; }
+  .idea-overlay-x:hover { background: var(--color-accent-end); color: #fff; border-color: var(--color-accent-end); }
+  .idea-overlay-head { display: flex; align-items: center; padding: 16px 22px;
+    border-bottom: 1px solid var(--color-border); flex-shrink: 0; }
   .idea-overlay-eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .12em;
     text-transform: uppercase; color: var(--color-accent-end); }
-  .idea-overlay-close { border: 1px solid var(--color-border); background: var(--color-subtle);
-    color: var(--color-text); font-family: inherit; font-size: 14px; font-weight: 700;
-    padding: 8px 16px; border-radius: var(--radius-full); cursor: pointer; }
-  .idea-overlay-close:hover { background: var(--color-accent-end); color: #fff; border-color: var(--color-accent-end); }
   .idea-overlay-body { flex: 1 1 auto; overflow-y: auto; padding: 22px; }
   /* 오버레이 안의 카드는 항상 펼친 상태로 보이게, hover 검정 무효 */
   .idea-overlay-body .idea-card { background: var(--color-surface) !important; cursor: default; }
   .idea-overlay-body .idea-card .expand-icon { display: none; }
   @media (max-width: 640px) {
-    .idea-overlay-panel { width: 100%; border-left: none; }
+    .idea-overlay-panel { width: calc(100% - 44px); border-left: none; }
+    .idea-overlay-x { left: -42px; }
   }
 
   /* ===== 데스크톱: 좌(원화면 3/4) + 우(강팀 회의창 1/4) 2단 ===== */
@@ -533,11 +536,10 @@
 <button id="to-team" class="flip-arrow flip-arrow-right" type="button" aria-label="강팀 회의창 보기">강팀 →</button>
   <!-- 아이디어 상세 오버레이 (카드 클릭 시 우측에서 슬라이드 인 / 닫기 시 강팀회의창 복귀) -->
   <div id="idea-overlay" class="idea-overlay hidden" aria-hidden="true">
-    <div class="idea-overlay-backdrop"></div>
     <aside class="idea-overlay-panel">
+      <button type="button" id="idea-overlay-close" class="idea-overlay-x" aria-label="닫기">✕</button>
       <div class="idea-overlay-head">
         <span class="idea-overlay-eyebrow">아이디어 상세</span>
-        <button type="button" id="idea-overlay-close" class="idea-overlay-close" aria-label="닫기">✕ 닫기</button>
       </div>
       <div id="idea-overlay-body" class="idea-overlay-body"></div>
     </aside>

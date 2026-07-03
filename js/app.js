@@ -676,7 +676,6 @@ function openIdeaOverlay(ideaId) {
 
   ideaOverlay.classList.remove("hidden");
   ideaOverlay.setAttribute("aria-hidden", "false");
-  document.body.classList.add("modal-open");
   requestAnimationFrame(() => ideaOverlay.classList.add("show"));
 }
 
@@ -702,13 +701,11 @@ function closeIdeaOverlay() {
   overlayIdeaId = null;
   ideaOverlay.classList.remove("show");
   ideaOverlay.setAttribute("aria-hidden", "true");
-  document.body.classList.remove("modal-open");
   setTimeout(() => ideaOverlay.classList.add("hidden"), 320);
 }
 
 if (ideaOverlayClose) ideaOverlayClose.addEventListener("click", closeIdeaOverlay);
 if (ideaOverlay) {
-  ideaOverlay.querySelector(".idea-overlay-backdrop")?.addEventListener("click", closeIdeaOverlay);
   // 오버레이 안의 버튼도 기존 액션 핸들러로 처리 (btn.closest('.idea-card')가 오버레이 카드를 잡음)
   ideaOverlayBody.addEventListener("click", handleIdeasClick);
 }
