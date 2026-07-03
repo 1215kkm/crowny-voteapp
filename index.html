@@ -503,12 +503,22 @@
 
   <!-- 내 활동 (내가 올린 아이디어) -->
   <div id="activity-modal" class="modal-backdrop hidden">
-    <div class="modal-window">
+    <div class="modal-window modal-window-wide">
       <div class="modal-head">
-        <h3>내 활동 — 내 아이디어 ✍️</h3>
+        <h3>내 활동</h3>
         <button id="activity-modal-close" class="modal-close" aria-label="닫기">×</button>
       </div>
-      <div id="activity-list" class="modal-body"></div>
+      <div class="activity-split">
+        <div class="activity-col">
+          <h4 class="activity-col-title">✍️ 내 아이디어</h4>
+          <div id="activity-list" class="activity-col-body"></div>
+        </div>
+        <div class="activity-col">
+          <h4 class="activity-col-title">🤖 내 강팀 회의</h4>
+          <div id="activity-meetings" class="activity-col-body"></div>
+          <div id="activity-meeting-view" class="activity-meeting-view hidden"></div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -18,7 +18,8 @@
       "seed.html"
     ],
     "rewrites": [
-      { "source": "/api/meeting", "function": "runMeeting" }
+      { "source": "/api/meeting", "function": "runMeeting" },
+      { "source": "/m/**", "function": "viewMeeting" }
     ]
   }
 }

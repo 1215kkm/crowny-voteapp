@@ -103,6 +103,10 @@ const profileBadge = document.getElementById("profile-badge");
 const activityModal = document.getElementById("activity-modal");
 const activityModalClose = document.getElementById("activity-modal-close");
 const activityList = document.getElementById("activity-list");
+const activityMeetings = document.getElementById("activity-meetings");
+const activityMeetingView = document.getElementById("activity-meeting-view");
+const MEETING_SHARE_BASE = "https://crowny-appter.web.app/m/";
+const CREATOR_THREADS = "kkm450815";
 
 // 아이디어 상세 오버레이
 const ideaOverlay = document.getElementById("idea-overlay");
@@ -1306,6 +1310,7 @@ async function openActivityModal() {
   if (!user) { showToast("로그인 후 사용할 수 있어요", "info"); return; }
   activityModal.classList.remove("hidden");
   activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">불러오는 중...</p>';
+  loadActivityMeetings(user);
   try {
     const mine = await getUserIdeas(user.uid);
     if (mine.length === 0) {
@@ -1334,6 +1339,77 @@ async function openActivityModal() {
   } catch (e) {
     activityList.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:20px;">불러오기에 실패했어요.</p>';
   }
+}
+
+// ---- 내 활동: 내 강팀 회의 내역 (우측) ----
+let activityMeetingCache = [];
+async function loadActivityMeetings(user) {
+  if (!activityMeetings) return;
+  activityMeetingView?.classList.add("hidden");
+  activityMeetings.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:16px;">불러오는 중...</p>';
+  try {
+    activityMeetingCache = await listMeetings(user.uid, 50);
+  } catch (e) {
+    activityMeetings.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:16px;">불러오기 실패</p>';
+    return;
+  }
+  if (!activityMeetingCache.length) {
+    activityMeetings.innerHTML = '<p style="text-align:center;color:var(--color-text-light);padding:16px;">아직 강팀에게 물어본 회의가 없어요.</p>';
+    return;
+  }
+  activityMeetings.innerHTML = activityMeetingCache.map((m, i) => {
+    const d = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : new Date();
+    const p = (n) => (n < 10 ? "0" : "") + n;
+    const dt = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    return `<button type="button" class="act-mtg-item" data-midx="${i}">
+      <div class="act-mtg-title">${escapeHtml(m.title || m.prompt || "강팀 회의")}</div>
+      <div class="act-mtg-date">${dt}</div>
+    </button>`;
+  }).join("");
+  activityMeetings.querySelectorAll(".act-mtg-item").forEach((el) => {
+    el.addEventListener("click", () => showActivityMeeting(parseInt(el.dataset.midx, 10)));
+  });
+}
+
+function showActivityMeeting(idx) {
+  const m = activityMeetingCache[idx];
+  if (!m || !activityMeetingView) return;
+  const url = MEETING_SHARE_BASE + m.id;
+  const body = String(m.html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
+  activityMeetingView.innerHTML =
+    '<div class="amv-actions">' +
+      '<button type="button" class="amv-btn share" data-mshare="' + idx + '">스레드로 다시 퍼가기</button>' +
+      '<button type="button" class="amv-btn copy" data-mcopy="' + idx + '">🔗 공유 링크 복사</button>' +
+    '</div>' +
+    '<div style="font-weight:800;margin-bottom:8px;">' + escapeHtml(m.title || "강팀 회의") + '</div>' +
+    body;
+  activityMeetingView.classList.remove("hidden");
+  activityMeetingView.querySelector("[data-mshare]").addEventListener("click", () => reshareMeeting(m));
+  activityMeetingView.querySelector("[data-mcopy]").addEventListener("click", () => copyMeetingUrl(url));
+  activityMeetingView.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function meetingCaption(title, url) {
+  return "상품기획천재 강팀 AI의 회의내용이에요\n\"" + (title || "내 앱 아이디어") +
+    "\"\n\n너도 아이디어를 얻어봐 → " + url + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+}
+
+function reshareMeeting(m) {
+  const url = MEETING_SHARE_BASE + m.id;
+  const caption = meetingCaption(m.title, url);
+  window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+}
+
+async function copyMeetingUrl(url) {
+  try {
+    if (navigator.clipboard) await navigator.clipboard.writeText(url);
+    else {
+      const ta = document.createElement("textarea");
+      ta.value = url; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+    }
+    showToast("공유 링크를 복사했어요! SNS에 붙여넣으면 제목이 보여요", "success");
+  } catch (e) { showToast("복사 실패", "info"); }
 }
 
 

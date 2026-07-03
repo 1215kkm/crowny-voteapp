@@ -611,6 +611,15 @@ export async function listMeetings(uid, max = 50) {
   return list;
 }
 
+// 관리자 전용: 모든 사용자의 회의 최신순 (규칙상 isAdmin만 통과)
+export async function listAllMeetings(max = 300) {
+  const q = _q(_c(db, "meetings"), _o("createdAt", "desc"), _l(max));
+  const snap = await _gd(q);
+  const list = [];
+  snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
 // ---- 강팀 회의 질문 횟수 설정 (settings/admin, 누구나 읽기) ----
 
 export async function getTeamConfig() {

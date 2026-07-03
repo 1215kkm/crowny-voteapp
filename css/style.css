@@ -3004,3 +3004,49 @@ html[data-theme="dark"] .section-header h2 { color: var(--color-text); }
 .team-set-label strong { font-size: 15px; color: var(--color-text); }
 .team-set-label small { font-size: 12.5px; color: var(--color-text-light); }
 .team-set-row .adm-input { width: 90px; text-align: center; font-weight: 700; font-size: 16px; }
+
+/* ── 관리자 강팀 회의 내역 뷰어 ── */
+.team-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+@media (max-width: 900px) { .team-layout { grid-template-columns: 1fr; } }
+.team-log-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 4px; }
+.team-log { max-height: 640px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 12px; padding: 8px; }
+.tlog-day { border-bottom: 1px solid var(--color-border); }
+.tlog-day:last-child { border-bottom: none; }
+.tlog-date { width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 10px 8px; font-size: 0.92rem; font-weight: 700; color: var(--color-text); display: flex; justify-content: space-between; align-items: center; }
+.tlog-date:hover { background: var(--color-subtle); border-radius: 8px; }
+.tlog-date .tlog-cnt { font-size: 0.78rem; font-weight: 600; color: var(--color-text-light); }
+.tlog-items { padding: 2px 4px 8px; }
+.tlog-item { width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 7px 10px; font-size: 0.86rem; color: var(--color-text-secondary); border-radius: 8px; display: block; }
+.tlog-item:hover { background: var(--color-subtle); color: var(--color-text); }
+.tlog-item .tlog-time { color: var(--color-text-light); font-size: 0.76rem; margin-right: 6px; }
+.team-log-view { margin-top: 14px; border: 1px solid var(--color-border); border-radius: 12px; padding: 18px; background: var(--color-subtle); max-height: 640px; overflow-y: auto; }
+.team-log-view .tlv-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; }
+.team-log-view .tlv-meta { font-size: 0.8rem; color: var(--color-text-light); margin-bottom: 12px; }
+.team-log-view .tw-m-act { font-size: 0.9rem; line-height: 1.6; margin: 7px 0; color: var(--color-text); }
+.team-log-view .tw-m-act b { color: var(--color-accent-start); }
+.team-log-view .tw-m-act.daepyo b { color: var(--color-text); }
+.team-log-view .tw-m-act.abang b { color: #d53a6b; }
+.team-log-view .tw-m-act.gdi b { color: #0d9c84; }
+.team-log-view .tw-m-act.gdev b { color: #475569; }
+.team-log-view .tw-m-act.gchk b { color: #7030d4; }
+.team-log-view .tw-think { color: #8b8fa0; font-style: italic; font-size: 0.82rem; }
+.team-log-view .tw-m-title { font-size: 1rem; font-weight: 800; margin-bottom: 8px; }
+.team-log-view .tw-m-sum { margin-top: 12px; font-size: 0.86rem; background: rgba(138,56,245,0.06); border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent-start); border-radius: 8px; padding: 10px 14px; }
+.team-log-view .tw-m-sum ul { margin: 6px 0 0 18px; }
+
+/* ── 내 활동 모달: 아이디어 | 강팀 회의 2단 ── */
+.modal-window-wide { max-width: 900px; width: 94vw; }
+.activity-split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 4px 4px 8px; }
+@media (max-width: 760px) { .activity-split { grid-template-columns: 1fr; } }
+.activity-col { min-width: 0; }
+.activity-col-title { font-size: 0.95rem; font-weight: 800; margin: 0 0 10px; color: var(--color-text); }
+.activity-col-body { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.act-mtg-item { width: 100%; text-align: left; background: var(--color-subtle); border: 1px solid var(--color-border); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.act-mtg-item:hover { border-color: var(--color-accent-start); }
+.act-mtg-title { font-weight: 700; font-size: 0.88rem; color: var(--color-text); }
+.act-mtg-date { font-size: 0.74rem; color: var(--color-text-light); margin-top: 2px; }
+.activity-meeting-view { margin-top: 12px; border: 1px solid var(--color-border); border-radius: 12px; padding: 16px; background: var(--color-subtle); max-height: 380px; overflow-y: auto; }
+.activity-meeting-view .amv-actions { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.amv-btn { font-size: 0.8rem; font-weight: 700; border: none; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.amv-btn.share { background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); color: #fff; }
+.amv-btn.copy { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text); }

@@ -297,3 +297,90 @@ exports.recordReferralVisit = onCall(
     });
   }
 );
+
+// ── 공유 회의 뷰어: /m/<id> → OG 제목 있는 HTML 페이지 (SNS 미리보기 + 방문자 열람) ──
+function escHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+  });
+}
+exports.viewMeeting = onRequest(
+  { region: "us-central1", memory: "256MiB" },
+  async (req, res) => {
+    // /m/<id> 또는 ?id=<id>
+    const m = (req.path || "").match(/\/m\/([^/?]+)/);
+    const id = (m && m[1]) || String(req.query.id || "").trim();
+    const SITE = "https://appter.co.kr";
+    if (!id) { res.status(400).send("잘못된 주소예요."); return; }
+    let data = null;
+    try {
+      const snap = await admin.firestore().doc("meetings/" + id).get();
+      if (snap.exists) data = snap.data();
+    } catch (e) { console.error("viewMeeting read:", e && e.message); }
+    if (!data) {
+      res.set("Cache-Control", "no-store");
+      res.status(404).send("<meta charset='utf-8'><div style='font-family:sans-serif;padding:40px;text-align:center'>회의를 찾을 수 없어요.<br><a href='" + SITE + "'>강팀에게 물어보러 가기</a></div>");
+      return;
+    }
+    const title = escHtml((data.title || "강팀 회의").slice(0, 100));
+    let body = String(data.html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
+    // 허용 태그만 (div·b·span·ul·li) 남기고 나머지 제거 — 저장값은 우리 포맷이지만 방어적으로
+    body = body.replace(/<(?!\/?(?:div|b|span|ul|li)\b)[^>]*>/gi, "");
+    const d = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
+    function p(n){return (n<10?"0":"")+n;}
+    const dt = d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+
+    const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title} · 강팀 회의록 | Appter</title>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Appter 강팀">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="강팀 AI 5명이 회의해서 만든 결과예요. 나도 무료로 아이디어를 얻어보세요.">
+<meta property="og:image" content="https://crowny-appter.web.app/images/logo_sns.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="강팀 AI가 회의한 결과예요. 나도 무료로 물어보세요.">
+<meta name="twitter:image" content="https://crowny-appter.web.app/images/logo_sns.png">
+<style>
+:root{--acc1:#8a38f5;--acc2:#d53a6b;--ink:#101828;--dim:#667085;--line:#eaecf0;--sub:#f9fafb}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f4f5f8;color:var(--ink);font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:680px;margin:0 auto;padding:32px 18px 80px}
+.paper{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(16,24,40,.06);padding:28px 26px 32px}
+.lbl{font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--acc2);text-transform:uppercase}
+.addr{margin-top:6px;font-size:13px;font-weight:700;color:var(--dim)}
+.addr a{color:var(--acc1);text-decoration:none;border-bottom:1px solid rgba(138,56,245,.4)}
+h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacing:-.01em}
+.sub{font-size:13px;color:var(--dim);margin-bottom:12px}
+.mem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:20px}
+.mem .ml{font-size:12px;font-weight:700;color:var(--dim);margin-right:2px}
+.chip{font-size:12px;font-weight:700;color:#fff;padding:3px 10px;border-radius:999px}
+.daepyo{background:#374151}.gdi{background:#0d9c84}.gdev{background:#475569}.gchk{background:#7030d4}.abang{background:#d53a6b}
+.tw-m-act{font-size:16px;line-height:1.6;margin:8px 0}
+.tw-m-act b{color:var(--acc1)}
+.tw-m-act.daepyo b{color:var(--ink)}.tw-m-act.abang b{color:#d53a6b}.tw-m-act.gdi b{color:#0d9c84}.tw-m-act.gdev b{color:#475569}.tw-m-act.gchk b{color:#7030d4}
+.tw-think{color:#8b8fa0;font-style:italic;font-size:14px}
+.tw-m-sum{margin-top:14px;font-size:15px;background:rgba(138,56,245,.06);border:1px solid var(--line);border-left:3px solid var(--acc1);border-radius:10px;padding:12px 16px}
+.tw-m-sum>b{color:var(--acc1)}.tw-m-sum ul{margin:6px 0 0 18px}.tw-m-sum li{margin:3px 0}
+.cta{display:block;text-align:center;margin:22px auto 0;max-width:360px;background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:12px;box-shadow:0 8px 24px rgba(213,58,107,.3)}
+.foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}
+</style></head><body>
+<div class="wrap"><div class="paper">
+  <div class="lbl">강팀 회의록</div>
+  <div class="addr">강팀 주소 : <a href="${SITE}" target="_blank" rel="noopener">appter.co.kr</a></div>
+  <h1>${title}</h1>
+  <div class="sub">${dt} · 안건: ${title}</div>
+  <div class="mem"><span class="ml">참여</span>
+    <span class="chip daepyo">강대표</span><span class="chip gdi">강디</span>
+    <span class="chip gdev">강개발</span><span class="chip gchk">강체크</span><span class="chip abang">아뱅</span>
+  </div>
+  ${body}
+</div>
+<a class="cta" href="${SITE}">나도 강팀에게 무료로 물어보기 →</a>
+<div class="foot">© 2026 Appter · 강팀 AI</div>
+</div></body></html>`;
+    res.set("Cache-Control", "public, max-age=300");
+    res.status(200).send(html);
+  }
+);
