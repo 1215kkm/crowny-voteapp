@@ -121,7 +121,9 @@
 
       <!-- 강팀 회의 설정 -->
       <section id="tab-team" class="admin-section hidden">
-        <h2>강팀 회의 질문 횟수 설정</h2>
+        <h2>강팀 회의 설정 &amp; 회의 내역</h2>
+        <div class="team-layout">
+        <div class="team-col-left">
         <p class="admin-help">비회원·회원이 강팀에게 질문할 수 있는 횟수를 조절합니다. 저장 즉시 사이트에 반영됩니다.</p>
         <div class="team-settings">
           <label class="team-set-row">
@@ -157,6 +159,14 @@
             <input type="checkbox" id="team-appcheck-enforce">
           </label>
           <button id="team-settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
+        </div>
+        </div>
+        <div class="team-col-right">
+          <h3 class="team-log-title">사용자 회의 내역</h3>
+          <p class="admin-help">날짜를 누르면 그날 올라온 질문들이, 질문을 누르면 회의 내용이 보여요. (최근 300건)</p>
+          <div id="team-log" class="team-log">불러오는 중…</div>
+          <div id="team-log-view" class="team-log-view hidden"></div>
+        </div>
         </div>
       </section>
 

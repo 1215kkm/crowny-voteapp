@@ -33,7 +33,8 @@ import {
   listSubscribers,
   listEmailsByIdea,
   getUserTeamGrant,
-  setUserTeamGrant
+  setUserTeamGrant,
+  listAllMeetings
 } from "./firestore.js";
 import { COUNTRIES, countryName, countryFlagEmoji } from "./countries.js";
 import { escapeHtml } from "./utils.js";
@@ -148,6 +149,70 @@ teamSettingsSave?.addEventListener("click", async () => {
   }
 });
 loadTeamSettings();
+
+// ── 사용자 회의 내역 뷰어 (날짜 → 질문 → 내용) ──
+const teamLogEl = document.getElementById("team-log");
+const teamLogView = document.getElementById("team-log-view");
+let teamLogData = [];
+
+function fmtDay(ts) {
+  const d = ts && ts.toDate ? ts.toDate() : new Date();
+  const p = (n) => (n < 10 ? "0" : "") + n;
+  return { day: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, time: `${p(d.getHours())}:${p(d.getMinutes())}` };
+}
+
+async function loadTeamLog() {
+  if (!teamLogEl) return;
+  try {
+    teamLogData = await listAllMeetings(300);
+  } catch (e) {
+    teamLogEl.innerHTML = '<p class="admin-help">불러오지 못했어요: ' + escapeHtml(e.message || "") + "</p>";
+    return;
+  }
+  if (!teamLogData.length) { teamLogEl.innerHTML = '<p class="admin-help">아직 회의 내역이 없어요.</p>'; return; }
+  const byDay = {};
+  teamLogData.forEach((m, i) => {
+    const { day, time } = fmtDay(m.createdAt);
+    (byDay[day] = byDay[day] || []).push({ i, time, title: m.title || m.prompt || "(제목 없음)" });
+  });
+  const days = Object.keys(byDay).sort((a, b) => (a < b ? 1 : -1));
+  teamLogEl.innerHTML = days.map((day) =>
+    '<div class="tlog-day">' +
+      '<button type="button" class="tlog-date" data-day="' + day + '">' +
+        '<span>' + day + '</span><span class="tlog-cnt">' + byDay[day].length + '건 ▾</span>' +
+      '</button>' +
+      '<div class="tlog-items hidden">' +
+        byDay[day].map((it) =>
+          '<button type="button" class="tlog-item" data-idx="' + it.i + '">' +
+            '<span class="tlog-time">' + it.time + '</span>' + escapeHtml(it.title) +
+          '</button>'
+        ).join("") +
+      '</div>' +
+    '</div>'
+  ).join("");
+}
+
+teamLogEl?.addEventListener("click", (e) => {
+  const dateBtn = e.target.closest(".tlog-date");
+  if (dateBtn) {
+    const items = dateBtn.nextElementSibling;
+    if (items) items.classList.toggle("hidden");
+    return;
+  }
+  const itemBtn = e.target.closest(".tlog-item");
+  if (itemBtn) {
+    const m = teamLogData[parseInt(itemBtn.getAttribute("data-idx"), 10)];
+    if (!m || !teamLogView) return;
+    const { day, time } = fmtDay(m.createdAt);
+    teamLogView.innerHTML =
+      '<div class="tlv-title">' + escapeHtml(m.title || "강팀 회의") + "</div>" +
+      '<div class="tlv-meta">' + day + " " + time + " · 안건: " + escapeHtml(m.prompt || m.title || "") + "</div>" +
+      (m.html || "");
+    teamLogView.classList.remove("hidden");
+    teamLogView.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
+
 const aiTargetIdea = document.getElementById("ai-target-idea");
 const aiCommentCount = document.getElementById("ai-comment-count");
 const aiGenComments = document.getElementById("ai-gen-comments");
@@ -222,6 +287,7 @@ tabs.forEach((t) => {
     if (t.dataset.tab === "ai") loadScheduledList();
     if (t.dataset.tab === "personas") loadPersonasList();
     if (t.dataset.tab === "members") loadMembersList();
+    if (t.dataset.tab === "team") loadTeamLog();
     if (t.dataset.tab === "emails") loadEmailLists();
     if (t.dataset.tab === "access") loadAccessTab();
     if (t.dataset.tab === "trash") loadTrash();
