@@ -285,28 +285,72 @@ async function loadAnalytics() {
     const events = await fetchEventsSince(currentRange);
     const pageviews = events.filter((e) => e.type === "pageview");
     const uniqueSessions = new Set(pageviews.map((e) => e.session)).size;
+    const uniqueMembers = new Set(pageviews.filter((e) => e.uid).map((e) => e.uid)).size;
+
+    // 날짜 헬퍼 (로컬 기준 YYYY-MM-DD)
+    const dayStr = (e) => {
+      const ms = e.createdAt?.toMillis?.() || 0;
+      const d = new Date(ms);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    // 방문자(기기) 기준 신규/재방문 — visitor 없으면 session으로 대체(옛 데이터)
+    const vkey = (e) => e.visitor || e.session || "";
+    const firstDayByVisitor = {};
+    pageviews.forEach((e) => {
+      const k = vkey(e); if (!k) return;
+      const d = dayStr(e);
+      if (!firstDayByVisitor[k] || d < firstDayByVisitor[k]) firstDayByVisitor[k] = d;
+    });
+    const todaysVisitors = new Set(pageviews.filter((e) => dayStr(e) === todayStr).map(vkey).filter(Boolean));
+    let todayNew = 0, todayReturn = 0;
+    todaysVisitors.forEach((k) => {
+      if ((firstDayByVisitor[k] || todayStr) < todayStr) todayReturn++; else todayNew++;
+    });
+
     summaryEl.innerHTML = `
       <div class="stat"><span class="stat-num">${pageviews.length}</span><span class="stat-lbl">총 페이지뷰</span></div>
       <div class="stat"><span class="stat-num">${uniqueSessions}</span><span class="stat-lbl">고유 세션</span></div>
+      <div class="stat"><span class="stat-num">${uniqueMembers}</span><span class="stat-lbl">로그인 회원(기간)</span></div>
+      <div class="stat"><span class="stat-num">${todaysVisitors.size}</span><span class="stat-lbl">오늘 방문 · 신규 ${todayNew} · 재방문 ${todayReturn}</span></div>
       <div class="stat"><span class="stat-num">${currentRange}일</span><span class="stat-lbl">기간</span></div>
     `;
 
-    // 유입 경로
-    const bySource = {};
+    // 유입 출처 — 세션의 '첫 진입' 출처만 집계 (사이트 내부 이동 제외 = 바깥 어디서 왔는지)
+    const firstEventBySession = {};
     pageviews.forEach((e) => {
-      const s = e.source || "direct";
+      const s = e.session; if (!s) return;
+      const ms = e.createdAt?.toMillis?.() || 0;
+      if (!firstEventBySession[s] || ms < firstEventBySession[s]._ms) {
+        firstEventBySession[s] = { source: e.source || "direct", _ms: ms };
+      }
+    });
+    const bySource = {};
+    Object.values(firstEventBySession).forEach((f) => {
+      let s = f.source || "direct";
+      if (s === "internal") s = "direct"; // 내부 이동이 첫 진입으로 잡히면 직접방문으로
       bySource[s] = (bySource[s] || 0) + 1;
     });
+    const totalSessions = Object.keys(firstEventBySession).length;
     const sorted = Object.entries(bySource).sort((a,b) => b[1] - a[1]);
+    const sourceLabel = (s) => ({
+      direct: "직접 방문 (주소 입력·즐겨찾기)", google: "구글 검색", naver: "네이버", kakao: "다음·카카오",
+      instagram: "인스타그램", threads: "스레드", facebook: "페이스북", twitter: "트위터(X)",
+      youtube: "유튜브", bing: "빙", linkedin: "링크드인", reddit: "레딧", discord: "디스코드",
+      tistory: "티스토리", brunch: "브런치", medium: "미디엄", unknown: "(출처 불명)"
+    }[s] || s);
     sourcesEl.innerHTML = `
+      <p class="admin-help">방문자가 우리 사이트에 <b>들어오기 직전 어디에 있었는지</b> (세션당 첫 진입 기준). 사이트 안에서의 이동은 제외.</p>
       <table class="adm-table">
-        <thead><tr><th>유입 경로</th><th>방문수</th><th>비율</th></tr></thead>
+        <thead><tr><th>유입 출처</th><th>세션수</th><th>비율</th></tr></thead>
         <tbody>
           ${sorted.map(([s, n]) => `
             <tr>
-              <td>${escapeHtml(s)}</td>
+              <td>${escapeHtml(sourceLabel(s))}</td>
               <td>${n}</td>
-              <td>${pageviews.length ? Math.round((n / pageviews.length) * 100) : 0}%</td>
+              <td>${totalSessions ? Math.round((n / totalSessions) * 100) : 0}%</td>
             </tr>
           `).join("") || '<tr><td colspan="3">데이터 없음</td></tr>'}
         </tbody>

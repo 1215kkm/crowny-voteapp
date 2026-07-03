@@ -2035,8 +2035,9 @@ input, textarea {
 .range-controls { display: flex; gap: 8px; margin-bottom: 14px; }
 .range-btn {
   background: var(--color-surface); border: 1px solid var(--color-border);
+  color: var(--color-text);
   padding: 6px 14px; border-radius: var(--radius-full);
-  cursor: pointer; font-size: 0.85rem; transition: var(--transition);
+  cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: var(--transition);
 }
 .range-btn:hover { border-color: var(--color-accent-start); }
 .range-btn.active {

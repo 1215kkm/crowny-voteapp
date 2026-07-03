@@ -50,6 +50,20 @@ function getSearchKeyword() {
   return "";
 }
 
+// ---- Visitor (기기 영구 식별 — 신규/재방문 구분용) ----
+
+const VISITOR_KEY = "appter_visitor_id";
+function getVisitorId() {
+  try {
+    let v = localStorage.getItem(VISITOR_KEY);
+    if (!v) {
+      v = "v_" + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+      localStorage.setItem(VISITOR_KEY, v);
+    }
+    return v;
+  } catch (e) { return ""; }
+}
+
 // ---- Session ----
 
 const SESSION_KEY = "appter_session_id";
@@ -234,6 +248,7 @@ async function writeEvent(payload) {
       page: window.location.pathname || "/",
       session: getSessionId(),
       sessionStartedAt: getSessionStartedAt(),
+      visitor: getVisitorId(),
       uid: _currentUid || "",
       source: getReferrerSource(),
       referrer: (document.referrer || "").substring(0, 200),
