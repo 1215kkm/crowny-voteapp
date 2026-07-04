@@ -248,8 +248,13 @@
     border: 1.5px solid var(--color-accent-start); color: var(--color-accent-start);
     font-weight: 700; font-size: 13px; cursor: pointer; transition: var(--transition); }
   .tw-next-opt:hover { background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); color: #fff; border-color: transparent; }
-  .tw-continue-btn { width: 100%; margin-top: 10px; background: transparent !important;
-    border: 1.5px dashed var(--color-accent-start) !important; color: var(--color-accent-start) !important; }
+  /* 이어서 회의: 우측 플로팅 버튼 (스크롤 따라다님, 하단 공유바 위) */
+  .tw-continue-btn { position: fixed; right: 14px; bottom: 96px; z-index: 85; width: auto;
+    padding: 12px 18px; font-size: 14px; font-weight: 800; border: none !important;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)) !important;
+    color: #fff !important; box-shadow: 0 8px 24px rgba(213,58,107,0.45); }
+  .tw-continue-btn:active { transform: scale(0.97); }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   /* 회의록 스크롤 중 하단에 따라다니다 맨끝에서 제자리 고정 */
   .tw-share-sticky { position: sticky; bottom: 10px; z-index: 8;
