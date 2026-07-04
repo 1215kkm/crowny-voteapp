@@ -341,7 +341,7 @@
 
   function shareCaption(title) {
     var ex = meetingExcerpt();
-    return "강팀 기능 및 마케팅 회의내용\n\"" + (title || "내 앱 아이디어") + "\"\n\n" +
+    return "강팀 회의내용\n\"" + (title || "내 앱 아이디어") + "\"\n\n" +
       (ex ? ex + "\n\n" : "") +
       "전체 회의 보기 → " + shareLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
   }

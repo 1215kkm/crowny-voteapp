@@ -1484,8 +1484,8 @@ function showActivityMeeting(idx) {
 }
 
 function meetingCaption(title, url) {
-  return "상품기획천재 강팀 AI의 회의내용이에요\n\"" + (title || "내 앱 아이디어") +
-    "\"\n\n너도 아이디어를 얻어봐 → " + url + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+  return "강팀 회의내용\n\"" + (title || "내 앱 아이디어") +
+    "\"\n\n전체 회의 보기 → " + url + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
 }
 
 function reshareMeeting(m) {
