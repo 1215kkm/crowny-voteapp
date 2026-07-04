@@ -789,9 +789,17 @@
     var regen = fmtRegen() ? "\n(" + fmtRegen() + " 질문 1회가 자동 충전돼요)" : "";
     var cap = 3; // 하루 공유 적립 최대 횟수
     var maxAdd = shareBonusN * cap;
+    var left = remaining();
+    // 남은 횟수가 있으면 '남아있어요', 없으면 '다 썼어요'
+    var head = left > 0
+      ? "질문이 아직 " + left + "회 남아있어요!\n\n"
+      : (loggedIn ? "질문 횟수를 다 썼어요.\n\n" : "질문 " + FREE_ANON + "회를 다 썼어요.\n\n");
+    var followLine = followBonusN > 0
+      ? "위에 '@" + CREATOR_THREADS + "' 제작자를 친추하면 질문 " + followBonusN + "회가 추가됩니다.\n"
+      : "";
     var msg = loggedIn
-      ? "질문 횟수를 다 썼어요.\n\nSNS로 공유하실 때마다 " + shareBonusN + "회씩 더 드려요 (하루 최대 " + cap + "번(" + maxAdd + "회질문)):\n" + myRefLink() + regen
-      : "질문 " + FREE_ANON + "회를 다 썼어요.\n\n가입·로그인 후 SNS로 공유하실 때마다 " + shareBonusN + "회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 " + cap + "번(" + maxAdd + "회질문))" + regen + "\n\n지금 가입할까요?";
+      ? head + followLine + "SNS로 공유하실 때마다 " + shareBonusN + "회씩 더 드려요 (하루 최대 " + cap + "번(" + maxAdd + "회질문)):\n" + myRefLink() + regen
+      : head + followLine + "가입·로그인 후 SNS로 공유하실 때마다 " + shareBonusN + "회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 " + cap + "번(" + maxAdd + "회질문))" + regen + "\n\n지금 가입할까요?";
     if (loggedIn) {
       shareMeeting("Appter 강팀 질문 결과", "other");
     } else {
