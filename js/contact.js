@@ -48,6 +48,18 @@ import { addInquiry } from "./firestore.js";
     document.body.classList.remove("modal-open");
   }
 
+  // 문의 접수 큰 중앙 확인 오버레이
+  function showBigDone() {
+    var o = document.createElement("div");
+    o.className = "contact-done-overlay";
+    o.innerHTML = '<div class="contact-done-box"><div class="contact-done-emoji">🙌</div>' +
+      '<div class="contact-done-big">문의가 접수됐어요!</div>' +
+      '<div class="contact-done-sub">확인 후 연락드릴게요. 감사합니다.</div></div>';
+    document.body.appendChild(o);
+    requestAnimationFrame(function () { o.classList.add("show"); });
+    setTimeout(function () { o.classList.remove("show"); setTimeout(function () { o.remove(); }, 300); }, 2200);
+  }
+
   async function onSubmit() {
     const btn = document.getElementById("contact-submit");
     const message = document.getElementById("contact-message").value.trim();
@@ -62,8 +74,8 @@ import { addInquiry } from "./firestore.js";
       document.getElementById("contact-message").value = "";
       document.getElementById("contact-name").value = "";
       document.getElementById("contact-contact").value = "";
-      document.getElementById("contact-done").classList.remove("hidden");
-      setTimeout(closeModal, 1800);
+      closeModal();
+      showBigDone();
     } catch (e) {
       alert("전송에 실패했어요. 잠시 후 다시 시도해주세요.");
     } finally {

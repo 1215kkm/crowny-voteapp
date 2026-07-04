@@ -409,21 +409,19 @@
         return;
       }
     }
-    // 사전 캡처가 아직 준비 안 됐으면 캡처 후 공유(느리면 제스처 만료로 저장 폴백될 수 있음)
-    return captureMeetingBlob().then(function (blob) {
-      if (blob && navigator.canShare) {
-        var file = new File([blob], fname, { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) {
-          return navigator.share({ files: [file], text: caption }).catch(function (e) {
-            if (e && e.name === "AbortError") return;
-            copyText(caption); if (blob) downloadBlob(blob, fname);
-            alert("공유 문구를 복사하고 이미지를 저장했어요.");
-          });
-        }
-      }
-      if (navigator.share) return navigator.share({ text: caption }).catch(function () {});
-      copyText(caption); if (blob) downloadBlob(blob, fname);
-    });
+    // 이미지가 아직 준비 안 됐으면: iOS는 캡처(async)를 기다리면 제스처가 만료됨 →
+    // 최소한 공유시트라도 '즉시(동기)' 열고(문구), 이미지는 백그라운드로 저장해 수동 첨부하게 한다
+    if (navigator.share) {
+      navigator.share({ text: caption }).catch(function (e) {
+        if (e && e.name === "AbortError") return;
+        copyText(caption);
+      });
+      captureMeetingBlob().then(function (blob) { if (blob) downloadBlob(blob, fname); });
+      return;
+    }
+    // 공유 자체를 지원 안 하면 복사 + 저장
+    copyText(caption);
+    captureMeetingBlob().then(function (blob) { if (blob) downloadBlob(blob, fname); });
   }
 
   // ---- 결과 렌더 ----
