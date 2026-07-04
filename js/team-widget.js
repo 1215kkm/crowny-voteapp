@@ -773,10 +773,14 @@
   });
 
   renderQuota();
-  // 강팀 캐릭터 — 접속자마다 랜덤 (gang1~gang5)
+  // 강팀 캐릭터 — 접속자마다 랜덤 (gang1~5 = 강대표·강디·강개발·강체크·아뱅)
   (function () {
+    var NAMES = ["강대표", "강디", "강개발", "강체크", "아뱅"];
+    var n = 1 + Math.floor(Math.random() * 5);
     var img = document.getElementById("tw-chara");
-    if (img) img.src = "images/gang" + (1 + Math.floor(Math.random() * 5)) + ".png";
+    var tag = document.getElementById("tw-chara-name");
+    if (img) img.src = "images/gang" + n + ".png";
+    if (tag) tag.textContent = NAMES[n - 1];
   })();
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
   loadConfig();
