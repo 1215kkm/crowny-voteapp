@@ -28,6 +28,7 @@
   <style id="team-widget-style">
   /* ===== 강팀 큐브 플립 위젯 ===== */
   #flip-scene, #flip-rotor, .flip-face { position: relative; }
+  .logo .logo-mini { display: none; }
   .flip-arrow { display: none; }
 
   .team-widget { background: var(--color-surface); border: 1px solid var(--color-border);
@@ -52,7 +53,9 @@
   .tw-consult:hover { background: rgba(213, 58, 107, 0.25); }
   .tw-consult-ic { color: var(--color-accent-end); font-weight: 800; margin-right: 2px; }
   .tw-title { font-size: 20px; font-weight: 800; color: var(--color-text); margin-top: 4px; }
-  .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; width: 80%; }
+  .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; width: 80%;
+    margin: 6px 0 38px; /* 제목이 위로 올라간 만큼 아래 여백 보정 — 입력창 위치 유지 */ }
+  .tw-badge-row .tw-title { margin-top: 0; }
   .tw-head { position: relative; }
   .tw-chara { position: absolute; right: 6px; top: 30px; width: 90px; height: 110px; z-index: 5;
     pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); }
@@ -237,6 +240,16 @@
   .tw-steps span { font-size: 11px; padding: 3px 9px; border-radius: 999px;
     background: rgba(128,128,128,0.14); color: var(--color-text-light); }
   .tw-steps span.done { background: rgba(138,56,245,0.15); color: var(--color-text); }
+  /* 이어서 회의: 다음 방향 보기 + 이어가기 버튼 */
+  .tw-next { margin: 12px 0; padding: 12px 14px; background: rgba(138,56,245,0.05);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 14px; }
+  .tw-next > b { display: block; color: var(--color-accent-start); margin-bottom: 8px; }
+  .tw-next-opt { display: inline-block; margin: 3px 6px 3px 0; padding: 7px 13px; border-radius: var(--radius-full);
+    border: 1.5px solid var(--color-accent-start); color: var(--color-accent-start);
+    font-weight: 700; font-size: 13px; cursor: pointer; transition: var(--transition); }
+  .tw-next-opt:hover { background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); color: #fff; border-color: transparent; }
+  .tw-continue-btn { width: 100%; margin-top: 10px; background: transparent !important;
+    border: 1.5px dashed var(--color-accent-start) !important; color: var(--color-accent-start) !important; }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   /* 회의록 스크롤 중 하단에 따라다니다 맨끝에서 제자리 고정 */
   .tw-share-sticky { position: sticky; bottom: 10px; z-index: 8;
@@ -361,6 +374,13 @@
     #to-team { display: none; }
     #flip-rotor.show-appter ~ #to-appter { display: none; }
     #flip-rotor.show-appter ~ #to-team { display: flex; }
+    /* 뒷면이 터치·스크롤을 가로채지 않게 (Appter 화면 스크롤 안 되던 원인) */
+    #flip-rotor.show-appter #team-face { pointer-events: none; }
+    #flip-rotor:not(.show-appter) #appter-face { pointer-events: none; }
+    /* 헤더: 로고는 아이콘만, 버튼들을 왼쪽으로 → 강팀 버튼과 안 겹치게 */
+    .logo .logo-full { display: none; }
+    .logo .logo-mini { display: inline-block; }
+    #auth-area { margin-right: 92px; }
   }
   </style>
 </head>
@@ -372,7 +392,7 @@
   <!-- Header -->
   <header id="site-header">
     <div class="header-inner">
-      <a href="/" class="logo"><img src="images/logo_text_white.png" alt="Appter" width="175"></a>
+      <a href="/" class="logo"><img class="logo-full" src="images/logo_text_white.png" alt="Appter" width="175"><img class="logo-mini" src="images/logo.png" alt="Appter" width="36" height="36"></a>
       <nav class="primary-nav">
         <a href="/" class="nav-link active">Appter소개</a>
         <a href="board.html" class="nav-link">아이디어모음</a>
@@ -650,13 +670,12 @@
   <div class="team-widget">
     <div class="tw-head">
       <div class="tw-badge-row">
-        <span class="tw-badge">강팀 회의</span>
+        <h3 class="tw-title">강팀에게 회의요청</h3>
         <span class="tw-help" tabindex="0" role="button" aria-label="강팀이란?">?
           <span class="tw-tip">강팀은 제작자의 성공적인 마케팅 노하우와 오랫동안 쌓아온 아이디어가 축적되어 탄생한 AI 팀이에요.</span>
         </span>
         <a class="tw-consult" href="https://crownyclass.com/community.html?board=showcase" target="_blank" rel="noopener"><span class="tw-consult-ic">→</span> 디자이너에게 컨설팅받기</a>
       </div>
-      <h3 class="tw-title">강팀에게 회의요청</h3>
       <p class="tw-sub">강팀은 마케팅 성공경험과 여러 아이디어의<br>20년 노하우가 들어간 AI팀입니다</p>
       <img id="tw-chara" class="tw-chara" src="images/gang1.png" alt="강팀 캐릭터" width="90" height="110">
       <span id="tw-chara-name" class="tw-chara-name">강대표</span>
@@ -680,6 +699,7 @@
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
     <div class="tw-quota">질문 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button>
       <button type="button" id="tw-charge-btn" class="tw-charge-link" style="display:none">· 💳 충전</button>
+      <button type="button" id="tw-continue-link" class="tw-charge-link" style="display:none">· 🔁 이전 회의 이어가기</button>
     </div>
 
     <a class="tw-follow" href="https://www.threads.net/@kkm450815" target="_blank" rel="noopener">

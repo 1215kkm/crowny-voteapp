@@ -35,7 +35,8 @@ import {
   getTeamConfig,
   getUserProfileFlags,
   grantCredits,
-  getUserSearchCredits
+  getUserSearchCredits,
+  getUserPaidCredits
 } from "./firestore.js";
 import { ADMIN_EMAIL } from "./ai-config.js";
 import { isPlaceholder, functions, getAppCheckToken } from "./firebase-config.js";
@@ -126,6 +127,7 @@ window.appMeetings = {
   config: () => getTeamConfig().catch(() => ({ freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5 })),
   appCheckToken: () => getAppCheckToken().catch(() => ""),
   searchCredits: (uid) => getUserSearchCredits(uid).catch(() => 0),
+  paid: (uid) => getUserPaidCredits(uid).catch(() => 0),
   idToken: () => { const u = getCurrentUser(); return u ? u.getIdToken().catch(() => "") : Promise.resolve(""); },
   recordVisit: (sharerUid, visitorId) => (functions
     ? httpsCallable(functions, "recordReferralVisit")({ sharerUid, visitorId }).then((r) => r.data).catch(() => null)

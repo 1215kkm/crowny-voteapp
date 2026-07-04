@@ -23,6 +23,10 @@
   var currentMeetingId = null;         // 현재 표시중 회의 id (저장된 경우)
   var preCapturedBlob = null;          // 모바일 공유용 사전 캡처 이미지 (제스처 유지)
   var searchCreditsN = 0;              // 검색권 잔여 (검색 체크박스 노출용)
+  var paidUser = false;                // 유료 충전 이력 (이어서 회의 가능 여부)
+  var continueCtx = null;              // 이어서 회의 컨텍스트 {prev}
+  var lastShown = null;                // 현재 표시중 회의 {title, html, name}
+  var DEFAULT_PH = null;               // 입력창 기본 placeholder
 
   var meetingProviderVal = "gemini";
   var ADMIN_EMAIL = "rute20002@gmail.com";
@@ -243,6 +247,7 @@
     if (!m) return;
     currentMeetingId = m.id || null;
     renderResult(m.html, m.title, false, true);
+    if (lastShown && m.requesterName) lastShown.name = m.requesterName;
   }
 
   // 내 추천 id — 로그인 시 uid(실유입 크레딧 대상), 익명은 게스트 id(크레딧 안 됨)
@@ -276,6 +281,40 @@
     var ex = txt.slice(0, cut).trim();
     if (ex.length < txt.length) ex += "…";
     return ex;
+  }
+
+  // ── 이어서 회의 ──
+  // 이전 회의를 요약해 다음 회의에 실어 보냄 (제목 + 정리박스 중심, 최대 1400자)
+  function buildPrevSummary(title, html) {
+    var tmp = document.createElement("div");
+    tmp.innerHTML = html || "";
+    var sum = tmp.querySelector(".tw-m-sum");
+    var sumText = sum ? sum.textContent.replace(/\s+/g, " ").trim() : "";
+    var acts = tmp.querySelectorAll(".tw-m-act");
+    var lastActs = "";
+    for (var i = Math.max(0, acts.length - 3); i < acts.length; i++) {
+      lastActs += acts[i].textContent.replace(/\s+/g, " ").trim() + "\n";
+    }
+    return ("회의 제목: " + (title || "") + "\n" + (sumText ? "정리: " + sumText + "\n" : "") + lastActs).slice(0, 1400);
+  }
+  // 이어서 모드 시작 (유료 충전 이력 필요)
+  function startContinue(title, html, name) {
+    if (!paidUser) {
+      alert("다음 회의(이어서 회의)는 결제를 해야 가능합니다.\n💳 충전 후 이용해주세요!");
+      return;
+    }
+    continueCtx = { prev: buildPrevSummary(title, html) };
+    if (DEFAULT_PH === null) DEFAULT_PH = input.placeholder;
+    input.value = "";
+    input.placeholder = "전에 '" + (name || requesterName()) + "'님과 회의했던 내용은 진척이 있었나요? 이후에 어떻게 됐는지 적어주세요";
+    var w = document.querySelector(".team-widget");
+    if (w) w.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(function () { input.focus(); }, 400);
+  }
+  function endContinue() {
+    continueCtx = null;
+    if (DEFAULT_PH !== null) input.placeholder = DEFAULT_PH;
   }
 
   // 제안자 이름: 로그인=이름, 비로그인=별명(한 번 물어보고 저장, 건너뛰면 '손님')
@@ -491,11 +530,13 @@
   function renderResult(html, title, isDemo, fromHistory) {
     // 제목은 헤더로 옮기므로 본문의 tw-m-title 은 제거(중복 방지)
     var bodyHtml = String(html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
+    lastShown = { title: title, html: bodyHtml, name: requesterName() };
     resultEl.innerHTML =
       historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
       (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
       '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
+      (fromHistory ? '<button type="button" class="tw-share-btn tw-continue-btn">🔁 이 회의에 이어서 회의하기</button>' : "") +
       '<div class="tw-share tw-share-sticky">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
         '<button type="button" class="tw-share-btn tw-share-img" disabled>📷 이미지 준비 중…</button>' +
@@ -505,6 +546,23 @@
     resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { shareMeeting(title, "threads"); });
     var imgBtn = resultEl.querySelector(".tw-share-img");
     imgBtn.addEventListener("click", function () { saveMeetingImage(title); });
+    // 이어서 회의 버튼 (저장된 회의 열람 시)
+    var contBtn = resultEl.querySelector(".tw-continue-btn");
+    if (contBtn) contBtn.addEventListener("click", function () {
+      startContinue(lastShown.title, lastShown.html, lastShown.name);
+    });
+    // 다음 방향 보기 (후속 회의 결과에 나옴) — 클릭하면 그 방향으로 바로 다음 회의
+    resultEl.querySelectorAll(".tw-next-opt").forEach(function (opt) {
+      opt.addEventListener("click", function () {
+        if (!paidUser) {
+          alert("다음 회의(이어서 회의)는 결제를 해야 가능합니다.\n💳 충전 후 이용해주세요!");
+          return;
+        }
+        continueCtx = { prev: buildPrevSummary(lastShown.title, lastShown.html) };
+        input.value = opt.textContent.trim() + " 방향으로 이어서 회의해줘";
+        runBtn.click();
+      });
+    });
     bindHistoryClicks();
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     // 이미지 미리 캡처 → 준비되면 이미지 저장 버튼 활성화 (모바일은 제스처 안에서 즉시 공유 가능해짐)
@@ -681,10 +739,12 @@
             }
           } catch (e) {}
         }
+        var payload = { prompt: prompt, ref: myRefId(), useSearch: useSearch };
+        if (continueCtx && continueCtx.prev) payload.prev = continueCtx.prev; // 이어서 회의
         var res = await fetch(MEETING_API, {
           method: "POST",
           headers: headers,
-          body: JSON.stringify({ prompt: prompt, ref: myRefId(), useSearch: useSearch })
+          body: JSON.stringify(payload)
         });
         if (res.ok) {
           var data = await res.json();
@@ -716,6 +776,7 @@
     } finally {
       stopLoading();
       running = false;
+      endContinue(); // 이어서 모드 종료 (placeholder 복원)
       renderQuota();
       refreshSearchCredits(); // 검색권 차감 반영
       if (remaining() > 0) runBtn.textContent = orig;
@@ -755,6 +816,10 @@
           renderQuota();
         });
       }
+      // 유료 충전 이력 (이어서 회의 가능 여부)
+      if (window.appMeetings && window.appMeetings.paid) {
+        window.appMeetings.paid(uid).then(function (p) { paidUser = (p || 0) > 0; });
+      }
       // 가입(로그인) 보너스 — 이 기기에서 1회만
       if (!localStorage.getItem(LS_SIGNUP) && signupBonusN > 0) {
         localStorage.setItem(LS_SIGNUP, "1");
@@ -765,13 +830,26 @@
         if (historyCache.length && (resultEl.classList.contains("hidden") || !resultEl.innerHTML.trim())) {
           showHistoryOnly();
         }
+        var cl = document.getElementById("tw-continue-link");
+        if (cl) cl.style.display = historyCache.length ? "inline" : "none";
       });
     } else {
       historyCache = [];
       adminGrant = 0;
+      paidUser = false;
+      var cl2 = document.getElementById("tw-continue-link");
+      if (cl2) cl2.style.display = "none";
       renderQuota();
     }
   }, 1500);
+
+  // '이전 회의 이어가기' — 이전 회의 목록을 펼쳐 보여줌 (선택 시 열람 → 이어서 버튼)
+  var contLink = document.getElementById("tw-continue-link");
+  if (contLink) contLink.addEventListener("click", function () {
+    if (!historyCache.length) { alert("아직 저장된 회의가 없어요. 로그인 후 회의하면 자동 저장됩니다."); return; }
+    showHistoryOnly();
+    resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   // 충전 등으로 서버 크레딧이 바뀌면 app.js가 호출해 즉시 잔여 갱신
   window.__refreshTeamGrant = function () {
