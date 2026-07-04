@@ -99,15 +99,13 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 
 [시각화 — 전문가 회의처럼 보이게]
 회의 주제에 딱 맞는 시각화 블록을 정리박스 바로 위에 **1~2개만** 넣어라(억지로 넣지 말 것 — 관련 숫자·흐름·비교가 회의에서 실제로 나왔을 때만. 없으면 생략). 아래 템플릿을 그대로 복사해 라벨·숫자·너비%만 실제 내용으로 바꿔라. class·구조·인라인 style은 절대 바꾸지 마라. div·span에 아래 예시의 인라인 style 그대로 쓰는 건 허용.
-주제→시각화 선택 기준: 제품/게임개선→흐름도+비교바 / 성장·친구유도→흐름도(순환은 마지막 화살표 ↻)+비교바 / 마케팅→매트릭스+막대 / 비즈전략→비교바+흐름도 / 기술·리스크→매트릭스+프로그레스.
+주제→시각화 선택 기준: 제품/게임개선→흐름도+비교바 / 성장·친구유도→흐름도(순환은 마지막 화살표 ↻)+비교바 / 마케팅→랭킹 막대+흐름도 / 비즈전략→비교바+흐름도 / 기술·리스크→비교바+프로그레스.
 - 비교바(목표vs현재·before/after·CAC vs LTV):
 <div class="tw-viz"><div class="tw-viz-t">리텐션</div><div class="tw-cmp"><span class="tw-cmp-l">현재</span><div class="tw-bar"><div class="tw-bar-fill dim" style="width:30%"></div></div><span class="tw-cmp-v">30%</span></div><div class="tw-cmp"><span class="tw-cmp-l">목표</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:45%"></div></div><span class="tw-cmp-v">45%</span></div></div>
 - 랭킹 막대(채널별 ROAS·항목 크기순, tw-cmp 행을 여러 개):
 <div class="tw-viz"><div class="tw-viz-t">채널별 효율</div><div class="tw-cmp"><span class="tw-cmp-l">인스타</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:90%"></div></div><span class="tw-cmp-v">3.2</span></div><div class="tw-cmp"><span class="tw-cmp-l">유튜브</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:55%"></div></div><span class="tw-cmp-v">2.0</span></div></div>
 - 흐름도(Juice·심리경로·수익경로 / 순환이면 마지막 화살표만 ↻):
 <div class="tw-viz"><div class="tw-viz-t">Juice 흐름</div><div class="tw-flow"><span class="tw-node">점프 입력</span><span class="tw-arr">→</span><span class="tw-node">화면 흔들림·소리</span><span class="tw-arr">→</span><span class="tw-node on">"오 재밌다"</span></div></div>
-- 2×2 매트릭스(효과×노력·리스크. hi=최우선, lo=버림):
-<div class="tw-viz"><div class="tw-viz-t">우선순위 (효과×노력)</div><div class="tw-mtx"><div class="tw-cell hi">지금 착수<span>효과↑ 노력↓</span></div><div class="tw-cell">계획 세워<span>효과↑ 노력↑</span></div><div class="tw-cell">틈틈이<span>효과↓ 노력↓</span></div><div class="tw-cell lo">보류<span>효과↓ 노력↑</span></div></div></div>
 - 단계 프로그레스(목표 진행·적립 단계. done=완료):
 <div class="tw-viz"><div class="tw-viz-t">목표까지</div><div class="tw-bar big"><div class="tw-bar-fill grad" style="width:66%"></div></div><div class="tw-steps"><span class="done">가입</span><span class="done">첫 회의</span><span>공유</span><span>친구초대</span></div></div>
 
