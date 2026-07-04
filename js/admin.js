@@ -115,7 +115,8 @@ const teamAppcheckEnforce = document.getElementById("team-appcheck-enforce");
 const paymentEnabledEl = document.getElementById("payment-enabled");
 const pkgEls = [1, 2, 3].map((i) => ({
   price: document.getElementById(`pkg${i}-price`),
-  credits: document.getElementById(`pkg${i}-credits`)
+  credits: document.getElementById(`pkg${i}-credits`),
+  search: document.getElementById(`pkg${i}-search`)
 }));
 const teamSettingsSave = document.getElementById("team-settings-save");
 
@@ -132,10 +133,11 @@ async function loadTeamSettings() {
     if (teamAppcheckEnforce) teamAppcheckEnforce.checked = !!sv.appCheckEnforce;
     if (paymentEnabledEl) paymentEnabledEl.checked = sv.paymentEnabled === true;
     const pkgs = Array.isArray(sv.teamCreditPackages) ? sv.teamCreditPackages
-      : [{ price: 3000, credits: 30 }, { price: 5000, credits: 60 }, { price: 10000, credits: 150 }];
+      : [{ price: 3000, credits: 30, searchCredits: 0 }, { price: 5000, credits: 60, searchCredits: 5 }, { price: 10000, credits: 150, searchCredits: 15 }];
     pkgEls.forEach((el, i) => {
       if (el.price) el.price.value = pkgs[i]?.price ?? "";
       if (el.credits) el.credits.value = pkgs[i]?.credits ?? "";
+      if (el.search) el.search.value = pkgs[i]?.searchCredits ?? "";
     });
   } catch (e) { /* ignore */ }
 }
@@ -158,7 +160,8 @@ teamSettingsSave?.addEventListener("click", async () => {
       teamCreditPackages: pkgEls.map((el, i) => ({
         id: "p" + (i + 1),
         price: Math.max(0, Math.floor(Number(el.price?.value) || 0)),
-        credits: Math.max(0, Math.floor(Number(el.credits?.value) || 0))
+        credits: Math.max(0, Math.floor(Number(el.credits?.value) || 0)),
+        searchCredits: Math.max(0, Math.floor(Number(el.search?.value) || 0))
       })).filter((p) => p.price > 0 && p.credits > 0)
     });
     showToast("강팀 회의 설정을 저장했어요", "success");

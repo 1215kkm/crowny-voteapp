@@ -64,6 +64,10 @@
   .tw-run:disabled { opacity: .55; cursor: not-allowed; }
   .tw-quota { font-size: 16px; color: var(--color-text-secondary); text-align: center; }
   .tw-quota b { color: var(--color-accent-start); }
+  .tw-search-wrap { display: flex; align-items: center; gap: 7px; margin: 4px 2px 10px; font-size: 14px;
+    font-weight: 700; color: var(--color-text); cursor: pointer; }
+  .tw-search-wrap input { width: 17px; height: 17px; accent-color: var(--color-accent-start); }
+  .tw-search-note { font-weight: 500; font-size: 12px; color: var(--color-text-light); }
   .tw-charge-link { background: none; border: none; cursor: pointer; color: var(--color-accent-end);
     font-weight: 700; font-size: inherit; font-family: inherit; padding: 0; }
   .charge-packages { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
@@ -86,6 +90,9 @@
     border: 2px solid var(--color-accent-end); box-shadow: var(--shadow-md); }
   .tw-follow-ic { font-size: 22px; line-height: 1; }
   .tw-follow-tag { font-weight: 600; opacity: .8; font-size: 16px; }
+  .tw-follow-bonus { font-weight: 800; font-size: 15px; background: rgba(255,255,255,0.22);
+    padding: 2px 8px; border-radius: var(--radius-full); }
+  .tw-follow-bonus:empty { display: none; }
 
   /* 내 회의 내역 (로그인 사용자) */
   .tw-history { margin-bottom: 14px; border: 1px solid var(--color-border);
@@ -649,13 +656,16 @@
       </div>
     </div>
 
+    <label id="tw-search-wrap" class="tw-search-wrap" style="display:none">
+      <input type="checkbox" id="tw-search-check"> 🔍 실제 검색으로 분석 <span class="tw-search-note">(검색권 1회 사용 · 남은 <b id="tw-search-left">0</b>회)</span>
+    </label>
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
     <div class="tw-quota">질문 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button>
       <button type="button" id="tw-charge-btn" class="tw-charge-link" style="display:none">· 💳 충전</button>
     </div>
 
     <a class="tw-follow" href="https://www.threads.net/@kkm450815" target="_blank" rel="noopener">
-      <span class="tw-follow-ic">＠</span> 스친추가 <span class="tw-follow-tag">@kkm450815</span>
+      <span class="tw-follow-ic">＠</span> 스친추가 <span class="tw-follow-bonus" id="tw-follow-bonus"></span> <span class="tw-follow-tag">@kkm450815</span>
     </a>
     <div id="tw-model-badge" class="tw-model-badge" style="display:none"></div>
 

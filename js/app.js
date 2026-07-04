@@ -34,7 +34,8 @@ import {
   addInquiry,
   getTeamConfig,
   getUserProfileFlags,
-  grantPaidCredits
+  grantCredits,
+  getUserSearchCredits
 } from "./firestore.js";
 import { ADMIN_EMAIL } from "./ai-config.js";
 import { isPlaceholder, functions, getAppCheckToken } from "./firebase-config.js";
@@ -124,6 +125,8 @@ window.appMeetings = {
   grant: (uid) => getUserTeamGrant(uid).catch(() => 0),  // 관리자 부여 + 추천·실유입 보상 합산
   config: () => getTeamConfig().catch(() => ({ freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5 })),
   appCheckToken: () => getAppCheckToken().catch(() => ""),
+  searchCredits: (uid) => getUserSearchCredits(uid).catch(() => 0),
+  idToken: () => { const u = getCurrentUser(); return u ? u.getIdToken().catch(() => "") : Promise.resolve(""); },
   recordVisit: (sharerUid, visitorId) => (functions
     ? httpsCallable(functions, "recordReferralVisit")({ sharerUid, visitorId }).then((r) => r.data).catch(() => null)
     : Promise.resolve(null))
@@ -1314,11 +1317,14 @@ function openChargeModal() {
   const admin = isPaymentAdmin();
   if (chargeAdminNote) chargeAdminNote.style.display = admin ? "block" : "none";
   if (chargePackagesEl) {
-    chargePackagesEl.innerHTML = chargePackages.map((p, i) =>
-      `<button type="button" class="charge-pkg" data-pkgidx="${i}">
-        <span class="charge-pkg-credits">질문 ${p.credits}회</span>
+    chargePackagesEl.innerHTML = chargePackages.map((p, i) => {
+      const sc = Math.max(0, Math.floor(Number(p.searchCredits) || 0));
+      const scLabel = sc > 0 ? ` <span style="color:var(--color-accent-start)">+ 🔍검색 ${sc}회</span>` : "";
+      return `<button type="button" class="charge-pkg" data-pkgidx="${i}">
+        <span class="charge-pkg-credits">질문 ${p.credits}회${scLabel}</span>
         <span class="charge-pkg-price">₩${Number(p.price).toLocaleString()}</span>
-      </button>`).join("") || '<p class="contact-note">충전 패키지가 아직 설정되지 않았어요.</p>';
+      </button>`;
+    }).join("") || '<p class="contact-note">충전 패키지가 아직 설정되지 않았어요.</p>';
     chargePackagesEl.querySelectorAll(".charge-pkg").forEach((el) => {
       el.addEventListener("click", () => onChargePackage(parseInt(el.dataset.pkgidx, 10)));
     });
@@ -1340,9 +1346,11 @@ async function onChargePackage(idx) {
   if (isPaymentAdmin()) {
     // 모의 충전 (실제 결제 없이 크레딧 지급 — 관리자 테스트)
     try {
-      await grantPaidCredits(user.uid, pkg.credits);
+      const sc = Math.max(0, Math.floor(Number(pkg.searchCredits) || 0));
+      await grantCredits(user.uid, pkg.credits, sc);
       closeChargeModal();
-      showToast(`🔧 모의 충전 완료 — 질문 ${pkg.credits}회가 지급됐어요 (관리자 테스트)`, "success");
+      const extra = sc > 0 ? ` + 검색 ${sc}회` : "";
+      showToast(`🔧 모의 충전 완료 — 질문 ${pkg.credits}회${extra} 지급됐어요 (관리자 테스트)`, "success");
       if (typeof window.__refreshTeamGrant === "function") window.__refreshTeamGrant();
     } catch (e) {
       showToast("모의 충전 실패: " + (e.message || ""), "info");
