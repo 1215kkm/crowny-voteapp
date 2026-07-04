@@ -278,11 +278,17 @@
     return ex;
   }
 
+  // 공유 링크: 저장된 회의면 회의내용 페이지(/m/id)로, 아니면 메인으로 (둘 다 추천 ref 포함)
+  function shareLink() {
+    if (currentMeetingId) return MEETING_BASE + currentMeetingId + "?ref=" + encodeURIComponent(myRefId());
+    return myRefLink();
+  }
+
   function shareCaption(title) {
     var ex = meetingExcerpt();
     return "강팀 기능 및 마케팅 회의내용\n\"" + (title || "내 앱 아이디어") + "\"\n\n" +
       (ex ? ex + "\n\n" : "") +
-      "너도 아이디어를 얻어봐 → " + myRefLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+      "전체 회의 보기 → " + shareLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
   }
 
   // 회의 화면 캡처 (meeting.html의 이미지 저장과 같은 html2canvas 방식 — 필요할 때만 로드)
@@ -477,17 +483,39 @@
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
         '<button type="button" class="tw-share-btn tw-share-other">인스타·기타 공유</button>' +
       "</div>" +
+      '<button type="button" class="tw-share-btn tw-share-img" disabled>📷 이미지 준비 중…</button>' +
       '<div class="tw-credit">이 회의 만든 곳 · <a href="https://www.threads.net/@' + CREATOR_THREADS + '" target="_blank" rel="noopener">@' + CREATOR_THREADS + "</a></div>";
     resultEl.classList.remove("hidden");
     resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { shareMeeting(title, "threads"); });
     resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareMeeting(title, "other"); });
+    var imgBtn = resultEl.querySelector(".tw-share-img");
+    imgBtn.addEventListener("click", function () { saveMeetingImage(title); });
     bindHistoryClicks();
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    // 모바일 공유 대비 이미지 미리 캡처(퍼가기 탭 시 제스처 안에서 즉시 공유되게)
+    // 이미지 미리 캡처 → 준비되면 이미지 저장 버튼 활성화 (모바일은 제스처 안에서 즉시 공유 가능해짐)
     preCapturedBlob = null;
-    if (isMobileDevice()) {
-      captureMeetingBlob().then(function (b) { preCapturedBlob = b; }).catch(function () {});
+    captureMeetingBlob().then(function (b) {
+      preCapturedBlob = b;
+      if (b && imgBtn) { imgBtn.disabled = false; imgBtn.textContent = "📷 회의 이미지 저장"; }
+      else if (imgBtn) { imgBtn.textContent = "📷 이미지 생성 실패"; }
+    }).catch(function () { if (imgBtn) imgBtn.textContent = "📷 이미지 생성 실패"; });
+  }
+
+  // 이미지 저장: 모바일=공유창(사진첩 '이미지 저장' 가능), PC=다운로드
+  function saveMeetingImage(title) {
+    var fname = imgFileName(title);
+    if (!preCapturedBlob) { alert("이미지가 아직 준비 중이에요. 잠시 후 다시 눌러주세요."); return; }
+    if (isMobileDevice() && navigator.canShare) {
+      var f = new File([preCapturedBlob], fname, { type: "image/png" });
+      if (navigator.canShare({ files: [f] })) {
+        navigator.share({ files: [f] }).catch(function (e) {
+          if (e && e.name === "AbortError") return;
+          downloadBlob(preCapturedBlob, fname);
+        });
+        return;
+      }
     }
+    downloadBlob(preCapturedBlob, fname);
   }
 
   function bindHistoryClicks() {

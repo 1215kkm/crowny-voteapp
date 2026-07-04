@@ -358,6 +358,9 @@ exports.viewMeeting = onRequest(
     const m = (req.path || "").match(/\/m\/([^/?]+)/);
     const id = (m && m[1]) || String(req.query.id || "").trim();
     const SITE = "https://appter.co.kr";
+    // 공유자 추천 ref를 메인으로 전달(실유입 보상 연결)
+    const refParam = String(req.query.ref || "").slice(0, 80).replace(/[^\w-]/g, "");
+    const CTA_URL = SITE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
     if (!id) { res.status(400).send("잘못된 주소예요."); return; }
     let data = null;
     try {
@@ -384,11 +387,11 @@ exports.viewMeeting = onRequest(
 <meta property="og:site_name" content="Appter 강팀">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="강팀 AI 5명이 회의해서 만든 결과예요. 나도 무료로 아이디어를 얻어보세요.">
-<meta property="og:image" content="https://crowny-appter.web.app/images/logo_sns.png">
+<meta property="og:image" content="https://crowny-appter.web.app/images/og-team.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="강팀 AI가 회의한 결과예요. 나도 무료로 물어보세요.">
-<meta name="twitter:image" content="https://crowny-appter.web.app/images/logo_sns.png">
+<meta name="twitter:image" content="https://crowny-appter.web.app/images/og-team.png">
 <style>
 :root{--acc1:#8a38f5;--acc2:#d53a6b;--ink:#101828;--dim:#667085;--line:#eaecf0;--sub:#f9fafb}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -432,7 +435,8 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .tw-steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .tw-steps span{font-size:11px;padding:3px 9px;border-radius:999px;background:rgba(128,128,128,.14);color:var(--dim)}
 .tw-steps span.done{background:rgba(138,56,245,.15);color:var(--ink)}
-.cta{display:block;text-align:center;margin:22px auto 0;max-width:360px;background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:12px;box-shadow:0 8px 24px rgba(213,58,107,.3)}
+.cta{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;display:block;text-align:center;width:min(360px,88vw);background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:999px;box-shadow:0 10px 30px rgba(213,58,107,.45)}
+.wrap{padding-bottom:110px}
 .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}
 </style></head><body>
 <div class="wrap"><div class="paper">
@@ -446,7 +450,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
   </div>
   ${body}
 </div>
-<a class="cta" href="${SITE}">나도 강팀에게 무료로 물어보기 →</a>
+<a class="cta" href="${CTA_URL}">나도 강팀에게 무료로 회의받기 →</a>
 <div class="foot">© 2026 Appter · 강팀 AI</div>
 </div></body></html>`;
     res.set("Cache-Control", "public, max-age=300");
