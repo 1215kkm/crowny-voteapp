@@ -410,7 +410,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .mem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:20px}
 .mem .ml{font-size:12px;font-weight:700;color:var(--dim);margin-right:2px}
 .chip{font-size:12px;font-weight:700;color:#fff;padding:3px 10px;border-radius:999px}
-.daepyo{background:#374151}.gdi{background:#0d9c84}.gdev{background:#475569}.gchk{background:#7030d4}.abang{background:#d53a6b}
+.chip.daepyo{background:#374151}.chip.gdi{background:#0d9c84}.chip.gdev{background:#475569}.chip.gchk{background:#7030d4}.chip.abang{background:#d53a6b}.chip.req{background:#64748b}
 .tw-m-act{font-size:16px;line-height:1.6;margin:8px 0}
 .tw-m-act b{color:var(--acc1)}
 .tw-m-act.daepyo b{color:var(--ink)}.tw-m-act.abang b{color:#d53a6b}.tw-m-act.gdi b{color:#0d9c84}.tw-m-act.gdev b{color:#475569}.tw-m-act.gchk b{color:#7030d4}
@@ -451,6 +451,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
   <div class="mem"><span class="ml">참여</span>
     <span class="chip daepyo">강대표</span><span class="chip gdi">강디</span>
     <span class="chip gdev">강개발</span><span class="chip gchk">강체크</span><span class="chip abang">아뱅</span>
+    ${data.requesterName ? '<span class="chip req">제안 · ' + escHtml(String(data.requesterName).slice(0, 20)) + "</span>" : ""}
   </div>
   ${body}
 </div>
