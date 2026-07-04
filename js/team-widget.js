@@ -379,22 +379,31 @@
       var SCALE = 2;
       return window.html2canvas(pad, { scale: SCALE, backgroundColor: "#ffffff", useCORS: true })
         .then(function (canvas) {
-          return new Promise(function (res) { finishCanvas(canvas).toBlob(res, "image/png"); });
+          // JPEG 85% — 스레드 업로드 용량(~8MB) 안에 확실히 들어가게
+          return new Promise(function (res) { finishCanvas(canvas).toBlob(res, "image/jpeg", 0.85); });
         })
         .finally(function () { document.body.removeChild(pad); });
     }).catch(function () { return null; });
   }
 
-  // 전체 회의 + 하단에 큰 URL 배너 (높이 제한 없음)
+  // 하단 큰 URL 배너 + 높이 제한(스레드 업로드 용량 대비 — 넘치면 잘라내고 링크 유도)
   function finishCanvas(src) {
     var W = src.width;
     var footerH = Math.round(W * 0.42);        // 폭 비례 배너 높이
-    var contentH = src.height;
+    var maxTotal = 4500;                       // 스레드 업로드 한도 안전선
+    var maxContent = maxTotal - footerH;
+    var cropped = src.height > maxContent;
+    var contentH = cropped ? maxContent : src.height;
     var out = document.createElement("canvas");
     out.width = W; out.height = contentH + footerH;
     var ctx = out.getContext("2d");
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(src, 0, 0);
+    ctx.drawImage(src, 0, 0, W, contentH, 0, 0, W, contentH);
+    if (cropped) {
+      var fade = ctx.createLinearGradient(0, contentH - 140, 0, contentH);
+      fade.addColorStop(0, "rgba(255,255,255,0)"); fade.addColorStop(1, "#ffffff");
+      ctx.fillStyle = fade; ctx.fillRect(0, contentH - 140, W, 140);
+    }
     // 하단 배너
     var fy = contentH;
     var g = ctx.createLinearGradient(0, fy, W, fy + footerH);
@@ -403,7 +412,7 @@
     ctx.textAlign = "center"; ctx.fillStyle = "#ffffff";
     var cx = W / 2;
     ctx.font = "bold " + Math.round(W * 0.045) + "px Pretendard, -apple-system, sans-serif";
-    ctx.fillText("나도 강팀에게 무료로 물어보기 👇", cx, fy + footerH * 0.34);
+    ctx.fillText(cropped ? "회의가 길어요! 전체 회의는 여기서 👇" : "나도 강팀에게 무료로 물어보기 👇", cx, fy + footerH * 0.34);
     ctx.font = "800 " + Math.round(W * 0.075) + "px Pretendard, -apple-system, sans-serif";
     ctx.fillText("appter.co.kr", cx, fy + footerH * 0.60);
     ctx.font = Math.round(W * 0.033) + "px Pretendard, -apple-system, sans-serif";
@@ -414,7 +423,7 @@
   // 주제 기반 파일명: appter.co.kr-꿩먹고알먹고회의.png
   function imgFileName(title) {
     var t = String(title || "강팀회의").replace(/[^가-힣a-zA-Z0-9]/g, "").slice(0, 24);
-    return "appter.co.kr-" + (t || "강팀회의") + ".png";
+    return "appter.co.kr-" + (t || "강팀회의") + ".jpg";
   }
 
   function downloadBlob(blob, name) {
@@ -481,7 +490,7 @@
     // iOS는 이미지+텍스트 동시 자동입력을 막는 경우가 많아 → 이미지는 공유시트(사진첩 '이미지 저장' 가능), 멘트는 붙여넣기 안내.
     copyText(caption);
     if (preCapturedBlob && navigator.canShare) {
-      var pfile = new File([preCapturedBlob], fname, { type: "image/png" });
+      var pfile = new File([preCapturedBlob], fname, { type: "image/jpeg" });
       if (navigator.canShare({ files: [pfile] })) {
         navigator.share({ files: [pfile], text: caption }).then(function () {
           setTimeout(function () {
@@ -579,7 +588,7 @@
     var fname = imgFileName(title);
     if (!preCapturedBlob) { alert("이미지가 아직 준비 중이에요. 잠시 후 다시 눌러주세요."); return; }
     if (isMobileDevice() && navigator.canShare) {
-      var f = new File([preCapturedBlob], fname, { type: "image/png" });
+      var f = new File([preCapturedBlob], fname, { type: "image/jpeg" });
       if (navigator.canShare({ files: [f] })) {
         navigator.share({ files: [f] }).catch(function (e) {
           if (e && e.name === "AbortError") return;
@@ -592,10 +601,21 @@
   }
   function downloadAndOpen(fname) {
     downloadBlob(preCapturedBlob, fname);
-    // 저장 후 이미지 바로 열기 — 모바일에선 길게 눌러 '사진에 추가' 가능
+    // 저장 후 '꾹 눌러 저장' 안내 말풍선이 있는 페이지로 이미지 열기
     var url = URL.createObjectURL(preCapturedBlob);
-    window.open(url, "_blank");
-    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>회의 이미지 저장</title><style>body{margin:0;background:#15131f}img{width:100%;display:block}' +
+      '.hint{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;' +
+      'padding:12px 18px;border-radius:999px;font:700 15px/1.3 sans-serif;white-space:nowrap;' +
+      'box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:9;animation:bnc 1s ease-in-out infinite alternate}' +
+      '.hint:after{content:"";position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);' +
+      'border:8px solid transparent;border-top-color:#2563eb;border-bottom:0}' +
+      '@keyframes bnc{to{transform:translateX(-50%) translateY(7px)}}</style></head><body>' +
+      '<div class="hint">👇 이미지를 꾹~ 길게 누르면 사진에 저장돼요</div>' +
+      '<img src="' + url + '" alt="강팀 회의록"></body></html>';
+    var page = new Blob([html], { type: "text/html" });
+    window.open(URL.createObjectURL(page), "_blank");
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
   }
 
   function bindHistoryClicks() {
@@ -687,7 +707,7 @@
       ci = (ci % 5) + 1;
       var img = document.getElementById("tw-chara");
       var tag = document.getElementById("tw-chara-name");
-      if (img) img.src = "images/gang" + ci + ".png";
+      if (img) img.src = "images/gang" + ci + ".jpg";
       if (tag) tag.textContent = CHAR_NAMES[ci - 1];
     }, 500);
     // 회의 시작하면 화면 맨 위로 (결과가 나오면 renderResult가 결과로 이동)
@@ -885,7 +905,7 @@
     var n = 1 + Math.floor(Math.random() * 5);
     var img = document.getElementById("tw-chara");
     var tag = document.getElementById("tw-chara-name");
-    if (img) img.src = "images/gang" + n + ".png";
+    if (img) img.src = "images/gang" + n + ".jpg";
     if (tag) tag.textContent = NAMES[n - 1];
   })();
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
