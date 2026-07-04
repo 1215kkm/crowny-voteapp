@@ -112,6 +112,11 @@ const teamReferralBonus = document.getElementById("team-referral-bonus");
 const teamVisitBonus = document.getElementById("team-visit-bonus");
 const teamVisitCap = document.getElementById("team-visit-cap");
 const teamAppcheckEnforce = document.getElementById("team-appcheck-enforce");
+const paymentEnabledEl = document.getElementById("payment-enabled");
+const pkgEls = [1, 2, 3].map((i) => ({
+  price: document.getElementById(`pkg${i}-price`),
+  credits: document.getElementById(`pkg${i}-credits`)
+}));
 const teamSettingsSave = document.getElementById("team-settings-save");
 
 async function loadTeamSettings() {
@@ -125,6 +130,13 @@ async function loadTeamSettings() {
     if (teamVisitBonus) teamVisitBonus.value = (sv.teamVisitBonus ?? 1);
     if (teamVisitCap) teamVisitCap.value = (sv.teamVisitDailyCap ?? 5);
     if (teamAppcheckEnforce) teamAppcheckEnforce.checked = !!sv.appCheckEnforce;
+    if (paymentEnabledEl) paymentEnabledEl.checked = sv.paymentEnabled === true;
+    const pkgs = Array.isArray(sv.teamCreditPackages) ? sv.teamCreditPackages
+      : [{ price: 3000, credits: 30 }, { price: 5000, credits: 60 }, { price: 10000, credits: 150 }];
+    pkgEls.forEach((el, i) => {
+      if (el.price) el.price.value = pkgs[i]?.price ?? "";
+      if (el.credits) el.credits.value = pkgs[i]?.credits ?? "";
+    });
   } catch (e) { /* ignore */ }
 }
 function clampNum(el, def) {
@@ -141,7 +153,13 @@ teamSettingsSave?.addEventListener("click", async () => {
       teamReferralBonus: clampNum(teamReferralBonus, 5),
       teamVisitBonus: clampNum(teamVisitBonus, 1),
       teamVisitDailyCap: clampNum(teamVisitCap, 5),
-      appCheckEnforce: !!(teamAppcheckEnforce && teamAppcheckEnforce.checked)
+      appCheckEnforce: !!(teamAppcheckEnforce && teamAppcheckEnforce.checked),
+      paymentEnabled: !!(paymentEnabledEl && paymentEnabledEl.checked),
+      teamCreditPackages: pkgEls.map((el, i) => ({
+        id: "p" + (i + 1),
+        price: Math.max(0, Math.floor(Number(el.price?.value) || 0)),
+        credits: Math.max(0, Math.floor(Number(el.credits?.value) || 0))
+      })).filter((p) => p.price > 0 && p.credits > 0)
     });
     showToast("강팀 회의 설정을 저장했어요", "success");
   } catch (e) {

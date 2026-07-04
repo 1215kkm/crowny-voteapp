@@ -206,6 +206,12 @@ service cloud.firestore {
       allow write: if false; // admin SDK(함수)만 — 클라 위조 차단
     }
 
+    // ---- 결제 주문 기록 (본인/관리자 읽기, 쓰기는 함수 전용) ----
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow write: if false; // 결제 확정은 Cloud Function(admin SDK)만
+    }
+
     // ---- 강팀 회의 내역 (본인 것만 읽고 생성) ----
     match /meetings/{id} {
       allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);

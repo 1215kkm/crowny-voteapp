@@ -629,6 +629,14 @@
     }
   }, 1500);
 
+  // 충전 등으로 서버 크레딧이 바뀌면 app.js가 호출해 즉시 잔여 갱신
+  window.__refreshTeamGrant = function () {
+    var uid = currentUid();
+    if (uid && window.appMeetings && window.appMeetings.grant) {
+      window.appMeetings.grant(uid).then(function (g) { adminGrant = g || 0; renderQuota(); });
+    }
+  };
+
   // ---- 스친추가 적립: 버튼 눌러 스레드 프로필 열면 1회에 한해 +3회 ----
   var followBtn = document.querySelector(".tw-follow");
   if (followBtn) followBtn.addEventListener("click", function () {

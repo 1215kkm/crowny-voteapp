@@ -635,10 +635,14 @@ export async function getTeamConfig() {
       referralBonus: num(d.teamReferralBonus, 5),
       visitBonus: num(d.teamVisitBonus, 1),
       visitDailyCap: num(d.teamVisitDailyCap, 5),
-      meetingProvider: d.meetingProvider === "claude" ? "claude" : "gemini"
+      meetingProvider: d.meetingProvider === "claude" ? "claude" : "gemini",
+      paymentEnabled: d.paymentEnabled === true,
+      creditPackages: Array.isArray(d.teamCreditPackages) && d.teamCreditPackages.length
+        ? d.teamCreditPackages
+        : [{ id: "p1", price: 3000, credits: 30 }, { id: "p2", price: 5000, credits: 60 }, { id: "p3", price: 10000, credits: 150 }]
     };
   } catch (e) {
-    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5, meetingProvider: "gemini" };
+    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5, meetingProvider: "gemini", paymentEnabled: false, creditPackages: [{ id: "p1", price: 3000, credits: 30 }, { id: "p2", price: 5000, credits: 60 }, { id: "p3", price: 10000, credits: 150 }] };
   }
 }
 
@@ -666,8 +670,18 @@ export async function getUserTeamGrant(uid) {
     const d = snap.data();
     const g = typeof d.teamGrant === "number" ? d.teamGrant : 0;   // 관리자 부여
     const r = typeof d.refBonus === "number" ? d.refBonus : 0;      // 추천·실유입 보상
-    return g + r;
+    const p = typeof d.paidCredits === "number" ? d.paidCredits : 0; // 유료 충전
+    return g + r + p;
   } catch (e) { return 0; }
+}
+
+// 유료 충전 크레딧 지급 (관리자 모의충전 / 결제 확정 시). 규칙상 users 쓰기는 관리자만.
+export async function grantPaidCredits(uid, n) {
+  if (!uid) return 0;
+  const add = Math.max(0, Math.floor(Number(n) || 0));
+  if (add <= 0) return 0;
+  await _sd(_d(db, "users", uid), { paidCredits: increment(add) }, { merge: true });
+  return add;
 }
 
 // 신규 로그인 여부 판별용: users 문서 존재 + signupClaimed 여부
