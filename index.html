@@ -141,6 +141,13 @@
   .tw-notice.tw-warn b { color: var(--color-accent-end); }
 
   /* 회의 로딩 — 멤버 칩이 차례로 발언하듯 점멸 */
+  .tw-input-wrap { position: relative; }
+  .tw-load-float { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px; border-radius: var(--radius-md);
+    background: rgba(10, 8, 18, 0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  .tw-load-float.hidden { display: none; }
+  .tw-load-float-msg { color: #fff; font-weight: 700; font-size: 14px; text-align: center;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
   .tw-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 4px; }
   .tw-load-ring { position: relative; width: 190px; height: 190px; border-radius: 50%;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
@@ -606,8 +613,17 @@
       <p class="tw-sub">강팀은 마케팅 성공경험과 여러 아이디어의 20년 노하우가 들어간 AI팀입니다</p>
     </div>
 
-    <textarea id="team-input" class="tw-input" rows="10" maxlength="1500"
-      placeholder="예시1: 강사와 학생이 컴퓨터수업때 파일전송과 원격케어를 쉽게할 수 있는 무료앱을 crownyclass.com에 만들어놨어 6개월간 직접 사용해봤는데 너무 좋아 전국에 다른선생님들도 알려주고 싶어 좋은 아이디어 있어?&#10;&#10;예시2: 밑에서 위로 점프해서 올라가는 흔한 게임을 만들었어 귀여운 스타일이야 더 재미있게 하고 홍보하고 싶어&#10;&#10;예시3: 오늘 점심은 뭐먹지 라고 매번 고민하네"></textarea>
+    <div class="tw-input-wrap">
+      <textarea id="team-input" class="tw-input" rows="10" maxlength="1500"
+        placeholder="예시1: 강사와 학생이 컴퓨터수업때 파일전송과 원격케어를 쉽게할 수 있는 무료앱을 crownyclass.com에 만들어놨어 6개월간 직접 사용해봤는데 너무 좋아 전국에 다른선생님들도 알려주고 싶어 좋은 아이디어 있어?&#10;&#10;예시2: 밑에서 위로 점프해서 올라가는 흔한 게임을 만들었어 귀여운 스타일이야 더 재미있게 하고 홍보하고 싶어&#10;&#10;예시3: 오늘 점심은 뭐먹지 라고 매번 고민하네"></textarea>
+      <div id="tw-load-float" class="tw-load-float hidden">
+        <a class="tw-load-ring" href="https://crownyclass.com/community.html?board=showcase&amp;mentorOnly=1" target="_blank" rel="noopener">
+          <span class="tw-load-ring-txt">기다리는 동안<br>디자인 적용된<br>작품들 구경하기</span>
+          <span class="tw-load-ring-arrow">↗</span>
+        </a>
+        <div class="tw-load-float-msg" id="tw-load-float-msg">강팀이 모여 안건을 읽는 중…</div>
+      </div>
+    </div>
 
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
     <div id="tw-model-badge" class="tw-model-badge" style="display:none"></div>
