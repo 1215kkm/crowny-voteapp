@@ -109,7 +109,8 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 - 단계 프로그레스(목표 진행·적립 단계. done=완료):
 <div class="tw-viz"><div class="tw-viz-t">목표까지</div><div class="tw-bar big"><div class="tw-bar-fill grad" style="width:66%"></div></div><div class="tw-steps"><span class="done">가입</span><span class="done">첫 회의</span><span>공유</span><span>친구초대</span></div></div>
 
-출력은 **아래 HTML 조각만** 내놔라. 마크다운/코드펜스/설명 금지. 허용 태그는 div·b·span·ul·li(div·span엔 위 시각화 예시의 인라인 style 허용). class는 아래 목록 + 위 tw-viz 계열만.
+출력은 **아래 HTML 조각만** 내놔라. 마크다운/코드펜스/설명 금지. 허용 태그는 div·b·span·ul·li. class는 아래 목록 + 위 tw-viz 계열만.
+**인라인 style은 오직 시각화 템플릿 안의 width:__% 하나만 허용.** 발언(tw-m-act)·정리(tw-m-sum)·그 외 어디에도 style 속성(배경색·글자색 등)을 절대 넣지 마라 — 색은 class가 알아서 입힌다.
 멤버별 class: 강대표=daepyo, 강디=gdi, 강개발=gdev, 강체크=gchk, 아뱅=abang.
 <div class="tw-m-title">(안건을 한 줄로 요약한 회의 제목)</div>
 <div class="tw-m-act daepyo"><b>강대표</b> "회의 여는 한 줄." <span class="tw-think">(속마음)</span></div>
@@ -374,6 +375,8 @@ exports.viewMeeting = onRequest(
     let body = String(data.html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
     // 허용 태그만 (div·b·span·ul·li) 남기고 나머지 제거 — 저장값은 우리 포맷이지만 방어적으로
     body = body.replace(/<(?!\/?(?:div|b|span|ul|li)\b)[^>]*>/gi, "");
+    // 인라인 style은 시각화 막대의 width:% 만 허용 — AI가 발언에 넣은 배경색 등은 제거(글자 안보임 방지)
+    body = body.replace(/\sstyle="([^"]*)"/gi, (mm, v) => (/^\s*width:\s*\d{1,3}%\s*;?\s*$/i.test(v) ? mm : ""));
     const d = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
     function p(n){return (n<10?"0":"")+n;}
     const dt = d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
