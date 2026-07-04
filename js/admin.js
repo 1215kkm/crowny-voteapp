@@ -526,26 +526,30 @@ async function loadAnalytics() {
       `;
     }
 
-    // 일자별
-    const byDay = {};
+    // 일자별 — 순수(고유 방문자, 같은 사람 여러 번=1) · 전체(반복 포함)
+    const byDayTotal = {}, byDayUniq = {};
     pageviews.forEach((e) => {
       const t = e.createdAt?.toMillis?.() || 0;
       if (!t) return;
       const d = new Date(t);
       const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      byDay[k] = (byDay[k] || 0) + 1;
+      byDayTotal[k] = (byDayTotal[k] || 0) + 1;
+      (byDayUniq[k] = byDayUniq[k] || new Set()).add(vkey(e));
     });
-    const days = Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0]));
+    const days = Object.keys(byDayTotal).sort((a, b) => b.localeCompare(a)); // 최신 위로
+    const maxTotal = Math.max(1, ...days.map((k) => byDayTotal[k]));
     dailyEl.innerHTML = `
       <table class="adm-table">
-        <thead><tr><th>날짜</th><th>방문수</th><th>그래프</th></tr></thead>
+        <thead><tr><th>날짜</th><th>순수</th><th>전체</th><th>그래프</th></tr></thead>
         <tbody>
-          ${days.map(([k, n]) => {
-            const w = Math.min(100, Math.round((n / Math.max(...days.map(([,v])=>v))) * 100));
-            return `<tr><td>${k}</td><td>${n}</td><td><div class="bar" style="width:${w}%"></div></td></tr>`;
-          }).join("") || '<tr><td colspan="3">데이터 없음</td></tr>'}
+          ${days.map((k) => {
+            const total = byDayTotal[k], uniq = byDayUniq[k].size;
+            const w = Math.round((total / maxTotal) * 100);
+            return `<tr><td>${k}</td><td><b>${uniq}</b></td><td>${total}</td><td><div class="bar" style="width:${w}%"></div></td></tr>`;
+          }).join("") || '<tr><td colspan="4">데이터 없음</td></tr>'}
         </tbody>
       </table>
+      <p class="admin-help">순수 = 서로 다른 방문자(같은 사람 100번 = 1) · 전체 = 총 방문(반복 포함)</p>
     `;
   } catch (e) {
     console.error(e);

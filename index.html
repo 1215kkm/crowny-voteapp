@@ -64,6 +64,9 @@
   .tw-run:disabled { opacity: .55; cursor: not-allowed; }
   .tw-quota { font-size: 16px; color: var(--color-text-secondary); text-align: center; }
   .tw-quota b { color: var(--color-accent-start); }
+  .tw-model-badge { font-size: 12px; font-weight: 700; margin: 6px auto 2px; width: fit-content; max-width: 96%;
+    color: #f0b429; background: rgba(240,180,41,0.12); border: 1px solid rgba(240,180,41,0.35);
+    border-radius: var(--radius-full); padding: 4px 12px; text-align: center; }
   .tw-more-link { background: none; border: none; color: var(--color-accent-start);
     font: inherit; font-size: 16px; cursor: pointer; text-decoration: underline; }
 
@@ -99,7 +102,7 @@
     border-radius: var(--radius-md); padding: 14px; }
   .tw-m-title { font-size: 18px; font-weight: 800; color: var(--color-text); }
   .tw-m-req { font-size: 16px; color: var(--color-text-light); margin: 4px 0 10px; }
-  .tw-m-act { font-size: 16px; color: var(--color-text); line-height: 1.6; margin: 6px 0; }
+  .tw-m-act { font-size: 18px; color: var(--color-text); line-height: 1.6; margin: 6px 0; }
   .tw-m-act b { color: var(--color-accent-start); }
 
   /* 회의록 헤더 (라벨·날짜·참여 칩) — 강팀 회의록 양식 */
@@ -127,7 +130,7 @@
   .tw-m-act.gchk b { color: #9d6ff0; }
 
   /* 속마음 — 회색 이탤릭, 괄호 그대로 */
-  .tw-think { color: #8b8fa0; font-style: italic; font-size: 14px; }
+  .tw-think { color: #8b8fa0; font-style: italic; font-size: 16px; }
 
   /* 남은 횟수·퍼가기 안내 */
   .tw-notice { font-size: 14px; line-height: 1.6; color: var(--color-text-light);
@@ -164,6 +167,32 @@
   .tw-m-sum > b { color: var(--color-accent-start); }
   .tw-m-sum ul { margin: 6px 0 0 18px; }
   .tw-m-sum li { margin: 3px 0; }
+  /* 주제맞춤 시각화 (div/CSS만) */
+  .tw-viz { margin: 12px 0; padding: 12px 14px; background: rgba(138,56,245,0.05);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+  .tw-viz-t { font-size: 13px; font-weight: 800; color: var(--color-accent-start); margin-bottom: 8px; }
+  .tw-cmp { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  .tw-cmp-l { font-size: 12px; color: var(--color-text-light); min-width: 52px; }
+  .tw-cmp-v { font-size: 12px; font-weight: 700; min-width: 38px; text-align: right; color: var(--color-text); }
+  .tw-bar { flex: 1; height: 18px; background: rgba(128,128,128,0.18); border-radius: 6px; overflow: hidden; }
+  .tw-bar.big { height: 14px; }
+  .tw-bar-fill { height: 100%; border-radius: 6px; }
+  .tw-bar-fill.dim { background: #94a3b8; }
+  .tw-bar-fill.grad { background: linear-gradient(90deg, #8a38f5, #d53a6b); }
+  .tw-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .tw-node { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px;
+    background: rgba(138,56,245,0.12); color: var(--color-text); }
+  .tw-node.on { background: linear-gradient(90deg, #8a38f5, #d53a6b); color: #fff; }
+  .tw-arr { color: #8a38f5; font-weight: 800; }
+  .tw-mtx { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tw-cell { padding: 10px; border-radius: 8px; background: rgba(128,128,128,0.10); font-size: 12px; font-weight: 700; color: var(--color-text); }
+  .tw-cell span { display: block; font-weight: 500; font-size: 11px; color: var(--color-text-light); margin-top: 2px; }
+  .tw-cell.hi { background: rgba(138,56,245,0.15); }
+  .tw-cell.lo { opacity: .55; }
+  .tw-steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tw-steps span { font-size: 11px; padding: 3px 9px; border-radius: 999px;
+    background: rgba(128,128,128,0.14); color: var(--color-text-light); }
+  .tw-steps span.done { background: rgba(138,56,245,0.15); color: var(--color-text); }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   .tw-share-btn { flex: 1; border: none; cursor: pointer; font-family: inherit; font-size: 16px;
     font-weight: 700; padding: 12px; border-radius: var(--radius-md); color: #fff;
@@ -230,6 +259,13 @@
   .idea-overlay-eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .12em;
     text-transform: uppercase; color: var(--color-accent-end); }
   .idea-overlay-body { flex: 1 1 auto; overflow-y: auto; padding: 22px; }
+  .idea-overlay-share { flex: 0 0 auto; padding: 12px 22px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border); background: var(--color-surface); }
+  .idea-share-btn { width: 100%; padding: 15px; font-family: inherit; font-size: 16px; font-weight: 800;
+    border: none; border-radius: var(--radius-md); color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+    box-shadow: 0 6px 18px rgba(213,58,107,0.3); }
+  .idea-share-btn:active { transform: scale(0.98); }
   /* 오버레이 안의 카드는 항상 펼친 상태로 보이게, hover 검정 무효 */
   .idea-overlay-body .idea-card { background: var(--color-surface) !important; cursor: default; }
   .idea-overlay-body .idea-card .expand-icon { display: none; }
@@ -548,7 +584,7 @@
   <div class="team-widget">
     <div class="tw-head">
       <div class="tw-badge-row">
-        <span class="tw-badge">강팀 AI 회의</span>
+        <span class="tw-badge">강팀 회의</span>
         <span class="tw-help" tabindex="0" role="button" aria-label="강팀이란?">?
           <span class="tw-tip">강팀은 제작자의 성공적인 마케팅 노하우와 오랫동안 쌓아온 아이디어가 축적되어 탄생한 AI 팀이에요.</span>
         </span>
@@ -562,6 +598,7 @@
       placeholder="예시1: 강사와 학생이 컴퓨터수업때 파일전송과 원격케어를 쉽게할 수 있는 무료앱을 crownyclass.com에 만들어놨어 6개월간 직접 사용해봤는데 너무 좋아 전국에 다른선생님들도 알려주고 싶어 좋은 아이디어 있어?&#10;&#10;예시2: 밑에서 위로 점프해서 올라가는 흔한 게임을 만들었어 귀여운 스타일이야 더 재미있게 하고 홍보하고 싶어&#10;&#10;예시3: 오늘 점심은 뭐먹지 라고 매번 고민하네"></textarea>
 
     <button id="team-run-btn" class="tw-run" type="button">→ 강팀 회의시작해</button>
+    <div id="tw-model-badge" class="tw-model-badge" style="display:none"></div>
     <div class="tw-quota">질문 <b id="tw-remaining">3</b>회 남음 · <button type="button" id="tw-more" class="tw-more-link">더 받기</button></div>
 
     <a class="tw-follow" href="https://www.threads.net/@kkm450815" target="_blank" rel="noopener">
@@ -573,7 +610,7 @@
 </div>
 
 </div><!-- /flip-rotor -->
-<button id="to-appter" class="flip-arrow flip-arrow-left" type="button" aria-label="Appter 화면 보기">←</button>
+<button id="to-appter" class="flip-arrow flip-arrow-left" type="button" aria-label="Appter 화면 보기">← Appter가기</button>
 <button id="to-team" class="flip-arrow flip-arrow-right" type="button" aria-label="강팀 회의창 보기">강팀 →</button>
   <!-- 아이디어 상세 오버레이 (카드 클릭 시 우측에서 슬라이드 인 / 닫기 시 강팀회의창 복귀) -->
   <div id="idea-overlay" class="idea-overlay hidden" aria-hidden="true">
@@ -583,6 +620,9 @@
         <span class="idea-overlay-eyebrow">아이디어 상세</span>
       </div>
       <div id="idea-overlay-body" class="idea-overlay-body"></div>
+      <div class="idea-overlay-share">
+        <button type="button" id="idea-share-btn" class="idea-share-btn">🔗 이 아이디어 퍼가서 함께 응원하기</button>
+      </div>
     </aside>
   </div>
 

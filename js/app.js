@@ -721,6 +721,28 @@ function closeIdeaOverlay() {
   setTimeout(() => ideaOverlay.classList.add("hidden"), 320);
 }
 
+// 아이디어 퍼가기 (간략 주제 + 사이트 주소 복사)
+const SITE_BASE = "https://appter.co.kr";
+function ideaShareCaption(idea) {
+  return `"${idea.title}" 이런 앱이 있으면 좋겠어요! 👀\n같이 응원해요 → ${SITE_BASE}/idea.html?id=${idea.id}\n#Appter #아이디어`;
+}
+async function shareIdea(ideaId) {
+  const idea = currentRealIdeas.find((i) => i.id === ideaId);
+  if (!idea) return;
+  const cap = ideaShareCaption(idea);
+  try {
+    if (navigator.share && /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+      await navigator.share({ text: cap }).catch(() => {});
+    } else {
+      if (navigator.clipboard) await navigator.clipboard.writeText(cap);
+      else { const ta = document.createElement("textarea"); ta.value = cap; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }
+      showToast("복사되었습니다! SNS에 붙여넣으면 주제와 링크가 보여요", "success");
+    }
+  } catch (e) { showToast("복사 실패", "info"); }
+}
+const ideaShareBtn = document.getElementById("idea-share-btn");
+if (ideaShareBtn) ideaShareBtn.addEventListener("click", () => { if (overlayIdeaId) shareIdea(overlayIdeaId); });
+
 if (ideaOverlayClose) ideaOverlayClose.addEventListener("click", closeIdeaOverlay);
 if (ideaOverlay) {
   // 오버레이 안의 버튼도 기존 액션 핸들러로 처리 (btn.closest('.idea-card')가 오버레이 카드를 잡음)
