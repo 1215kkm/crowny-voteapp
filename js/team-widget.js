@@ -22,7 +22,26 @@
   var MEETING_BASE = "https://crowny-appter.web.app/m/"; // 공유 회의 뷰어
   var currentMeetingId = null;         // 현재 표시중 회의 id (저장된 경우)
 
-  // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드
+  var meetingProviderVal = "gemini";
+  var ADMIN_EMAIL = "rute20002@gmail.com";
+  function isAdminUser() {
+    var u = window.__currentUser;
+    return !!(u && u.email === ADMIN_EMAIL);
+  }
+  // 관리자만 보이는 현재 회의 모델 표시
+  function renderModelBadge() {
+    var el = document.getElementById("tw-model-badge");
+    if (!el) return;
+    if (isAdminUser()) {
+      var name = meetingProviderVal === "claude" ? "Claude Haiku 4.5" : "Gemini 2.5 Flash";
+      el.textContent = "🔧 관리자 전용 · 현재 회의 모델: " + name;
+      el.style.display = "block";
+    } else {
+      el.style.display = "none";
+    }
+  }
+
+  // 관리자 설정(무료·가입·스친추가·공유 보너스 + 회의 모델) 로드
   function loadConfig() {
     if (!(window.appMeetings && window.appMeetings.config)) return;
     window.appMeetings.config().then(function (c) {
@@ -31,7 +50,9 @@
       followBonusN = c.followBonus;
       signupBonusN = c.signupBonus;
       shareBonusN = c.shareBonus;
+      meetingProviderVal = c.meetingProvider || "gemini";
       renderQuota();
+      renderModelBadge();
     });
   }
 
@@ -218,7 +239,7 @@
 
   // ---- 공유 ----
   function shareCaption(title) {
-    return "상품기획천재 강팀 AI의 회의내용이에요\n\"" + (title || "내 앱 아이디어") +
+    return "강팀 기능 및 마케팅 회의내용\n\"" + (title || "내 앱 아이디어") +
       "\"\n\n너도 아이디어를 얻어봐 → " + myRefLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
   }
 
@@ -261,24 +282,16 @@
     }).catch(function () { return null; });
   }
 
-  // 높이 5000px로 제한 + 하단에 큰 URL 배너(잘렸으면 "전체는 링크에서")
+  // 전체 회의 + 하단에 큰 URL 배너 (높이 제한 없음)
   function finishCanvas(src) {
     var W = src.width;
     var footerH = Math.round(W * 0.42);        // 폭 비례 배너 높이
-    var maxTotal = 5000;
-    var maxContent = maxTotal - footerH;
-    var cropped = src.height > maxContent;
-    var contentH = cropped ? maxContent : src.height;
+    var contentH = src.height;
     var out = document.createElement("canvas");
     out.width = W; out.height = contentH + footerH;
     var ctx = out.getContext("2d");
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, out.width, out.height);
-    ctx.drawImage(src, 0, 0, W, contentH, 0, 0, W, contentH);
-    if (cropped) {
-      var fade = ctx.createLinearGradient(0, contentH - 140, 0, contentH);
-      fade.addColorStop(0, "rgba(255,255,255,0)"); fade.addColorStop(1, "#ffffff");
-      ctx.fillStyle = fade; ctx.fillRect(0, contentH - 140, W, 140);
-    }
+    ctx.drawImage(src, 0, 0);
     // 하단 배너
     var fy = contentH;
     var g = ctx.createLinearGradient(0, fy, W, fy + footerH);
@@ -286,14 +299,19 @@
     ctx.fillStyle = g; ctx.fillRect(0, fy, W, footerH);
     ctx.textAlign = "center"; ctx.fillStyle = "#ffffff";
     var cx = W / 2;
-    var line1 = cropped ? "회의가 길어요! 전체 회의는 여기서 👇" : "나도 강팀에게 무료로 물어보기 👇";
     ctx.font = "bold " + Math.round(W * 0.045) + "px Pretendard, -apple-system, sans-serif";
-    ctx.fillText(line1, cx, fy + footerH * 0.34);
+    ctx.fillText("나도 강팀에게 무료로 물어보기 👇", cx, fy + footerH * 0.34);
     ctx.font = "800 " + Math.round(W * 0.075) + "px Pretendard, -apple-system, sans-serif";
     ctx.fillText("appter.co.kr", cx, fy + footerH * 0.60);
     ctx.font = Math.round(W * 0.033) + "px Pretendard, -apple-system, sans-serif";
     ctx.fillText("강팀 AI 5명이 회의해서 아이디어를 만들어줘요", cx, fy + footerH * 0.82);
     return out;
+  }
+
+  // 주제 기반 파일명: appter.co.kr-꿩먹고알먹고회의.png
+  function imgFileName(title) {
+    var t = String(title || "강팀회의").replace(/[^가-힣a-zA-Z0-9]/g, "").slice(0, 24);
+    return "appter.co.kr-" + (t || "강팀회의") + ".png";
   }
 
   function downloadBlob(blob, name) {
@@ -330,6 +348,7 @@
   function shareMeeting(title, mode) {
     grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
+    var fname = imgFileName(title);
 
     if (!isMobileDevice()) {
       // 팝업 차단을 피하려면 window.open을 async(이미지 캡처) 이전, 클릭 제스처 안에서 호출해야 한다
@@ -340,7 +359,7 @@
         copyText(caption);
       }
       captureMeetingBlob().then(function (blob) {
-        if (blob) downloadBlob(blob, "강팀회의록.png");
+        if (blob) downloadBlob(blob, fname);
         if (mode === "threads") {
           if (win) {
             alert("스레드 작성창을 열었어요(멘트 자동 입력). 방금 저장된 회의 이미지를 글에 첨부해 주세요!");
@@ -358,17 +377,17 @@
     // 모바일: 이미지 + 문구를 공유시트로 함께 (앱에서 스레드/인스타 선택)
     return captureMeetingBlob().then(function (blob) {
       if (blob && navigator.canShare) {
-        var file = new File([blob], "강팀회의록.png", { type: "image/png" });
+        var file = new File([blob], fname, { type: "image/png" });
         if (navigator.canShare({ files: [file] })) {
           return navigator.share({ files: [file], text: caption }).catch(function (e) {
             if (e && e.name === "AbortError") return;
-            copyText(caption); if (blob) downloadBlob(blob, "강팀회의록.png");
+            copyText(caption); if (blob) downloadBlob(blob, fname);
             alert("공유 문구를 복사하고 이미지를 저장했어요.");
           });
         }
       }
       if (navigator.share) return navigator.share({ text: caption }).catch(function () {});
-      copyText(caption); if (blob) downloadBlob(blob, "강팀회의록.png");
+      copyText(caption); if (blob) downloadBlob(blob, fname);
     });
   }
 
@@ -575,6 +594,7 @@
     var uid = currentUid();
     if (uid === lastUid) return;
     lastUid = uid;
+    renderModelBadge(); // 로그인 상태 바뀔 때 관리자 모델 배지 갱신
     if (uid) {
       // 관리자 부여 무료 횟수 반영
       if (window.appMeetings && window.appMeetings.grant) {

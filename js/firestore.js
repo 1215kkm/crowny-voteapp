@@ -634,10 +634,11 @@ export async function getTeamConfig() {
       shareBonus: num(d.teamShareBonus, 3),
       referralBonus: num(d.teamReferralBonus, 5),
       visitBonus: num(d.teamVisitBonus, 1),
-      visitDailyCap: num(d.teamVisitDailyCap, 5)
+      visitDailyCap: num(d.teamVisitDailyCap, 5),
+      meetingProvider: d.meetingProvider === "claude" ? "claude" : "gemini"
     };
   } catch (e) {
-    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5 };
+    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5, meetingProvider: "gemini" };
   }
 }
 
