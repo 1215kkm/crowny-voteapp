@@ -20,6 +20,9 @@
     "rewrites": [
       { "source": "/api/meeting", "function": "runMeeting" },
       { "source": "/m/**", "function": "viewMeeting" }
+    ],
+    "headers": [
+      { "source": "**/*.@(js|css|html)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
     ]
   }
 }
