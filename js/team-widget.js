@@ -145,6 +145,7 @@
   function renderQuota() {
     applyRegen();
     if (remainEl) remainEl.textContent = remaining();
+    renderModelBadge(); // 관리자 배지를 매 갱신마다 현재 로그인 상태로 재확인(비관리자엔 숨김)
     if (remaining() <= 0) {
       runBtn.disabled = true;
       runBtn.textContent = "질문 소진 · " + (fmtRegen() || "12시간 뒤") + " 1회 충전";
