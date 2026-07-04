@@ -707,7 +707,7 @@
       ci = (ci % 5) + 1;
       var img = document.getElementById("tw-chara");
       var tag = document.getElementById("tw-chara-name");
-      if (img) img.src = "images/gang" + ci + ".jpg";
+      if (img) img.src = "images/gang" + ci + ".png";
       if (tag) tag.textContent = CHAR_NAMES[ci - 1];
     }, 500);
     // 회의 시작하면 화면 맨 위로 (결과가 나오면 renderResult가 결과로 이동)
@@ -905,7 +905,7 @@
     var n = 1 + Math.floor(Math.random() * 5);
     var img = document.getElementById("tw-chara");
     var tag = document.getElementById("tw-chara-name");
-    if (img) img.src = "images/gang" + n + ".jpg";
+    if (img) img.src = "images/gang" + n + ".png";
     if (tag) tag.textContent = NAMES[n - 1];
   })();
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
