@@ -3061,3 +3061,5 @@ html[data-theme="dark"] .section-header h2 { color: var(--color-text); }
 .contact-done-emoji { font-size: 54px; line-height: 1; }
 .contact-done-big { font-size: 26px; font-weight: 800; color: var(--color-text); margin-top: 12px; }
 .contact-done-sub { font-size: 15px; color: var(--color-text-light); margin-top: 8px; }
+.tlog-who { display: inline-block; font-size: 0.72rem; font-weight: 700; color: var(--color-accent-start);
+  background: rgba(138,56,245,0.1); border-radius: 999px; padding: 1px 8px; margin-right: 4px; }
