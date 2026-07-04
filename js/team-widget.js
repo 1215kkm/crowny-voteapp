@@ -266,21 +266,20 @@
   }
 
   // ---- 공유 ----
-  // 회의 내용 앞부분 발췌 (약 1/3, 최대 220자) — 공유 멘트에 포함
-  function meetingExcerpt() {
+  // 발언들을 "이름 : 대사" 줄 배열로 추출 (공유 멘트용)
+  function meetingLines() {
     var body = resultEl && resultEl.querySelector(".tw-result-body");
-    if (!body) return "";
+    if (!body) return [];
     var acts = body.querySelectorAll(".tw-m-act");
-    var txt = "";
+    var lines = [];
     for (var i = 0; i < acts.length; i++) {
-      txt += acts[i].textContent.replace(/\s+/g, " ").trim() + "\n";
+      var nameEl = acts[i].querySelector("b");
+      var name = nameEl ? nameEl.textContent.trim() : "";
+      var rest = acts[i].textContent.replace(/\s+/g, " ").trim();
+      if (name && rest.indexOf(name) === 0) rest = rest.slice(name.length).trim();
+      lines.push((name ? name + " : " : "") + rest);
     }
-    txt = txt.trim();
-    if (!txt) return "";
-    var cut = Math.min(Math.floor(txt.length / 3), 220);
-    var ex = txt.slice(0, cut).trim();
-    if (ex.length < txt.length) ex += "…";
-    return ex;
+    return lines;
   }
 
   // ── 이어서 회의 ──
@@ -339,11 +338,24 @@
     return myRefLink();
   }
 
+  // 형식: 강팀 회의내용 / (빈줄) / ★★ 제목 ★★ / (빈줄) / 이름 : 대사 (빈줄 간격) / 전체 회의 보기
   function shareCaption(title) {
-    var ex = meetingExcerpt();
-    return "강팀 회의내용\n\"" + (title || "내 앱 아이디어") + "\"\n\n" +
-      (ex ? ex + "\n\n" : "") +
-      "전체 회의 보기 → " + shareLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+    var head = "강팀 회의내용\n\n★★ " + (title || "내 앱 아이디어") + " ★★";
+    var foot = "\n\n전체 회의 보기 → " + shareLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+    var LIMIT = 480; // 스레드 500자 제한 안전선
+    var budget = LIMIT - head.length - foot.length;
+    var lines = meetingLines();
+    var mid = "";
+    for (var i = 0; i < lines.length; i++) {
+      var add = "\n\n" + lines[i];
+      if (mid.length + add.length > budget) {
+        var room = budget - mid.length - 3;
+        if (room > 30) mid += add.slice(0, room) + "…";
+        break;
+      }
+      mid += add;
+    }
+    return head + mid + foot;
   }
 
   // 회의 화면 캡처 (meeting.html의 이미지 저장과 같은 html2canvas 방식 — 필요할 때만 로드)
