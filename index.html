@@ -52,10 +52,13 @@
   .tw-consult:hover { background: rgba(213, 58, 107, 0.25); }
   .tw-consult-ic { color: var(--color-accent-end); font-weight: 800; margin-right: 2px; }
   .tw-title { font-size: 20px; font-weight: 800; color: var(--color-text); margin-top: 4px; }
-  .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; }
+  .tw-sub { font-size: 16px; color: var(--color-text-light); line-height: 1.5; width: 80%; }
   .tw-head { position: relative; }
   .tw-chara { position: absolute; right: 6px; top: 30px; width: 90px; height: 110px; z-index: 5;
     pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); }
+  .tw-chara-name { position: absolute; right: 6px; top: 128px; width: 90px; z-index: 6; text-align: center;
+    font-size: 12px; font-weight: 800; color: #fff; background: rgba(0,0,0,0.88);
+    border-radius: var(--radius-full); padding: 3px 0; pointer-events: none; }
   .tw-input { width: 100%; resize: vertical; min-height: 230px; font-family: inherit;
     font-size: 16px; line-height: 1.6; color: var(--color-text); background: var(--color-subtle);
     border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; }
@@ -179,7 +182,9 @@
     border: 3px solid transparent; border-top-color: var(--color-accent-start);
     border-right-color: var(--color-accent-end); animation: twSpin 1s linear infinite; }
   .tw-load-ring-txt { font-size: 15px; font-weight: 800; line-height: 1.55; }
-  .tw-load-ring-arrow { font-size: 24px; font-weight: 900; color: var(--color-accent-start); line-height: 1; }
+  .tw-load-ring-arrow { font-size: 24px; font-weight: 900; color: var(--color-accent-start); line-height: 1;
+    animation: twBlink 0.4s step-start infinite; }
+  @keyframes twBlink { 50% { opacity: 0; } }
   @keyframes twSpin { to { transform: rotate(360deg); } }
   .tw-load-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
   .tw-load-chips .tw-chip { opacity: .3; animation: twSpeak 2s ease-in-out infinite; }
@@ -233,9 +238,13 @@
     background: rgba(128,128,128,0.14); color: var(--color-text-light); }
   .tw-steps span.done { background: rgba(138,56,245,0.15); color: var(--color-text); }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
-  .tw-share-img { width: 100%; margin-top: 8px; border: 1px solid var(--color-border) !important;
-    background: var(--color-subtle) !important; color: var(--color-text) !important; }
-  .tw-share-img:disabled { opacity: .55; cursor: default; }
+  /* 회의록 스크롤 중 하단에 따라다니다 맨끝에서 제자리 고정 */
+  .tw-share-sticky { position: sticky; bottom: 10px; z-index: 8;
+    background: var(--color-surface); border: 1px solid var(--color-border);
+    border-radius: var(--radius-md); padding: 8px; box-shadow: 0 -6px 20px rgba(0,0,0,0.25); }
+  .tw-share-img { border: none !important; background: #0d9c84 !important; color: #fff !important; }
+  .tw-share-img:disabled { opacity: .55; cursor: default; background: var(--color-subtle) !important;
+    color: var(--color-text-light) !important; border: 1px solid var(--color-border) !important; }
   .tw-share-btn { flex: 1; border: none; cursor: pointer; font-family: inherit; font-size: 16px;
     font-weight: 700; padding: 12px; border-radius: var(--radius-md); color: #fff;
     background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end)); }
@@ -650,6 +659,7 @@
       <h3 class="tw-title">강팀에게 회의요청</h3>
       <p class="tw-sub">강팀은 마케팅 성공경험과 여러 아이디어의<br>20년 노하우가 들어간 AI팀입니다</p>
       <img id="tw-chara" class="tw-chara" src="images/gang1.png" alt="강팀 캐릭터" width="90" height="110">
+      <span id="tw-chara-name" class="tw-chara-name">강대표</span>
     </div>
 
     <div class="tw-input-wrap">

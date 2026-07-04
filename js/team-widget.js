@@ -496,15 +496,13 @@
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
       (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
       '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
-      '<div class="tw-share">' +
+      '<div class="tw-share tw-share-sticky">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
-        '<button type="button" class="tw-share-btn tw-share-other">인스타·기타 공유</button>' +
+        '<button type="button" class="tw-share-btn tw-share-img" disabled>📷 이미지 준비 중…</button>' +
       "</div>" +
-      '<button type="button" class="tw-share-btn tw-share-img" disabled>📷 이미지 준비 중…</button>' +
       '<div class="tw-credit">이 회의 만든 곳 · <a href="https://www.threads.net/@' + CREATOR_THREADS + '" target="_blank" rel="noopener">@' + CREATOR_THREADS + "</a></div>";
     resultEl.classList.remove("hidden");
     resultEl.querySelector(".tw-share-threads").addEventListener("click", function () { shareMeeting(title, "threads"); });
-    resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareMeeting(title, "other"); });
     var imgBtn = resultEl.querySelector(".tw-share-img");
     imgBtn.addEventListener("click", function () { saveMeetingImage(title); });
     bindHistoryClicks();
@@ -518,7 +516,7 @@
     }).catch(function () { if (imgBtn) imgBtn.textContent = "📷 이미지 생성 실패"; });
   }
 
-  // 이미지 저장: 모바일=공유창(사진첩 '이미지 저장' 가능), PC=다운로드
+  // 이미지 저장: 모바일=공유창(사진첩 '이미지 저장' 가능), 그 외=다운로드 + 새 탭으로 열기(길게 눌러 사진에 추가 가능)
   function saveMeetingImage(title) {
     var fname = imgFileName(title);
     if (!preCapturedBlob) { alert("이미지가 아직 준비 중이에요. 잠시 후 다시 눌러주세요."); return; }
@@ -527,12 +525,19 @@
       if (navigator.canShare({ files: [f] })) {
         navigator.share({ files: [f] }).catch(function (e) {
           if (e && e.name === "AbortError") return;
-          downloadBlob(preCapturedBlob, fname);
+          downloadAndOpen(fname);
         });
         return;
       }
     }
+    downloadAndOpen(fname);
+  }
+  function downloadAndOpen(fname) {
     downloadBlob(preCapturedBlob, fname);
+    // 저장 후 이미지 바로 열기 — 모바일에선 길게 눌러 '사진에 추가' 가능
+    var url = URL.createObjectURL(preCapturedBlob);
+    window.open(url, "_blank");
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }
 
   function bindHistoryClicks() {
@@ -577,6 +582,7 @@
     "회의록을 정리하는 중"
   ];
   var loadTimer = null;
+  var charTimer = null; // 회의 중 캐릭터 교체 타이머
 
   function quotaNoticeHtml(remain) {
     if (remain <= 0) {
@@ -616,10 +622,24 @@
       if (msgEl) msgEl.textContent = LOAD_MSGS[i];
       if (floatMsg) floatMsg.textContent = LOAD_MSGS[i];
     }, 2200);
-    resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // 회의 중엔 캐릭터가 0.5초 간격으로 한 명씩 바뀜
+    var CHAR_NAMES = ["강대표", "강디", "강개발", "강체크", "아뱅"];
+    var ci = 0;
+    charTimer = setInterval(function () {
+      ci = (ci % 5) + 1;
+      var img = document.getElementById("tw-chara");
+      var tag = document.getElementById("tw-chara-name");
+      if (img) img.src = "images/gang" + ci + ".png";
+      if (tag) tag.textContent = CHAR_NAMES[ci - 1];
+    }, 500);
+    // 회의 시작하면 화면 맨 위로 (결과가 나오면 renderResult가 결과로 이동)
+    var widgetTop = document.querySelector(".team-widget") || resultEl;
+    widgetTop.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
   function stopLoading() {
     if (loadTimer) { clearInterval(loadTimer); loadTimer = null; }
+    if (charTimer) { clearInterval(charTimer); charTimer = null; }
     var floatEl = document.getElementById("tw-load-float");
     if (floatEl) floatEl.classList.add("hidden");
   }
@@ -773,10 +793,14 @@
   });
 
   renderQuota();
-  // 강팀 캐릭터 — 접속자마다 랜덤 (gang1~gang5)
+  // 강팀 캐릭터 — 접속자마다 랜덤 (gang1~5 = 강대표·강디·강개발·강체크·아뱅)
   (function () {
+    var NAMES = ["강대표", "강디", "강개발", "강체크", "아뱅"];
+    var n = 1 + Math.floor(Math.random() * 5);
     var img = document.getElementById("tw-chara");
-    if (img) img.src = "images/gang" + (1 + Math.floor(Math.random() * 5)) + ".png";
+    var tag = document.getElementById("tw-chara-name");
+    if (img) img.src = "images/gang" + n + ".png";
+    if (tag) tag.textContent = NAMES[n - 1];
   })();
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
   loadConfig();
