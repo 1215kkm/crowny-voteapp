@@ -494,10 +494,6 @@
     resultEl.innerHTML =
       quotaNoticeHtml(afterRemain) +
       '<div class="tw-loading">' +
-        '<a class="tw-load-ring" href="https://crownyclass.com/community.html?board=showcase&amp;mentorOnly=1" target="_blank" rel="noopener">' +
-          '<span class="tw-load-ring-txt">기다리는 동안<br>디자인 적용된<br>작품들 구경하기</span>' +
-          '<span class="tw-load-ring-arrow">↗</span>' +
-        '</a>' +
         '<div class="tw-load-chips">' +
           '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
           '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
@@ -506,16 +502,23 @@
         '<div class="tw-load-text"><span id="tw-load-msg">' + LOAD_MSGS[0] + '</span><span class="tw-load-dots"></span></div>' +
       '</div>';
     resultEl.classList.remove("hidden");
+    // 입력창 위에 떠있는 원형 로딩 켜기
+    var floatEl = document.getElementById("tw-load-float");
+    if (floatEl) floatEl.classList.remove("hidden");
+    var floatMsg = document.getElementById("tw-load-float-msg");
     var i = 0;
     var msgEl = resultEl.querySelector("#tw-load-msg");
     loadTimer = setInterval(function () {
       i = (i + 1) % LOAD_MSGS.length;
       if (msgEl) msgEl.textContent = LOAD_MSGS[i];
+      if (floatMsg) floatMsg.textContent = LOAD_MSGS[i];
     }, 2200);
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
   function stopLoading() {
     if (loadTimer) { clearInterval(loadTimer); loadTimer = null; }
+    var floatEl = document.getElementById("tw-load-float");
+    if (floatEl) floatEl.classList.add("hidden");
   }
 
   // ---- 실행 ----
