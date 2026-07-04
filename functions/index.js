@@ -400,11 +400,11 @@ exports.viewMeeting = onRequest(
 <meta property="og:site_name" content="Appter 강팀">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="강팀 AI 5명이 회의해서 만든 결과예요. 나도 무료로 아이디어를 얻어보세요.">
-<meta property="og:image" content="https://crowny-appter.web.app/images/gang0.jpg">
+<meta property="og:image" content="https://crowny-appter.web.app/images/gang0.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="강팀 AI가 회의한 결과예요. 나도 무료로 물어보세요.">
-<meta name="twitter:image" content="https://crowny-appter.web.app/images/gang0.jpg">
+<meta name="twitter:image" content="https://crowny-appter.web.app/images/gang0.png">
 <style>
 :root{--acc1:#8a38f5;--acc2:#d53a6b;--ink:#101828;--dim:#667085;--line:#eaecf0;--sub:#f9fafb}
 *{box-sizing:border-box;margin:0;padding:0}
