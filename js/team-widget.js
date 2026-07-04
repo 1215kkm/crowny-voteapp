@@ -654,6 +654,12 @@
         }
       } catch (e) { /* 백엔드 미연결 — 데모로 */ }
 
+      // AI가 임의로 넣은 인라인 style 제거(시각화 width:% 만 허용) — 배경색으로 글자 안 보이는 사고 방지
+      if (html) {
+        html = html.replace(/\sstyle="([^"]*)"/gi, function (mm, v) {
+          return /^\s*width:\s*\d{1,3}%\s*;?\s*$/i.test(v) ? mm : "";
+        });
+      }
       if (!html) { html = demoMeetingHtml(prompt); isDemo = true; }
       consumeOne();
 
@@ -749,6 +755,11 @@
   });
 
   renderQuota();
+  // 강팀 캐릭터 — 접속자마다 랜덤 (gang1~gang5)
+  (function () {
+    var img = document.getElementById("tw-chara");
+    if (img) img.src = "images/gang" + (1 + Math.floor(Math.random() * 5)) + ".png";
+  })();
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
   loadConfig();
   setTimeout(loadConfig, 800);

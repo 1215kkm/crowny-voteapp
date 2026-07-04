@@ -99,19 +99,18 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 
 [시각화 — 전문가 회의처럼 보이게]
 회의 주제에 딱 맞는 시각화 블록을 정리박스 바로 위에 **1~2개만** 넣어라(억지로 넣지 말 것 — 관련 숫자·흐름·비교가 회의에서 실제로 나왔을 때만. 없으면 생략). 아래 템플릿을 그대로 복사해 라벨·숫자·너비%만 실제 내용으로 바꿔라. class·구조·인라인 style은 절대 바꾸지 마라. div·span에 아래 예시의 인라인 style 그대로 쓰는 건 허용.
-주제→시각화 선택 기준: 제품/게임개선→흐름도+비교바 / 성장·친구유도→흐름도(순환은 마지막 화살표 ↻)+비교바 / 마케팅→매트릭스+막대 / 비즈전략→비교바+흐름도 / 기술·리스크→매트릭스+프로그레스.
+주제→시각화 선택 기준: 제품/게임개선→흐름도+비교바 / 성장·친구유도→흐름도(순환은 마지막 화살표 ↻)+비교바 / 마케팅→랭킹 막대+흐름도 / 비즈전략→비교바+흐름도 / 기술·리스크→비교바+프로그레스.
 - 비교바(목표vs현재·before/after·CAC vs LTV):
 <div class="tw-viz"><div class="tw-viz-t">리텐션</div><div class="tw-cmp"><span class="tw-cmp-l">현재</span><div class="tw-bar"><div class="tw-bar-fill dim" style="width:30%"></div></div><span class="tw-cmp-v">30%</span></div><div class="tw-cmp"><span class="tw-cmp-l">목표</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:45%"></div></div><span class="tw-cmp-v">45%</span></div></div>
 - 랭킹 막대(채널별 ROAS·항목 크기순, tw-cmp 행을 여러 개):
 <div class="tw-viz"><div class="tw-viz-t">채널별 효율</div><div class="tw-cmp"><span class="tw-cmp-l">인스타</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:90%"></div></div><span class="tw-cmp-v">3.2</span></div><div class="tw-cmp"><span class="tw-cmp-l">유튜브</span><div class="tw-bar"><div class="tw-bar-fill grad" style="width:55%"></div></div><span class="tw-cmp-v">2.0</span></div></div>
 - 흐름도(Juice·심리경로·수익경로 / 순환이면 마지막 화살표만 ↻):
 <div class="tw-viz"><div class="tw-viz-t">Juice 흐름</div><div class="tw-flow"><span class="tw-node">점프 입력</span><span class="tw-arr">→</span><span class="tw-node">화면 흔들림·소리</span><span class="tw-arr">→</span><span class="tw-node on">"오 재밌다"</span></div></div>
-- 2×2 매트릭스(효과×노력·리스크. hi=최우선, lo=버림):
-<div class="tw-viz"><div class="tw-viz-t">우선순위 (효과×노력)</div><div class="tw-mtx"><div class="tw-cell hi">지금 착수<span>효과↑ 노력↓</span></div><div class="tw-cell">계획 세워<span>효과↑ 노력↑</span></div><div class="tw-cell">틈틈이<span>효과↓ 노력↓</span></div><div class="tw-cell lo">보류<span>효과↓ 노력↑</span></div></div></div>
 - 단계 프로그레스(목표 진행·적립 단계. done=완료):
 <div class="tw-viz"><div class="tw-viz-t">목표까지</div><div class="tw-bar big"><div class="tw-bar-fill grad" style="width:66%"></div></div><div class="tw-steps"><span class="done">가입</span><span class="done">첫 회의</span><span>공유</span><span>친구초대</span></div></div>
 
-출력은 **아래 HTML 조각만** 내놔라. 마크다운/코드펜스/설명 금지. 허용 태그는 div·b·span·ul·li(div·span엔 위 시각화 예시의 인라인 style 허용). class는 아래 목록 + 위 tw-viz 계열만.
+출력은 **아래 HTML 조각만** 내놔라. 마크다운/코드펜스/설명 금지. 허용 태그는 div·b·span·ul·li. class는 아래 목록 + 위 tw-viz 계열만.
+**인라인 style은 오직 시각화 템플릿 안의 width:__% 하나만 허용.** 발언(tw-m-act)·정리(tw-m-sum)·그 외 어디에도 style 속성(배경색·글자색 등)을 절대 넣지 마라 — 색은 class가 알아서 입힌다.
 멤버별 class: 강대표=daepyo, 강디=gdi, 강개발=gdev, 강체크=gchk, 아뱅=abang.
 <div class="tw-m-title">(안건을 한 줄로 요약한 회의 제목)</div>
 <div class="tw-m-act daepyo"><b>강대표</b> "회의 여는 한 줄." <span class="tw-think">(속마음)</span></div>
@@ -376,6 +375,8 @@ exports.viewMeeting = onRequest(
     let body = String(data.html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
     // 허용 태그만 (div·b·span·ul·li) 남기고 나머지 제거 — 저장값은 우리 포맷이지만 방어적으로
     body = body.replace(/<(?!\/?(?:div|b|span|ul|li)\b)[^>]*>/gi, "");
+    // 인라인 style은 시각화 막대의 width:% 만 허용 — AI가 발언에 넣은 배경색 등은 제거(글자 안보임 방지)
+    body = body.replace(/\sstyle="([^"]*)"/gi, (mm, v) => (/^\s*width:\s*\d{1,3}%\s*;?\s*$/i.test(v) ? mm : ""));
     const d = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : new Date();
     function p(n){return (n<10?"0":"")+n;}
     const dt = d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
@@ -387,11 +388,11 @@ exports.viewMeeting = onRequest(
 <meta property="og:site_name" content="Appter 강팀">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="강팀 AI 5명이 회의해서 만든 결과예요. 나도 무료로 아이디어를 얻어보세요.">
-<meta property="og:image" content="https://crowny-appter.web.app/images/og-team.png">
+<meta property="og:image" content="https://crowny-appter.web.app/images/gang0.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="강팀 AI가 회의한 결과예요. 나도 무료로 물어보세요.">
-<meta name="twitter:image" content="https://crowny-appter.web.app/images/og-team.png">
+<meta name="twitter:image" content="https://crowny-appter.web.app/images/gang0.jpg">
 <style>
 :root{--acc1:#8a38f5;--acc2:#d53a6b;--ink:#101828;--dim:#667085;--line:#eaecf0;--sub:#f9fafb}
 *{box-sizing:border-box;margin:0;padding:0}
