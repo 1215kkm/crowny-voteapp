@@ -749,6 +749,11 @@
   });
 
   renderQuota();
+  // 강팀 캐릭터 — 접속자마다 랜덤 (gang1~gang5)
+  (function () {
+    var img = document.getElementById("tw-chara");
+    if (img) img.src = "images/gang" + (1 + Math.floor(Math.random() * 5)) + ".png";
+  })();
   // 관리자 설정(무료·가입·스친추가·공유 보너스) 로드 (app.js가 window.appMeetings 세팅한 뒤)
   loadConfig();
   setTimeout(loadConfig, 800);
