@@ -383,6 +383,13 @@
     #to-team { display: none; }
     #flip-rotor.show-appter ~ #to-appter { display: none; }
     #flip-rotor.show-appter ~ #to-team { display: flex; }
+    /* 모바일: 컨설팅 버튼을 우측 상단으로 — 캐릭터에 안 가리게, 좁은 폰에서도 안 넘침 */
+    #team-face .tw-consult { position: absolute; top: -61px; right: -22px; left: auto;
+      margin-left: 0; z-index: 60; max-width: calc(100vw - 160px); overflow: hidden; text-overflow: ellipsis; }
+    #team-face { overflow-x: hidden; }
+    /* 모바일: 소개문구 60% 폭·좌측정렬, 강제 줄바꿈(<br>) 제거하고 자연 흐름 */
+    #team-face .tw-sub { width: 60%; text-align: left; word-break: keep-all; font-size: 14px; }
+    #team-face .tw-sub br { display: none; }
     /* 뒷면이 터치·스크롤을 가로채지 않게 (Appter 화면 스크롤 안 되던 원인) */
     #flip-rotor.show-appter #team-face { pointer-events: none; }
     #flip-rotor:not(.show-appter) #appter-face { pointer-events: none; }
