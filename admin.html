@@ -158,6 +158,22 @@
             <span class="team-set-label"><strong>App Check 강제(enforce)</strong><small>켜면 App Check 토큰 없는 요청(스크립트 직접 호출)을 차단. Firebase 콘솔에서 App Check 설정·확인 후 켜세요.</small></span>
             <input type="checkbox" id="team-appcheck-enforce">
           </label>
+          <label class="team-set-row">
+            <span class="team-set-label"><strong>💳 유료 결제 노출</strong><small>끄면 일반 사용자에겐 충전 버튼이 안 보임(관리자만 테스트 가능). 정식 오픈 때 켜세요.</small></span>
+            <input type="checkbox" id="payment-enabled">
+          </label>
+          <div class="team-set-row" style="flex-direction:column; align-items:stretch;">
+            <span class="team-set-label"><strong>충전 패키지 (가격원 / 질문횟수)</strong><small>비회원 캡 위에 추가되는 유료 질문 크레딧. 빈 줄은 무시됩니다.</small></span>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+              <input type="number" id="pkg1-price" class="adm-input" placeholder="가격(원)" style="flex:1"><span>원 →</span><input type="number" id="pkg1-credits" class="adm-input" placeholder="횟수" style="flex:1"><span>회</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+              <input type="number" id="pkg2-price" class="adm-input" placeholder="가격(원)" style="flex:1"><span>원 →</span><input type="number" id="pkg2-credits" class="adm-input" placeholder="횟수" style="flex:1"><span>회</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+              <input type="number" id="pkg3-price" class="adm-input" placeholder="가격(원)" style="flex:1"><span>원 →</span><input type="number" id="pkg3-credits" class="adm-input" placeholder="횟수" style="flex:1"><span>회</span>
+            </div>
+          </div>
           <button id="team-settings-save" class="btn-mini btn-comment-submit">설정 저장</button>
         </div>
         </div>

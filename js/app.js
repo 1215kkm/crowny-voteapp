@@ -33,8 +33,10 @@ import {
   getUserTeamGrant,
   addInquiry,
   getTeamConfig,
-  getUserProfileFlags
+  getUserProfileFlags,
+  grantPaidCredits
 } from "./firestore.js";
+import { ADMIN_EMAIL } from "./ai-config.js";
 import { isPlaceholder, functions, getAppCheckToken } from "./firebase-config.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 import { escapeHtml } from "./utils.js";
@@ -1283,6 +1285,80 @@ async function submitReferral(refThreadsId) {
 document.getElementById("referral-submit")?.addEventListener("click", () => submitReferral(referralInput?.value || ""));
 document.getElementById("referral-skip")?.addEventListener("click", () => submitReferral(""));
 document.getElementById("referral-skip2")?.addEventListener("click", () => submitReferral(""));
+
+// ---- 강팀 질문 충전 (Phase 1: 관리자 모의충전, 일반 사용자는 결제노출 켤 때만) ----
+const chargeModal = document.getElementById("charge-modal");
+const chargeBtn = document.getElementById("tw-charge-btn");
+const chargePackagesEl = document.getElementById("charge-packages");
+const chargeAdminNote = document.getElementById("charge-admin-note");
+let chargePackages = [];
+
+function isPaymentAdmin() {
+  const u = getCurrentUser();
+  return !!(u && u.email === ADMIN_EMAIL);
+}
+
+async function loadChargeUi() {
+  if (!chargeBtn) return;
+  try {
+    const cfg = await getTeamConfig();
+    chargePackages = Array.isArray(cfg.creditPackages) ? cfg.creditPackages : [];
+    const admin = isPaymentAdmin();
+    // 일반 사용자: paymentEnabled 켜졌을 때만 노출 / 관리자: 항상(테스트)
+    chargeBtn.style.display = (cfg.paymentEnabled || admin) ? "inline" : "none";
+  } catch (e) { chargeBtn.style.display = "none"; }
+}
+
+function openChargeModal() {
+  if (!chargeModal) return;
+  const admin = isPaymentAdmin();
+  if (chargeAdminNote) chargeAdminNote.style.display = admin ? "block" : "none";
+  if (chargePackagesEl) {
+    chargePackagesEl.innerHTML = chargePackages.map((p, i) =>
+      `<button type="button" class="charge-pkg" data-pkgidx="${i}">
+        <span class="charge-pkg-credits">질문 ${p.credits}회</span>
+        <span class="charge-pkg-price">₩${Number(p.price).toLocaleString()}</span>
+      </button>`).join("") || '<p class="contact-note">충전 패키지가 아직 설정되지 않았어요.</p>';
+    chargePackagesEl.querySelectorAll(".charge-pkg").forEach((el) => {
+      el.addEventListener("click", () => onChargePackage(parseInt(el.dataset.pkgidx, 10)));
+    });
+  }
+  chargeModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+function closeChargeModal() {
+  if (chargeModal) chargeModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+}
+
+async function onChargePackage(idx) {
+  const pkg = chargePackages[idx];
+  if (!pkg) return;
+  const user = getCurrentUser();
+  if (!user) { showToast("로그인 후 충전할 수 있어요", "info"); return; }
+  if (isPaymentAdmin()) {
+    // 모의 충전 (실제 결제 없이 크레딧 지급 — 관리자 테스트)
+    try {
+      await grantPaidCredits(user.uid, pkg.credits);
+      closeChargeModal();
+      showToast(`🔧 모의 충전 완료 — 질문 ${pkg.credits}회가 지급됐어요 (관리자 테스트)`, "success");
+      if (typeof window.__refreshTeamGrant === "function") window.__refreshTeamGrant();
+    } catch (e) {
+      showToast("모의 충전 실패: " + (e.message || ""), "info");
+    }
+  } else {
+    // 일반 사용자 실결제 = 포트원 (Phase 2, 키 연결 후)
+    showToast("결제 기능은 곧 오픈됩니다. 조금만 기다려주세요!", "info");
+  }
+}
+
+if (chargeBtn) chargeBtn.addEventListener("click", openChargeModal);
+document.getElementById("charge-modal-close")?.addEventListener("click", closeChargeModal);
+if (chargeModal) chargeModal.addEventListener("click", (e) => { if (e.target === chargeModal) closeChargeModal(); });
+// 로그인 상태·설정에 따라 충전 버튼 노출 갱신
+onAuthChange(() => loadChargeUi());
+loadChargeUi();
 
 // ---- 내 활동 (내가 올린 아이디어) + 목표 배지 ----
 
