@@ -261,9 +261,28 @@
   }
 
   // ---- 공유 ----
+  // 회의 내용 앞부분 발췌 (약 1/3, 최대 220자) — 공유 멘트에 포함
+  function meetingExcerpt() {
+    var body = resultEl && resultEl.querySelector(".tw-result-body");
+    if (!body) return "";
+    var acts = body.querySelectorAll(".tw-m-act");
+    var txt = "";
+    for (var i = 0; i < acts.length; i++) {
+      txt += acts[i].textContent.replace(/\s+/g, " ").trim() + "\n";
+    }
+    txt = txt.trim();
+    if (!txt) return "";
+    var cut = Math.min(Math.floor(txt.length / 3), 220);
+    var ex = txt.slice(0, cut).trim();
+    if (ex.length < txt.length) ex += "…";
+    return ex;
+  }
+
   function shareCaption(title) {
-    return "강팀 기능 및 마케팅 회의내용\n\"" + (title || "내 앱 아이디어") +
-      "\"\n\n너도 아이디어를 얻어봐 → " + myRefLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+    var ex = meetingExcerpt();
+    return "강팀 기능 및 마케팅 회의내용\n\"" + (title || "내 앱 아이디어") + "\"\n\n" +
+      (ex ? ex + "\n\n" : "") +
+      "너도 아이디어를 얻어봐 → " + myRefLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
   }
 
   // 회의 화면 캡처 (meeting.html의 이미지 저장과 같은 html2canvas 방식 — 필요할 때만 로드)
@@ -397,31 +416,32 @@
       return;
     }
 
-    // 모바일: 미리 캡처해둔 이미지가 있으면 클릭 제스처 안에서 '즉시' 공유시트 열기(핵심)
+    // 모바일: 멘트(회의 발췌+링크 포함)는 항상 복사해두고, 공유시트를 연다.
+    // iOS는 이미지+텍스트 동시 자동입력을 막는 경우가 많아 → 이미지는 공유시트(사진첩 '이미지 저장' 가능), 멘트는 붙여넣기 안내.
+    copyText(caption);
     if (preCapturedBlob && navigator.canShare) {
       var pfile = new File([preCapturedBlob], fname, { type: "image/png" });
       if (navigator.canShare({ files: [pfile] })) {
-        navigator.share({ files: [pfile], text: caption }).catch(function (e) {
+        navigator.share({ files: [pfile], text: caption }).then(function () {
+          setTimeout(function () {
+            alert("멘트를 복사해뒀어요!\n스레드 글쓰기에서 길게 눌러 '붙여넣기' 해주세요.\n(공유창에서 '이미지 저장'을 눌렀다면 사진첩에 저장돼 있어요)");
+          }, 300);
+        }).catch(function (e) {
           if (e && e.name === "AbortError") return;
-          copyText(caption); downloadBlob(preCapturedBlob, fname);
-          alert("공유 문구를 복사하고 이미지를 저장했어요.");
+          alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
         });
         return;
       }
     }
-    // 이미지가 아직 준비 안 됐으면: iOS는 캡처(async)를 기다리면 제스처가 만료됨 →
-    // 최소한 공유시트라도 '즉시(동기)' 열고(문구), 이미지는 백그라운드로 저장해 수동 첨부하게 한다
+    // 이미지가 아직 준비 전이면: 문구만 즉시 공유(스레드 선택 시 글에 자동 입력됨)
     if (navigator.share) {
       navigator.share({ text: caption }).catch(function (e) {
         if (e && e.name === "AbortError") return;
-        copyText(caption);
+        alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
       });
-      captureMeetingBlob().then(function (blob) { if (blob) downloadBlob(blob, fname); });
       return;
     }
-    // 공유 자체를 지원 안 하면 복사 + 저장
-    copyText(caption);
-    captureMeetingBlob().then(function (blob) { if (blob) downloadBlob(blob, fname); });
+    alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
   }
 
   // ---- 결과 렌더 ----
