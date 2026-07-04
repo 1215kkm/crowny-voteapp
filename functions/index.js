@@ -183,9 +183,12 @@ exports.runMeeting = onRequest(
       res.status(401).json({ error: "app_check_required" }); return;
     }
 
-    // 검색 그라운딩 게이트: useSearch + 로그인 + 검색권(searchCredits>0) 일 때만 켜고 1 차감
+    // 관리자 설정에 따라 기본 모델 선택, 실패 시 반대 모델로 폴백
+    const provider = await getMeetingProvider();
+
+    // 검색 그라운딩 게이트: (Gemini일 때만 — 검색은 Gemini에만 붙음) + useSearch + 로그인 + 검색권>0 → 켜고 1 차감
     let grounded = false;
-    if (req.body && req.body.useSearch) {
+    if (provider === "gemini" && req.body && req.body.useSearch) {
       const authHeader = (req.get && req.get("Authorization")) || "";
       const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
       if (idToken) {
@@ -203,8 +206,6 @@ exports.runMeeting = onRequest(
       }
     }
 
-    // 관리자 설정에 따라 기본 모델 선택, 실패 시 반대 모델로 폴백
-    const provider = await getMeetingProvider();
     const runners = provider === "claude"
       ? [["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value())],
          ["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded)]]
