@@ -90,7 +90,10 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
   · 누구에게: 이 앱을 가장 반길 '구체적인 사람'. 막연한 '사람들' 금지 — 예: "아이 키우는 30대 엄마", "자취 갓 시작한 20대", "동네 소상공인".
   · 어떻게: 그 사람들이 실제로 많이 모이는 곳(어떤 SNS·커뮤니티·모임)과, 거기서 통하는 방식(짧은 영상·후기·이벤트 등).
   · 마음을 움직이는 방식: 어떤 감정·심리를 건드려 "나도 써볼래"가 되게 하는지 구체적으로(공감·호기심·손실회피·사회적 증거·희소성·인정 등 — 왜 그 심리가 이 사람에게 먹히는지).
+  · **이름만 대지 말고 '그대로 따라 할 수 있게' 만들어라.** "SNS 후기 이벤트" 같은 방법을 말할 땐 반드시 붙여라: ① 진행 절차 1→2→3 (예: "1. 앱 쓴 친구 3명에게 부탁 → 2. 이런 문구로 올려달라 하기 → 3. 올린 사람에게 ○○ 보상") ② 바로 복사해 쓸 예시 1개 — 실제 올릴 글 문구 예시("이 앱 3일 써봤는데 ○○가 진짜 편해요. 링크는 프로필에!") 또는 이벤트 규칙·보상 예시, 또는 "ChatGPT한테 '내 앱 ○○의 후기 이벤트 문구 5개 만들어줘'라고 물어보세요" 같은 구체적 요청 예시. 마케팅을 하나도 모르는 사람이 읽고 오늘 바로 실행할 수 있어야 한다.
   · **가능하면 실제 검색으로 알게 된 '요즘 실제로 통하는 흐름'을 반영하라.** 단, 지어낸 숫자·통계 금지, 링크·사이트주소·낯선 브랜드명은 그대로 붙이지 말고 쉬운 말로 풀어라. 근거가 있으면 "요즘 ~에서 이런 게 잘 통한대요"처럼 신뢰가는 표현으로.
+- **솔직한 평가를 반드시 담아라.** 강체크(또는 강개발)가 이 앱의 아쉬운 점·시장 진입이 어려운 이유를 최소 1개 구체적으로 짚는다("비슷한 앱이 이미 많은데 이건 뭐가 달라요?", "이 기능만으론 계속 쓸 이유가 약해요" 식). 별로인 아이디어에 무조건 잘될 것처럼 말하지 마라 — 왜 아쉬운지 알려주고, 팀이 보완 방향을 답한다. 기대효과 숫자는 근거 없이 부풀리지 말고, 추정이면 시각화 라벨에도 '(목표·가정)'을 붙여라.
+- **시각화 라벨은 처음 보는 사람이 바로 이해되게.** '공간 등록 활성화' 같은 축약 금지 → '공간을 올려주는 사람 비율'처럼 풀어 써라.
 - 아뱅은 반드시 자기만의 새 아이디어 3종을 내놔라 — 남의 안에 동의·맞장구만 하는 것 금지:
   ① 지금 바로 적용할 눈앞의 아이디어
   ② 확장성 아이디어
@@ -357,9 +360,11 @@ exports.viewMeeting = onRequest(
     const m = (req.path || "").match(/\/m\/([^/?]+)/);
     const id = (m && m[1]) || String(req.query.id || "").trim();
     const SITE = "https://appter.co.kr";
+    // appter.co.kr는 현재 HTTPS 인증서 문제 → 작동하는 web.app으로 연결 (도메인 정상화되면 SITE로 복원)
+    const LIVE = "https://crowny-appter.web.app";
     // 공유자 추천 ref를 메인으로 전달(실유입 보상 연결)
     const refParam = String(req.query.ref || "").slice(0, 80).replace(/[^\w-]/g, "");
-    const CTA_URL = SITE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
+    const CTA_URL = LIVE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
     if (!id) { res.status(400).send("잘못된 주소예요."); return; }
     let data = null;
     try {
@@ -368,7 +373,7 @@ exports.viewMeeting = onRequest(
     } catch (e) { console.error("viewMeeting read:", e && e.message); }
     if (!data) {
       res.set("Cache-Control", "no-store");
-      res.status(404).send("<meta charset='utf-8'><div style='font-family:sans-serif;padding:40px;text-align:center'>회의를 찾을 수 없어요.<br><a href='" + SITE + "'>강팀에게 물어보러 가기</a></div>");
+      res.status(404).send("<meta charset='utf-8'><div style='font-family:sans-serif;padding:40px;text-align:center'>회의를 찾을 수 없어요.<br><a href='" + LIVE + "'>강팀에게 물어보러 가기</a></div>");
       return;
     }
     const title = escHtml((data.title || "강팀 회의").slice(0, 100));
@@ -407,7 +412,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .mem{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:20px}
 .mem .ml{font-size:12px;font-weight:700;color:var(--dim);margin-right:2px}
 .chip{font-size:12px;font-weight:700;color:#fff;padding:3px 10px;border-radius:999px}
-.daepyo{background:#374151}.gdi{background:#0d9c84}.gdev{background:#475569}.gchk{background:#7030d4}.abang{background:#d53a6b}
+.chip.daepyo{background:#374151}.chip.gdi{background:#0d9c84}.chip.gdev{background:#475569}.chip.gchk{background:#7030d4}.chip.abang{background:#d53a6b}.chip.req{background:#64748b}
 .tw-m-act{font-size:16px;line-height:1.6;margin:8px 0}
 .tw-m-act b{color:var(--acc1)}
 .tw-m-act.daepyo b{color:var(--ink)}.tw-m-act.abang b{color:#d53a6b}.tw-m-act.gdi b{color:#0d9c84}.tw-m-act.gdev b{color:#475569}.tw-m-act.gchk b{color:#7030d4}
@@ -442,16 +447,17 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 </style></head><body>
 <div class="wrap"><div class="paper">
   <div class="lbl">강팀 회의록</div>
-  <div class="addr">강팀 주소 : <a href="${SITE}" target="_blank" rel="noopener">appter.co.kr</a></div>
+  <div class="addr">강팀 주소 : <a href="${LIVE}" target="_blank" rel="noopener">appter.co.kr</a></div>
   <h1>${title}</h1>
   <div class="sub">${dt} · 안건: ${title}</div>
   <div class="mem"><span class="ml">참여</span>
     <span class="chip daepyo">강대표</span><span class="chip gdi">강디</span>
     <span class="chip gdev">강개발</span><span class="chip gchk">강체크</span><span class="chip abang">아뱅</span>
+    ${data.requesterName ? '<span class="chip req">제안 · ' + escHtml(String(data.requesterName).slice(0, 20)) + "</span>" : ""}
   </div>
   ${body}
 </div>
-<a class="cta" href="${CTA_URL}">나도 강팀에게 무료로 회의받기 →</a>
+<a class="cta" href="${CTA_URL}">나도 강팀과 회의하기 →</a>
 <div class="foot">© 2026 Appter · 강팀 AI</div>
 </div></body></html>`;
     res.set("Cache-Control", "public, max-age=300");

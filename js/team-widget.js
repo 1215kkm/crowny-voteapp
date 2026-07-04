@@ -278,6 +278,22 @@
     return ex;
   }
 
+  // 제안자 이름: 로그인=이름, 비로그인=별명(한 번 물어보고 저장, 건너뛰면 '손님')
+  function requesterName() {
+    var u = window.__currentUser;
+    if (u && u.displayName) return String(u.displayName).slice(0, 20);
+    var nick = localStorage.getItem("appter_nickname") || "";
+    return nick ? nick.slice(0, 20) : "손님";
+  }
+  function ensureNickname() {
+    var u = window.__currentUser;
+    if (u && u.displayName) return;
+    if (localStorage.getItem("appter_nickname")) return;
+    var n = prompt("회의록 참여 명단에 표시할 이름(별명)을 적어주세요. (선택 — 비워두면 '손님')") || "";
+    n = n.replace(/[<>"']/g, "").trim().slice(0, 20);
+    localStorage.setItem("appter_nickname", n || "손님");
+  }
+
   // 공유 링크: 저장된 회의면 회의내용 페이지(/m/id)로, 아니면 메인으로 (둘 다 추천 ref 포함)
   function shareLink() {
     if (currentMeetingId) return MEETING_BASE + currentMeetingId + "?ref=" + encodeURIComponent(myRefId());
@@ -468,6 +484,7 @@
         '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
         '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
         '<span class="tw-chip abang">아뱅</span>' +
+        '<span class="tw-chip req">제안 · ' + esc(requesterName()) + '</span>' +
       '</div></div>';
   }
 
@@ -614,6 +631,7 @@
     var prompt = (input.value || "").trim();
     if (!prompt) { input.focus(); return; }
     if (remaining() <= 0) { showMore(); return; }
+    ensureNickname(); // 비로그인이면 회의록 표시용 별명 1회 확인
 
     running = true;
     var orig = runBtn.textContent;
@@ -669,7 +687,7 @@
       currentMeetingId = null;
       if (!isDemo && uid && window.appMeetings) {
         try {
-          var savedId = await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html });
+          var savedId = await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html, requesterName: requesterName() });
           currentMeetingId = savedId || null;
           await loadHistory();
         } catch (e) { /* 저장 실패해도 결과는 보여줌 */ }

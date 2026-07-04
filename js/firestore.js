@@ -590,13 +590,14 @@ export async function setSettings(fields) {
 
 // ---- 강팀 회의 내역 (로그인 사용자별 저장) ----
 
-export async function addMeeting({ uid, title, prompt, html }) {
+export async function addMeeting({ uid, title, prompt, html, requesterName }) {
   if (!uid) return null;
   const ref = await _add(_c(db, "meetings"), {
     uid,
     title: String(title || "").slice(0, 200),
     prompt: String(prompt || "").slice(0, 2000),
     html: String(html || "").slice(0, 60000),
+    requesterName: String(requesterName || "").slice(0, 20),
     createdAt: _st()
   });
   return ref.id;
