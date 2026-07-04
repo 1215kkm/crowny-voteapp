@@ -100,6 +100,10 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
   ③ 새로운 사람이 안 써보고는 못 배기게 끌어들이는 심리 아이디어(경쟁·인정·도파민·손실회피·희소성·사회적 증거 등 어떤 심리를 어떻게 건드리는지 명시).
 - 마지막은 강대표의 결정 한 줄 + 정리 박스.
 
+[이어서 회의 — 후속 회의]
+사용자 메시지에 [이전 회의 요약]이 있으면 이번엔 후속 회의다: 멤버들이 지난 회의를 기억한다("지난번에 정했던 ○○, 그거 어떻게 됐어요?"). 지난 결정을 반복하지 말고, 사용자가 알려준 진행 상황을 반영해 딱 다음 단계를 회의하라. 후속 회의일 때만, 정리 박스 바로 다음 줄에 사용자가 고를 다음 방향 2~3개를 이 형식으로 추가하라(각 15자 이내, 실제 이 안건에 맞는 구체적 방향):
+<div class="tw-next"><b>다음 회의, 어떤 방향으로 이어갈까요?</b><span class="tw-next-opt">인스타 홍보 실행안 짜기</span><span class="tw-next-opt">핵심 기능 다듬기</span></div>
+
 [시각화 — 전문가 회의처럼 보이게]
 회의 주제에 딱 맞는 시각화 블록을 정리박스 바로 위에 **1~2개만** 넣어라(억지로 넣지 말 것 — 관련 숫자·흐름·비교가 회의에서 실제로 나왔을 때만. 없으면 생략). 아래 템플릿을 그대로 복사해 라벨·숫자·너비%만 실제 내용으로 바꿔라. class·구조·인라인 style은 절대 바꾸지 마라. div·span에 아래 예시의 인라인 style 그대로 쓰는 건 허용.
 주제→시각화 선택 기준: 제품/게임개선→흐름도+비교바 / 성장·친구유도→흐름도(순환은 마지막 화살표 ↻)+비교바 / 마케팅→랭킹 막대+흐름도 / 비즈전략→비교바+흐름도 / 기술·리스크→비교바+프로그레스.
@@ -178,9 +182,12 @@ exports.runMeeting = onRequest(
   { secrets: [ANTHROPIC_KEY, GEMINI_KEY], cors: true, region: "us-central1", memory: "256MiB", timeoutSeconds: 60 },
   async (req, res) => {
     if (req.method !== "POST") { res.status(405).json({ error: "POST only" }); return; }
-    const prompt = String((req.body && req.body.prompt) || "").trim();
+    let prompt = String((req.body && req.body.prompt) || "").trim();
     if (!prompt) { res.status(400).json({ error: "prompt required" }); return; }
     if (prompt.length > 2000) { res.status(400).json({ error: "prompt too long" }); return; }
+    // 이어서 회의: 이전 회의 요약을 안건 앞에 붙임 (후속 회의 모드)
+    const prev = String((req.body && req.body.prev) || "").trim().slice(0, 1500);
+    if (prev) prompt = "[이전 회의 요약]\n" + prev + "\n\n[이번 안건 — 이전 회의에 이어서]\n" + prompt;
 
     // App Check: 토큰 검증 실패 + enforce ON이면 차단 (스크립트 직접 호출 방지)
     const appCheckOk = await verifyAppCheck(req);
@@ -441,6 +448,9 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .tw-steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .tw-steps span{font-size:11px;padding:3px 9px;border-radius:999px;background:rgba(128,128,128,.14);color:var(--dim)}
 .tw-steps span.done{background:rgba(138,56,245,.15);color:var(--ink)}
+.tw-next{margin-top:12px;padding:12px 14px;background:rgba(138,56,245,.05);border:1px solid var(--line);border-radius:10px;font-size:14px}
+.tw-next>b{display:block;color:var(--acc1);margin-bottom:8px}
+.tw-next-opt{display:inline-block;margin:3px 6px 3px 0;padding:6px 12px;border-radius:999px;border:1.5px solid #8a38f5;color:#8a38f5;font-weight:700;font-size:13px}
 .cta{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;display:block;text-align:center;width:min(360px,88vw);background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:999px;box-shadow:0 10px 30px rgba(213,58,107,.45)}
 .wrap{padding-bottom:110px}
 .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}

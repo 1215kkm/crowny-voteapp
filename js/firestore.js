@@ -689,6 +689,17 @@ export async function grantCredits(uid, q, s) {
   return { q: addQ, s: addS };
 }
 
+// 유료 충전 이력 여부 (이어서 회의 버튼 노출용 — paidCredits 필드 존재/양수)
+export async function getUserPaidCredits(uid) {
+  if (!uid) return 0;
+  try {
+    const snap = await _gdoc(_d(db, "users", uid));
+    if (!snap.exists()) return 0;
+    const v = snap.data().paidCredits;
+    return typeof v === "number" ? v : 0;
+  } catch (e) { return 0; }
+}
+
 // 검색 크레딧 잔여 (위젯이 검색 체크박스 노출 판단용)
 export async function getUserSearchCredits(uid) {
   if (!uid) return 0;
