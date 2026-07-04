@@ -194,7 +194,8 @@ async function loadTeamLog() {
   const byDay = {};
   teamLogData.forEach((m, i) => {
     const { day, time } = fmtDay(m.createdAt);
-    (byDay[day] = byDay[day] || []).push({ i, time, title: m.title || m.prompt || "(제목 없음)" });
+    const who = m.requesterName || (m.uid ? m.uid.slice(0, 6) + "…" : "?");
+    (byDay[day] = byDay[day] || []).push({ i, time, who, title: m.title || m.prompt || "(제목 없음)" });
   });
   const days = Object.keys(byDay).sort((a, b) => (a < b ? 1 : -1));
   teamLogEl.innerHTML = days.map((day) =>
@@ -205,7 +206,8 @@ async function loadTeamLog() {
       '<div class="tlog-items hidden">' +
         byDay[day].map((it) =>
           '<button type="button" class="tlog-item" data-idx="' + it.i + '">' +
-            '<span class="tlog-time">' + it.time + '</span>' + escapeHtml(it.title) +
+            '<span class="tlog-time">' + it.time + '</span>' +
+            '<span class="tlog-who">' + escapeHtml(it.who) + '</span> ' + escapeHtml(it.title) +
           '</button>'
         ).join("") +
       '</div>' +
@@ -225,9 +227,10 @@ teamLogEl?.addEventListener("click", (e) => {
     const m = teamLogData[parseInt(itemBtn.getAttribute("data-idx"), 10)];
     if (!m || !teamLogView) return;
     const { day, time } = fmtDay(m.createdAt);
+    const who = m.requesterName || (m.uid ? "uid:" + m.uid.slice(0, 10) + "…" : "?");
     teamLogView.innerHTML =
       '<div class="tlv-title">' + escapeHtml(m.title || "강팀 회의") + "</div>" +
-      '<div class="tlv-meta">' + day + " " + time + " · 안건: " + escapeHtml(m.prompt || m.title || "") + "</div>" +
+      '<div class="tlv-meta">' + day + " " + time + " · 작성자: <b>" + escapeHtml(who) + "</b> · 안건: " + escapeHtml(m.prompt || m.title || "") + "</div>" +
       (m.html || "");
     teamLogView.classList.remove("hidden");
     teamLogView.scrollIntoView({ behavior: "smooth", block: "nearest" });

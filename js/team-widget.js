@@ -535,8 +535,8 @@
       historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
       (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
-      '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
       (fromHistory ? '<button type="button" class="tw-share-btn tw-continue-btn">🔁 이어서 회의하기</button>' : "") +
+      '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
       '<div class="tw-share tw-share-sticky">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
         '<button type="button" class="tw-share-btn tw-share-img" disabled>📷 이미지 준비 중…</button>' +
