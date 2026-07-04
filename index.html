@@ -142,6 +142,18 @@
 
   /* 회의 로딩 — 멤버 칩이 차례로 발언하듯 점멸 */
   .tw-loading { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 22px 4px; }
+  .tw-load-ring { position: relative; width: 190px; height: 190px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    margin: 4px auto; text-decoration: none; color: #fff; text-align: center;
+    background: rgba(18, 16, 28, 0.9); border: 3px solid rgba(138, 56, 245, 0.22);
+    box-shadow: 0 10px 30px rgba(138, 56, 245, 0.25); transition: transform .2s; }
+  .tw-load-ring:hover { transform: scale(1.04); }
+  .tw-load-ring::after { content: ""; position: absolute; inset: -3px; border-radius: 50%;
+    border: 3px solid transparent; border-top-color: var(--color-accent-start);
+    border-right-color: var(--color-accent-end); animation: twSpin 1s linear infinite; }
+  .tw-load-ring-txt { font-size: 15px; font-weight: 800; line-height: 1.55; }
+  .tw-load-ring-arrow { font-size: 24px; font-weight: 900; color: var(--color-accent-start); line-height: 1; }
+  @keyframes twSpin { to { transform: rotate(360deg); } }
   .tw-load-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
   .tw-load-chips .tw-chip { opacity: .3; animation: twSpeak 2s ease-in-out infinite; }
   .tw-load-chips .tw-chip:nth-child(1) { animation-delay: 0s; }

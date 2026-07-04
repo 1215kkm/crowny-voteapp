@@ -494,6 +494,10 @@
     resultEl.innerHTML =
       quotaNoticeHtml(afterRemain) +
       '<div class="tw-loading">' +
+        '<a class="tw-load-ring" href="https://crownyclass.com/community.html?board=showcase&amp;mentorOnly=1" target="_blank" rel="noopener">' +
+          '<span class="tw-load-ring-txt">기다리는 동안<br>디자인 적용된<br>작품들 구경하기</span>' +
+          '<span class="tw-load-ring-arrow">↗</span>' +
+        '</a>' +
         '<div class="tw-load-chips">' +
           '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
           '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
