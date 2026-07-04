@@ -142,18 +142,19 @@ async function runMeetingClaude(userText, apiKey) {
 }
 
 // ── Gemini (폴백) ─────────────────────────────────────────────────
-async function runMeetingGemini(userText, apiKey) {
+async function runMeetingGemini(userText, apiKey, grounded) {
   const url = `${GEMINI_API}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ parts: [{ text: `[회의 안건]\n${userText}` }] }],
-    tools: [{ google_search: {} }], // 실제 구글 검색 그라운딩 — 현실적·신뢰가는 홍보 근거
     generationConfig: {
       temperature: 0.9,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
-      thinkingConfig: { thinkingBudget: 0 } // thinking 끔(잘림·비용 방지) — 그라운딩은 유지
+      thinkingConfig: { thinkingBudget: 0 } // thinking 끔(잘림·비용 방지)
     }
   };
+  // 검색권 사용 시에만 실제 구글 검색 그라운딩(비용 발생) — 서버 게이트 통과했을 때만
+  if (grounded) body.tools = [{ google_search: {} }];
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -182,12 +183,32 @@ exports.runMeeting = onRequest(
       res.status(401).json({ error: "app_check_required" }); return;
     }
 
+    // 검색 그라운딩 게이트: useSearch + 로그인 + 검색권(searchCredits>0) 일 때만 켜고 1 차감
+    let grounded = false;
+    if (req.body && req.body.useSearch) {
+      const authHeader = (req.get && req.get("Authorization")) || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+      if (idToken) {
+        try {
+          const decoded = await admin.auth().verifyIdToken(idToken);
+          const db = admin.firestore();
+          const ref = db.doc("users/" + decoded.uid);
+          grounded = await db.runTransaction(async (tx) => {
+            const snap = await tx.get(ref);
+            const sc = (snap.exists && typeof snap.data().searchCredits === "number") ? snap.data().searchCredits : 0;
+            if (sc > 0) { tx.set(ref, { searchCredits: admin.firestore.FieldValue.increment(-1) }, { merge: true }); return true; }
+            return false;
+          });
+        } catch (e) { console.warn("search gate verify failed:", e && e.message); }
+      }
+    }
+
     // 관리자 설정에 따라 기본 모델 선택, 실패 시 반대 모델로 폴백
     const provider = await getMeetingProvider();
     const runners = provider === "claude"
       ? [["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value())],
-         ["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value())]]
-      : [["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value())],
+         ["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded)]]
+      : [["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded)],
          ["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value())]];
 
     let html = "";

@@ -639,10 +639,10 @@ export async function getTeamConfig() {
       paymentEnabled: d.paymentEnabled === true,
       creditPackages: Array.isArray(d.teamCreditPackages) && d.teamCreditPackages.length
         ? d.teamCreditPackages
-        : [{ id: "p1", price: 3000, credits: 30 }, { id: "p2", price: 5000, credits: 60 }, { id: "p3", price: 10000, credits: 150 }]
+        : [{ id: "p1", price: 3000, credits: 30, searchCredits: 0 }, { id: "p2", price: 5000, credits: 60, searchCredits: 5 }, { id: "p3", price: 10000, credits: 150, searchCredits: 15 }]
     };
   } catch (e) {
-    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5, meetingProvider: "gemini", paymentEnabled: false, creditPackages: [{ id: "p1", price: 3000, credits: 30 }, { id: "p2", price: 5000, credits: 60 }, { id: "p3", price: 10000, credits: 150 }] };
+    return { freeBase: 3, signupBonus: 0, followBonus: 3, shareBonus: 3, referralBonus: 5, visitBonus: 1, visitDailyCap: 5, meetingProvider: "gemini", paymentEnabled: false, creditPackages: [{ id: "p1", price: 3000, credits: 30, searchCredits: 0 }, { id: "p2", price: 5000, credits: 60, searchCredits: 5 }, { id: "p3", price: 10000, credits: 150, searchCredits: 15 }] };
   }
 }
 
@@ -676,12 +676,27 @@ export async function getUserTeamGrant(uid) {
 }
 
 // 유료 충전 크레딧 지급 (관리자 모의충전 / 결제 확정 시). 규칙상 users 쓰기는 관리자만.
-export async function grantPaidCredits(uid, n) {
+// q = 질문 크레딧, s = 검색 크레딧
+export async function grantCredits(uid, q, s) {
+  if (!uid) return { q: 0, s: 0 };
+  const addQ = Math.max(0, Math.floor(Number(q) || 0));
+  const addS = Math.max(0, Math.floor(Number(s) || 0));
+  const patch = {};
+  if (addQ > 0) patch.paidCredits = increment(addQ);
+  if (addS > 0) patch.searchCredits = increment(addS);
+  if (addQ > 0 || addS > 0) await _sd(_d(db, "users", uid), patch, { merge: true });
+  return { q: addQ, s: addS };
+}
+
+// 검색 크레딧 잔여 (위젯이 검색 체크박스 노출 판단용)
+export async function getUserSearchCredits(uid) {
   if (!uid) return 0;
-  const add = Math.max(0, Math.floor(Number(n) || 0));
-  if (add <= 0) return 0;
-  await _sd(_d(db, "users", uid), { paidCredits: increment(add) }, { merge: true });
-  return add;
+  try {
+    const snap = await _gdoc(_d(db, "users", uid));
+    if (!snap.exists()) return 0;
+    const v = snap.data().searchCredits;
+    return typeof v === "number" ? v : 0;
+  } catch (e) { return 0; }
 }
 
 // 신규 로그인 여부 판별용: users 문서 존재 + signupClaimed 여부

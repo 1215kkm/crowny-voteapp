@@ -21,6 +21,8 @@
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
   var MEETING_BASE = "https://crowny-appter.web.app/m/"; // 공유 회의 뷰어
   var currentMeetingId = null;         // 현재 표시중 회의 id (저장된 경우)
+  var preCapturedBlob = null;          // 모바일 공유용 사전 캡처 이미지 (제스처 유지)
+  var searchCreditsN = 0;              // 검색권 잔여 (검색 체크박스 노출용)
 
   var meetingProviderVal = "gemini";
   var ADMIN_EMAIL = "rute20002@gmail.com";
@@ -53,7 +55,27 @@
       meetingProviderVal = c.meetingProvider || "gemini";
       renderQuota();
       renderModelBadge();
+      renderFollowBonus();
     });
+  }
+  // 스친추가 버튼의 +N회 표시 (관리자 설정값)
+  function renderFollowBonus() {
+    var el = document.getElementById("tw-follow-bonus");
+    if (el) el.textContent = followBonusN > 0 ? "+" + followBonusN + "회" : "";
+  }
+  // 검색권 있으면 검색 체크박스 노출 + 잔여 표시
+  function renderSearchUi() {
+    var wrap = document.getElementById("tw-search-wrap");
+    var left = document.getElementById("tw-search-left");
+    if (left) left.textContent = searchCreditsN;
+    if (wrap) wrap.style.display = searchCreditsN > 0 ? "flex" : "none";
+  }
+  // 검색권 서버에서 다시 읽기
+  function refreshSearchCredits() {
+    var uid = currentUid();
+    if (uid && window.appMeetings && window.appMeetings.searchCredits) {
+      window.appMeetings.searchCredits(uid).then(function (n) { searchCreditsN = n || 0; renderSearchUi(); });
+    } else { searchCreditsN = 0; renderSearchUi(); }
   }
 
   // SNS 공유 시 보너스 (하루 최대 3번)
@@ -375,7 +397,19 @@
       return;
     }
 
-    // 모바일: 이미지 + 문구를 공유시트로 함께 (앱에서 스레드/인스타 선택)
+    // 모바일: 미리 캡처해둔 이미지가 있으면 클릭 제스처 안에서 '즉시' 공유시트 열기(핵심)
+    if (preCapturedBlob && navigator.canShare) {
+      var pfile = new File([preCapturedBlob], fname, { type: "image/png" });
+      if (navigator.canShare({ files: [pfile] })) {
+        navigator.share({ files: [pfile], text: caption }).catch(function (e) {
+          if (e && e.name === "AbortError") return;
+          copyText(caption); downloadBlob(preCapturedBlob, fname);
+          alert("공유 문구를 복사하고 이미지를 저장했어요.");
+        });
+        return;
+      }
+    }
+    // 사전 캡처가 아직 준비 안 됐으면 캡처 후 공유(느리면 제스처 만료로 저장 폴백될 수 있음)
     return captureMeetingBlob().then(function (blob) {
       if (blob && navigator.canShare) {
         var file = new File([blob], fname, { type: "image/png" });
@@ -431,6 +465,11 @@
     resultEl.querySelector(".tw-share-other").addEventListener("click", function () { shareMeeting(title, "other"); });
     bindHistoryClicks();
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // 모바일 공유 대비 이미지 미리 캡처(퍼가기 탭 시 제스처 안에서 즉시 공유되게)
+    preCapturedBlob = null;
+    if (isMobileDevice()) {
+      captureMeetingBlob().then(function (b) { preCapturedBlob = b; }).catch(function () {});
+    }
   }
 
   function bindHistoryClicks() {
@@ -547,10 +586,21 @@
             if (tk) headers["X-Firebase-AppCheck"] = tk;
           }
         } catch (e) {}
+        // 검색 옵션: 체크 + 검색권 있으면 ID토큰 붙여 서버가 검증·차감 후 그라운딩
+        var useSearch = false;
+        var searchChk = document.getElementById("tw-search-check");
+        if (searchChk && searchChk.checked && searchCreditsN > 0) {
+          try {
+            if (window.appMeetings && window.appMeetings.idToken) {
+              var idt = await window.appMeetings.idToken();
+              if (idt) { headers["Authorization"] = "Bearer " + idt; useSearch = true; }
+            }
+          } catch (e) {}
+        }
         var res = await fetch(MEETING_API, {
           method: "POST",
           headers: headers,
-          body: JSON.stringify({ prompt: prompt, ref: myRefId() })
+          body: JSON.stringify({ prompt: prompt, ref: myRefId(), useSearch: useSearch })
         });
         if (res.ok) {
           var data = await res.json();
@@ -577,6 +627,7 @@
       stopLoading();
       running = false;
       renderQuota();
+      refreshSearchCredits(); // 검색권 차감 반영
       if (remaining() > 0) runBtn.textContent = orig;
     }
   });
@@ -585,9 +636,11 @@
   function showMore() {
     var loggedIn = !!(window.appAuth && window.appAuth.getCurrentUser && window.appAuth.getCurrentUser());
     var regen = fmtRegen() ? "\n(" + fmtRegen() + " 질문 1회가 자동 충전돼요)" : "";
+    var cap = 3; // 하루 공유 적립 최대 횟수
+    var maxAdd = shareBonusN * cap;
     var msg = loggedIn
-      ? "질문 횟수를 다 썼어요.\n\nSNS로 공유하실 때마다 3회씩 더 드려요 (하루 최대 3번(9회질문)):\n" + myRefLink() + regen
-      : "질문 3회를 다 썼어요.\n\n가입·로그인 후 SNS로 공유하실 때마다 3회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 3번(9회질문))" + regen + "\n\n지금 가입할까요?";
+      ? "질문 횟수를 다 썼어요.\n\nSNS로 공유하실 때마다 " + shareBonusN + "회씩 더 드려요 (하루 최대 " + cap + "번(" + maxAdd + "회질문)):\n" + myRefLink() + regen
+      : "질문 " + FREE_ANON + "회를 다 썼어요.\n\n가입·로그인 후 SNS로 공유하실 때마다 " + shareBonusN + "회씩 더 늘어나요.\n(퍼가기 적립은 하루 최대 " + cap + "번(" + maxAdd + "회질문))" + regen + "\n\n지금 가입할까요?";
     if (loggedIn) {
       shareMeeting("Appter 강팀 질문 결과", "other");
     } else {
@@ -603,6 +656,7 @@
     if (uid === lastUid) return;
     lastUid = uid;
     renderModelBadge(); // 로그인 상태 바뀔 때 관리자 모델 배지 갱신
+    refreshSearchCredits(); // 검색권 표시 갱신
     if (uid) {
       // 관리자 부여 무료 횟수 반영
       if (window.appMeetings && window.appMeetings.grant) {
@@ -631,6 +685,7 @@
 
   // 충전 등으로 서버 크레딧이 바뀌면 app.js가 호출해 즉시 잔여 갱신
   window.__refreshTeamGrant = function () {
+    refreshSearchCredits();
     var uid = currentUid();
     if (uid && window.appMeetings && window.appMeetings.grant) {
       window.appMeetings.grant(uid).then(function (g) { adminGrant = g || 0; renderQuota(); });
