@@ -32,7 +32,9 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
   functions = getFunctions(app, "us-central1");
-  if (APPCHECK_SITE_KEY) {
+  // localhost는 reCAPTCHA 허용 도메인이 아니라 App Check가 계속 실패(인증까지 끌고 넘어짐) → 개발환경에선 스킵
+  const isLocalDev = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  if (APPCHECK_SITE_KEY && !isLocalDev) {
     try {
       appCheck = initializeAppCheck(app, {
         provider: new ReCaptchaV3Provider(APPCHECK_SITE_KEY),
