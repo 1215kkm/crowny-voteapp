@@ -368,7 +368,7 @@ exports.viewMeeting = onRequest(
     const id = (m && m[1]) || String(req.query.id || "").trim();
     const SITE = "https://appter.co.kr";
     // appter.co.kr는 현재 HTTPS 인증서 문제 → 작동하는 web.app으로 연결 (도메인 정상화되면 SITE로 복원)
-    const LIVE = "https://crowny-appter.web.app";
+    const LIVE = "https://appter.co.kr";
     // 공유자 추천 ref를 메인으로 전달(실유입 보상 연결)
     const refParam = String(req.query.ref || "").slice(0, 80).replace(/[^\w-]/g, "");
     const CTA_URL = LIVE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
@@ -400,11 +400,11 @@ exports.viewMeeting = onRequest(
 <meta property="og:site_name" content="Appter 강팀">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="강팀 AI 5명이 회의해서 만든 결과예요. 나도 무료로 아이디어를 얻어보세요.">
-<meta property="og:image" content="https://crowny-appter.web.app/images/gang0.png">
+<meta property="og:image" content="https://appter.co.kr/images/gang0.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="강팀 AI가 회의한 결과예요. 나도 무료로 물어보세요.">
-<meta name="twitter:image" content="https://crowny-appter.web.app/images/gang0.png">
+<meta name="twitter:image" content="https://appter.co.kr/images/gang0.png">
 <style>
 :root{--acc1:#8a38f5;--acc2:#d53a6b;--ink:#101828;--dim:#667085;--line:#eaecf0;--sub:#f9fafb}
 *{box-sizing:border-box;margin:0;padding:0}

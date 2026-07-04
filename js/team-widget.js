@@ -19,7 +19,7 @@
   var LS_SHARE_DAY = "appter_share_day"; // 공유 보너스 집계 날짜
   var LS_SHARE_CNT = "appter_share_cnt"; // 오늘 공유 보너스 지급 횟수
   var LS_REF = "appter_ref_id";        // 내 추천 링크용 id (익명 게스트)
-  var MEETING_BASE = "https://crowny-appter.web.app/m/"; // 공유 회의 뷰어
+  var MEETING_BASE = "https://appter.co.kr/m/"; // 공유 회의 뷰어
   var currentMeetingId = null;         // 현재 표시중 회의 id (저장된 경우)
   var preCapturedBlob = null;          // 모바일 공유용 사전 캡처 이미지 (제스처 유지)
   var searchCreditsN = 0;              // 검색권 잔여 (검색 체크박스 노출용)
