@@ -360,9 +360,11 @@ exports.viewMeeting = onRequest(
     const m = (req.path || "").match(/\/m\/([^/?]+)/);
     const id = (m && m[1]) || String(req.query.id || "").trim();
     const SITE = "https://appter.co.kr";
+    // appter.co.kr는 현재 HTTPS 인증서 문제 → 작동하는 web.app으로 연결 (도메인 정상화되면 SITE로 복원)
+    const LIVE = "https://crowny-appter.web.app";
     // 공유자 추천 ref를 메인으로 전달(실유입 보상 연결)
     const refParam = String(req.query.ref || "").slice(0, 80).replace(/[^\w-]/g, "");
-    const CTA_URL = SITE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
+    const CTA_URL = LIVE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
     if (!id) { res.status(400).send("잘못된 주소예요."); return; }
     let data = null;
     try {
@@ -371,7 +373,7 @@ exports.viewMeeting = onRequest(
     } catch (e) { console.error("viewMeeting read:", e && e.message); }
     if (!data) {
       res.set("Cache-Control", "no-store");
-      res.status(404).send("<meta charset='utf-8'><div style='font-family:sans-serif;padding:40px;text-align:center'>회의를 찾을 수 없어요.<br><a href='" + SITE + "'>강팀에게 물어보러 가기</a></div>");
+      res.status(404).send("<meta charset='utf-8'><div style='font-family:sans-serif;padding:40px;text-align:center'>회의를 찾을 수 없어요.<br><a href='" + LIVE + "'>강팀에게 물어보러 가기</a></div>");
       return;
     }
     const title = escHtml((data.title || "강팀 회의").slice(0, 100));
@@ -445,7 +447,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 </style></head><body>
 <div class="wrap"><div class="paper">
   <div class="lbl">강팀 회의록</div>
-  <div class="addr">강팀 주소 : <a href="${SITE}" target="_blank" rel="noopener">appter.co.kr</a></div>
+  <div class="addr">강팀 주소 : <a href="${LIVE}" target="_blank" rel="noopener">appter.co.kr</a></div>
   <h1>${title}</h1>
   <div class="sub">${dt} · 안건: ${title}</div>
   <div class="mem"><span class="ml">참여</span>
@@ -455,7 +457,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
   </div>
   ${body}
 </div>
-<a class="cta" href="${CTA_URL}">나도 강팀에게 무료로 회의받기 →</a>
+<a class="cta" href="${CTA_URL}">나도 강팀과 회의하기 →</a>
 <div class="foot">© 2026 Appter · 강팀 AI</div>
 </div></body></html>`;
     res.set("Cache-Control", "public, max-age=300");
