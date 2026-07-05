@@ -109,7 +109,7 @@ const activityModalClose = document.getElementById("activity-modal-close");
 const activityList = document.getElementById("activity-list");
 const activityMeetings = document.getElementById("activity-meetings");
 const activityMeetingView = document.getElementById("activity-meeting-view");
-const MEETING_SHARE_BASE = "https://crowny-appter.web.app/m/";
+const MEETING_SHARE_BASE = "https://appter.co.kr/m/";
 const CREATOR_THREADS = "kkm450815";
 
 // 아이디어 상세 오버레이

@@ -220,6 +220,11 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.html is string
         && request.resource.data.html.size() <= 60000
+      ) || (
+        // 비회원 회의도 저장 (관리자 열람용) — uid는 'anon' 고정
+        request.resource.data.uid == "anon"
+        && request.resource.data.html is string
+        && request.resource.data.html.size() <= 60000
       );
       allow delete: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
       allow update: if false;

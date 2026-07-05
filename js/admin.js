@@ -383,6 +383,7 @@ async function loadAnalytics() {
   summaryEl.textContent = "불러오는 중...";
   sourcesEl.innerHTML = "";
   dailyEl.innerHTML = "";
+  document.getElementById("visit-trend")?.remove();
   try {
     const events = await fetchEventsSince(currentRange);
     const pageviews = events.filter((e) => e.type === "pageview");
@@ -412,13 +413,51 @@ async function loadAnalytics() {
       if ((firstDayByVisitor[k] || todayStr) < todayStr) todayReturn++; else todayNew++;
     });
 
+    // 어제 방문(고유 방문자)
+    const yd = new Date(today); yd.setDate(yd.getDate() - 1);
+    const ydStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, "0")}-${String(yd.getDate()).padStart(2, "0")}`;
+    const yestVisitors = new Set(pageviews.filter((e) => dayStr(e) === ydStr).map(vkey).filter(Boolean));
+
     summaryEl.innerHTML = `
       <div class="stat"><span class="stat-num">${pageviews.length}</span><span class="stat-lbl">총 페이지뷰</span></div>
       <div class="stat"><span class="stat-num">${uniqueSessions}</span><span class="stat-lbl">고유 세션</span></div>
       <div class="stat"><span class="stat-num">${uniqueMembers}</span><span class="stat-lbl">로그인 회원(기간)</span></div>
       <div class="stat"><span class="stat-num">${todaysVisitors.size}</span><span class="stat-lbl">오늘 방문 · 신규 ${todayNew} · 재방문 ${todayReturn}</span></div>
+      <div class="stat"><span class="stat-num">${yestVisitors.size}</span><span class="stat-lbl">어제 방문(순수)</span></div>
       <div class="stat"><span class="stat-num">${currentRange}일</span><span class="stat-lbl">기간</span></div>
     `;
+
+    // 일자별 방문 추이 선그래프 (순수=보라 실선, 전체=회색)
+    (function drawTrend() {
+      const byDayT = {}, byDayU = {};
+      pageviews.forEach((e) => {
+        const k = dayStr(e);
+        byDayT[k] = (byDayT[k] || 0) + 1;
+        (byDayU[k] = byDayU[k] || new Set()).add(vkey(e));
+      });
+      const days2 = Object.keys(byDayT).sort();
+      if (days2.length < 2) return;
+      const W = 640, H = 150, P = 28;
+      const maxV = Math.max(1, ...days2.map((k) => byDayT[k]));
+      const x = (i) => P + i * (W - P * 2) / (days2.length - 1);
+      const y = (v) => H - P + 6 - (v / maxV) * (H - P * 2);
+      const pts = (get) => days2.map((k, i) => `${x(i).toFixed(1)},${y(get(k)).toFixed(1)}`).join(" ");
+      const labels = days2.map((k, i) =>
+        (days2.length <= 10 || i % Math.ceil(days2.length / 8) === 0)
+          ? `<text x="${x(i).toFixed(1)}" y="${H - 6}" font-size="9" fill="#94a3b8" text-anchor="middle">${k.slice(5)}</text>` : ""
+      ).join("");
+      const dots = days2.map((k, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(byDayU[k].size).toFixed(1)}" r="2.6" fill="#8a38f5"/>`).join("");
+      summaryEl.insertAdjacentHTML("afterend", `
+        <div id="visit-trend" style="margin:12px 0 20px; border:1px solid var(--color-border); border-radius:12px; padding:12px;">
+          <div style="font-size:0.85rem; font-weight:700; margin-bottom:6px; color:var(--color-text);">일자별 방문 추이
+            <span style="font-weight:500; color:#8a38f5;"> ● 순수</span><span style="font-weight:500; color:#94a3b8;"> ● 전체</span></div>
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
+            <polyline points="${pts((k) => byDayT[k])}" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="4 3"/>
+            <polyline points="${pts((k) => byDayU[k].size)}" fill="none" stroke="#8a38f5" stroke-width="2.4"/>
+            ${dots}${labels}
+          </svg>
+        </div>`);
+    })();
 
     // 유입 출처 — 세션의 '첫 진입' 출처만 집계 (사이트 내부 이동 제외 = 바깥 어디서 왔는지)
     const firstEventBySession = {};

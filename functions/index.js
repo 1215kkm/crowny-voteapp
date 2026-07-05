@@ -100,6 +100,18 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
   ③ 새로운 사람이 안 써보고는 못 배기게 끌어들이는 심리 아이디어(경쟁·인정·도파민·손실회피·희소성·사회적 증거 등 어떤 심리를 어떻게 건드리는지 명시).
 - 마지막은 강대표의 결정 한 줄 + 정리 박스.
 
+[반복 금지 — 멘트 다양화 (중요)]
+같은 표현을 회의마다 반복하지 마라. 매 회의 아래 예시들 중 무작위로 고르거나 상황에 맞게 변형하라:
+- 강디의 머뭇거림(매번 다르게): "저기… 하나만 말해도 돼요?" / "음… 이상하면 그냥 넘어가요" / "살짝 스치듯 떠오른 건데요" / "웃지 말고 들어주세요?" / "자신은 없는데…" / "한 번만 들어봐 주실래요?" / "별거 아닐 수도 있는데…" / "말할까 말까 했는데요" / "요건 그냥 제 느낌인데" / "틀리면 바로 접을게요!"
+- 아뱅의 웃음(매번 다르게): "푸하핫!" / "크크큭" / "아 웃겨 ㅋㅋ" / "낄낄" / "허허, 이거 봐라?" / "캬~" / "흐흐" / "아하하!" / "픽— 웃음이 나네요" / "웃음 참기 실패!"
+- 강대표의 마무리 격려(매번 다르게): "내가 책임질게" 같은 문장을 반복하지 말고, 그 회의에서 정한 구체적인 첫걸음을 지목하며 동기부여로 끝내라. 예: "오늘 정한 ○○ 하나만 되면 다음은 술술 풀려." / "이건 되겠다. 감이 좋아." / "일주일 뒤에 웃으면서 다시 모이자." / "작게 시작해서 크게 웃자." — 이 예시도 그대로 재사용하지 말고 회의 내용에 맞춰 새로 만들어라.
+- 다른 팀원들도 자기 대표 멘트("됩니다. 2시간" 등)를 토씨까지 똑같이 반복하지 말고 매번 변형하라.
+
+[회의 빌드업 — 의욕을 끌어올리는 흐름]
+- 팀원 발언을 받아 '한발 더 나간' 개선 의견이 최소 1번 나오게 하라("거기서 한 발 더 가면요", "그 아이디어에 얹어서" 식).
+- 틈새시장 제안 1개를 자연스럽게 녹여라. '틈새시장:' 같은 라벨 금지 — 도입부를 매번 다르게: "다른 관점으로 보면" / "살짝 비켜서 보면" / "의외로 이런 사람들이" / "남들이 안 보는 곳은" / "거꾸로 가보면" / "작지만 확실한 시장은" / "이건 어떨까요" / "한 뼘 옆 시장을 노리면" / "아무도 안 노리는 자리가 있어요" / "숨은 손님들이 있는데요" 등.
+- 회의가 진행될수록 읽는 사람의 의욕이 올라가게 빌드업하고, 마지막 강대표의 결정이 확실한 동기부여로 마무리되게 하라.
+
 [이어서 회의 — 후속 회의]
 사용자 메시지에 [이전 회의 요약]이 있으면 이번엔 후속 회의다: 멤버들이 지난 회의를 기억한다("지난번에 정했던 ○○, 그거 어떻게 됐어요?"). 지난 결정을 반복하지 말고, 사용자가 알려준 진행 상황을 반영해 딱 다음 단계를 회의하라. 후속 회의일 때만, 정리 박스 바로 다음 줄에 사용자가 고를 다음 방향 2~3개를 이 형식으로 추가하라(각 15자 이내, 실제 이 안건에 맞는 구체적 방향):
 <div class="tw-next"><b>다음 회의, 어떤 방향으로 이어갈까요?</b><span class="tw-next-opt">인스타 홍보 실행안 짜기</span><span class="tw-next-opt">핵심 기능 다듬기</span></div>
@@ -368,7 +380,7 @@ exports.viewMeeting = onRequest(
     const id = (m && m[1]) || String(req.query.id || "").trim();
     const SITE = "https://appter.co.kr";
     // appter.co.kr는 현재 HTTPS 인증서 문제 → 작동하는 web.app으로 연결 (도메인 정상화되면 SITE로 복원)
-    const LIVE = "https://crowny-appter.web.app";
+    const LIVE = "https://appter.co.kr";
     // 공유자 추천 ref를 메인으로 전달(실유입 보상 연결)
     const refParam = String(req.query.ref || "").slice(0, 80).replace(/[^\w-]/g, "");
     const CTA_URL = LIVE + "/" + (refParam ? "?ref=" + encodeURIComponent(refParam) : "");
@@ -400,11 +412,11 @@ exports.viewMeeting = onRequest(
 <meta property="og:site_name" content="Appter 강팀">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="강팀 AI 5명이 회의해서 만든 결과예요. 나도 무료로 아이디어를 얻어보세요.">
-<meta property="og:image" content="https://crowny-appter.web.app/images/gang0.png">
+<meta property="og:image" content="https://appter.co.kr/images/gang0.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${title}">
 <meta name="twitter:description" content="강팀 AI가 회의한 결과예요. 나도 무료로 물어보세요.">
-<meta name="twitter:image" content="https://crowny-appter.web.app/images/gang0.png">
+<meta name="twitter:image" content="https://appter.co.kr/images/gang0.png">
 <style>
 :root{--acc1:#8a38f5;--acc2:#d53a6b;--ink:#101828;--dim:#667085;--line:#eaecf0;--sub:#f9fafb}
 *{box-sizing:border-box;margin:0;padding:0}
