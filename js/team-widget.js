@@ -489,20 +489,19 @@
   function shareMeeting(title, mode) {
     grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
+    copyText(caption); // 어떤 경로든 문구는 항상 복사해 둔다
 
     if (!isMobileDevice()) {
       if (mode === "threads") {
         var win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
-        if (!win) { copyText(caption); alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요."); }
+        if (!win) alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요.");
       } else {
-        copyText(caption);
         alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
       }
       return;
     }
 
     // 모바일: 문구만 공유시트로 (스레드 선택 시 글에 자동 입력)
-    copyText(caption);
     if (navigator.share) {
       navigator.share({ text: caption }).catch(function (e) {
         if (e && e.name === "AbortError") return;
@@ -546,7 +545,6 @@
       historyListHtml() +
       (isDemo ? '<div class="tw-demo-note">데모 미리보기 — 실제 강팀 AI(Gemini) 연결은 다음 단계입니다.</div>' : "") +
       (!fromHistory && remaining() <= 1 ? quotaNoticeHtml(remaining()) : "") +
-      (fromHistory ? '<button type="button" class="tw-share-btn tw-continue-btn">🔁 이어서 회의하기</button>' : "") +
       '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
       '<div class="tw-share tw-share-sticky">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
