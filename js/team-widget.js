@@ -27,6 +27,8 @@
   var continueCtx = null;              // 이어서 회의 컨텍스트 {prev}
   var lastShown = null;                // 현재 표시중 회의 {title, html, name}
   var DEFAULT_PH = null;               // 입력창 기본 placeholder
+  var currentPromptText = "";          // 현재 회의의 작성자 안건 원문 (회의록 헤더 표시용)
+  var awaitingNew = false;             // 회의 종료 후 '새 회의하기' 상태
 
   var meetingProviderVal = "gemini";
   var ADMIN_EMAIL = "rute20002@gmail.com";
@@ -110,6 +112,22 @@
   // ---- 큐브 플립 ----
   if (toAppter) toAppter.addEventListener("click", function () { rotor.classList.add("show-appter"); });
   if (toTeam) toTeam.addEventListener("click", function () { rotor.classList.remove("show-appter"); });
+
+  // 모바일: 회의창 스크롤 시 'Appter가기'는 숨기고, '함께할사람 찾기'는 따라오게
+  (function () {
+    var tf = document.getElementById("team-face");
+    var consult = document.querySelector("#team-face .tw-consult");
+    if (!tf || !consult) return;
+    var baseTop = null;
+    tf.addEventListener("scroll", function () {
+      if (window.innerWidth > 1023) return;
+      var st = tf.scrollTop;
+      if (toAppter) toAppter.style.opacity = st > 60 ? "0" : "1";
+      if (toAppter) toAppter.style.pointerEvents = st > 60 ? "none" : "auto";
+      if (baseTop === null) baseTop = parseInt(getComputedStyle(consult).top, 10) || -61;
+      consult.style.top = (baseTop + st) + "px"; // transform 컨테이너라 fixed 불가 → 스크롤 따라 이동
+    }, { passive: true });
+  })();
 
   // 방문자 영구 id (analytics와 동일 키 공유)
   function visitorId() {
@@ -246,6 +264,7 @@
     var m = historyCache[idx];
     if (!m) return;
     currentMeetingId = m.id || null;
+    currentPromptText = m.prompt || "";
     renderResult(m.html, m.title, false, true);
     if (lastShown && m.requesterName) lastShown.name = m.requesterName;
   }
@@ -296,12 +315,8 @@
     }
     return ("회의 제목: " + (title || "") + "\n" + (sumText ? "정리: " + sumText + "\n" : "") + lastActs).slice(0, 1400);
   }
-  // 이어서 모드 시작 (유료 충전 이력 필요)
+  // 이어서 모드 시작 (현재 무료 개방 — 추후 유료 전환 시 paidUser 게이트 복원)
   function startContinue(title, html, name) {
-    if (!paidUser) {
-      alert("다음 회의(이어서 회의)는 결제를 해야 가능합니다.\n💳 충전 후 이용해주세요!");
-      return;
-    }
     continueCtx = { prev: buildPrevSummary(title, html) };
     if (DEFAULT_PH === null) DEFAULT_PH = input.placeholder;
     input.value = "";
@@ -338,24 +353,28 @@
     return myRefLink();
   }
 
-  // 형식: 강팀 회의내용 / (빈줄) / ★★ 제목 ★★ / (빈줄) / 이름 : 대사 (빈줄 간격) / 전체 회의 보기
+  // 형식: ★★ 제목 ★★ / (빈줄) / 이름 : 대사(절반 말줄임, 전원 포함) / 전체 회의 보기
   function shareCaption(title) {
-    var head = "강팀 회의내용\n\n★★ " + (title || "내 앱 아이디어") + " ★★";
-    var foot = "\n\n전체 회의 보기 → " + shareLink() + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
-    var LIMIT = 480; // 스레드 500자 제한 안전선
+    var head = "★★ " + (title || "내 앱 아이디어") + " ★★";
+    var foot = "\n\n전체 회의 보기 → " + shareLink();
+    var LIMIT = 470; // 스레드 500자 제한 안전선
     var budget = LIMIT - head.length - foot.length;
     var lines = meetingLines();
-    var mid = "";
-    for (var i = 0; i < lines.length; i++) {
-      var add = "\n\n" + lines[i];
-      if (mid.length + add.length > budget) {
-        var room = budget - mid.length - 3;
-        if (room > 30) mid += add.slice(0, room) + "…";
-        break;
+    if (lines.length) {
+      // 모든 발언을 담되 각 발언은 원문의 절반(그리고 줄당 예산) 이내로 말줄임
+      var perLine = Math.max(24, Math.floor(budget / lines.length) - 2);
+      var mid = "";
+      for (var i = 0; i < lines.length; i++) {
+        var t = lines[i];
+        var cap = Math.min(Math.ceil(t.length / 2), perLine);
+        if (t.length > cap) t = t.slice(0, cap).trim() + "…";
+        var add = "\n\n" + t;
+        if (mid.length + add.length > budget) break;
+        mid += add;
       }
-      mid += add;
+      return head + mid + foot;
     }
-    return head + mid + foot;
+    return head + foot;
   }
 
   // 회의 화면 캡처 (meeting.html의 이미지 저장과 같은 html2canvas 방식 — 필요할 때만 로드)
@@ -466,56 +485,24 @@
     return false;
   }
 
-  // 회의 화면 이미지 + 공유 문구(멘트)를 함께 스레드/인스타로.
-  // 데스크톱: 클릭 즉시(제스처 유효) 멘트가 채워진 스레드 작성창을 먼저 열고, 이미지는 뒤이어 저장(첨부용).
-  // 모바일: 공유시트(navigator.share)에 이미지+문구를 함께 전달.
+  // 공유 문구(멘트+링크)만 스레드/인스타로 — 이미지는 별도 '이미지 저장' 버튼 사용.
   function shareMeeting(title, mode) {
     grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
-    var fname = imgFileName(title);
 
     if (!isMobileDevice()) {
-      // 팝업 차단을 피하려면 window.open을 async(이미지 캡처) 이전, 클릭 제스처 안에서 호출해야 한다
-      var win = null;
       if (mode === "threads") {
-        win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+        var win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+        if (!win) { copyText(caption); alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요."); }
       } else {
         copyText(caption);
+        alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
       }
-      captureMeetingBlob().then(function (blob) {
-        if (blob) downloadBlob(blob, fname);
-        if (mode === "threads") {
-          if (win) {
-            alert("스레드 작성창을 열었어요(멘트 자동 입력). 방금 저장된 회의 이미지를 글에 첨부해 주세요!");
-          } else {
-            copyText(caption);
-            alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣고, 저장된 이미지를 첨부하세요.");
-          }
-        } else {
-          alert("공유 문구를 복사하고 회의 이미지를 저장했어요. 인스타/스레드에 붙여넣고 이미지를 첨부하세요!");
-        }
-      });
       return;
     }
 
-    // 모바일: 멘트(회의 발췌+링크 포함)는 항상 복사해두고, 공유시트를 연다.
-    // iOS는 이미지+텍스트 동시 자동입력을 막는 경우가 많아 → 이미지는 공유시트(사진첩 '이미지 저장' 가능), 멘트는 붙여넣기 안내.
+    // 모바일: 문구만 공유시트로 (스레드 선택 시 글에 자동 입력)
     copyText(caption);
-    if (preCapturedBlob && navigator.canShare) {
-      var pfile = new File([preCapturedBlob], fname, { type: "image/jpeg" });
-      if (navigator.canShare({ files: [pfile] })) {
-        navigator.share({ files: [pfile], text: caption }).then(function () {
-          setTimeout(function () {
-            alert("멘트를 복사해뒀어요!\n스레드 글쓰기에서 길게 눌러 '붙여넣기' 해주세요.\n(공유창에서 '이미지 저장'을 눌렀다면 사진첩에 저장돼 있어요)");
-          }, 300);
-        }).catch(function (e) {
-          if (e && e.name === "AbortError") return;
-          alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
-        });
-        return;
-      }
-    }
-    // 이미지가 아직 준비 전이면: 문구만 즉시 공유(스레드 선택 시 글에 자동 입력됨)
     if (navigator.share) {
       navigator.share({ text: caption }).catch(function (e) {
         if (e && e.name === "AbortError") return;
@@ -535,11 +522,14 @@
     function p(n) { return (n < 10 ? "0" : "") + n; }
     var dt = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
     var t = esc(title || "강팀 회의");
+    var req = (currentPromptText || "").trim();
+    var reqLine = req ? '<div class="tw-m-reqtext">📝 회의 안건: "' + esc(req.slice(0, 300)) + (req.length > 300 ? "…" : "") + '"</div>' : "";
     return '<div class="tw-m-head">' +
       '<div class="tw-m-label">강팀 회의록</div>' +
       '<div class="tw-m-addr">강팀 주소 : <a href="https://appter.co.kr" target="_blank" rel="noopener">appter.co.kr</a></div>' +
       '<div class="tw-m-h1">' + t + '</div>' +
-      '<div class="tw-m-sub">' + dt + ' · 안건: ' + t + '</div>' +
+      '<div class="tw-m-sub">' + dt + '</div>' +
+      reqLine +
       '<div class="tw-m-members"><span class="tw-m-mlabel">참여</span>' +
         '<span class="tw-chip daepyo">강대표</span><span class="tw-chip gdi">강디</span>' +
         '<span class="tw-chip gdev">강개발</span><span class="tw-chip gchk">강체크</span>' +
@@ -575,10 +565,6 @@
     // 다음 방향 보기 (후속 회의 결과에 나옴) — 클릭하면 그 방향으로 바로 다음 회의
     resultEl.querySelectorAll(".tw-next-opt").forEach(function (opt) {
       opt.addEventListener("click", function () {
-        if (!paidUser) {
-          alert("다음 회의(이어서 회의)는 결제를 해야 가능합니다.\n💳 충전 후 이용해주세요!");
-          return;
-        }
         continueCtx = { prev: buildPrevSummary(lastShown.title, lastShown.html) };
         input.value = opt.textContent.trim() + " 방향으로 이어서 회의해줘";
         runBtn.click();
@@ -739,9 +725,21 @@
   runBtn.addEventListener("click", async function () {
     if (running) return;
     var prompt = (input.value || "").trim();
+    // '새 회의하기' 상태에서 입력이 비었으면 → 새 입력 준비만
+    if (awaitingNew && !prompt) {
+      awaitingNew = false;
+      endContinue();
+      runBtn.textContent = "→ 강팀 회의시작해";
+      var wtop = document.querySelector(".team-widget");
+      if (wtop) wtop.scrollIntoView({ behavior: "smooth", block: "start" });
+      input.focus();
+      return;
+    }
     if (!prompt) { input.focus(); return; }
     if (remaining() <= 0) { showMore(); return; }
     ensureNickname(); // 비로그인이면 회의록 표시용 별명 1회 확인
+    currentPromptText = prompt;
+    awaitingNew = false;
 
     running = true;
     var orig = runBtn.textContent;
@@ -793,15 +791,15 @@
       if (!html) { html = demoMeetingHtml(prompt); isDemo = true; }
       consumeOne();
 
-      // 로그인 사용자면 회의 내역 저장 후 목록 갱신
+      // 회의 저장 — 로그인은 본인 내역, 비회원은 uid 'anon'으로(관리자 열람용)
       var uid = currentUid();
       var title = extractTitle(html, prompt);
       currentMeetingId = null;
-      if (!isDemo && uid && window.appMeetings) {
+      if (!isDemo && window.appMeetings) {
         try {
-          var savedId = await window.appMeetings.add({ uid: uid, title: title, prompt: prompt, html: html, requesterName: requesterName() });
+          var savedId = await window.appMeetings.add({ uid: uid || "anon", title: title, prompt: prompt, html: html, requesterName: requesterName() });
           currentMeetingId = savedId || null;
-          await loadHistory();
+          if (uid) await loadHistory();
         } catch (e) { /* 저장 실패해도 결과는 보여줌 */ }
       }
       renderResult(html, title, isDemo);
@@ -811,7 +809,13 @@
       endContinue(); // 이어서 모드 종료 (placeholder 복원)
       renderQuota();
       refreshSearchCredits(); // 검색권 차감 반영
-      if (remaining() > 0) runBtn.textContent = orig;
+      if (remaining() > 0) {
+        // 회의가 끝나면 '새 회의하기'로 — 누르면 새로 입력해서 진행
+        awaitingNew = true;
+        input.value = "";
+        runBtn.textContent = "✚ 새 회의하기";
+        runBtn.disabled = false;
+      }
     }
   });
 

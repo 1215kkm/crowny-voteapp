@@ -60,6 +60,10 @@
     margin: 6px 0 38px; /* 제목이 위로 올라간 만큼 아래 여백 보정 — 입력창 위치 유지 */ }
   .tw-badge-row .tw-title { margin-top: 0; }
   .tw-head { position: relative; }
+  /* 회의록 헤더의 작성자 안건 원문 */
+  .tw-m-reqtext { font-size: 14px; color: var(--color-text-secondary); line-height: 1.55;
+    background: rgba(138,56,245,0.06); border-left: 3px solid var(--color-accent-start);
+    border-radius: 8px; padding: 8px 12px; margin: 6px 0 10px; }
   .tw-chara { position: absolute; right: 6px; top: 30px; width: 90px; height: 110px; z-index: 5;
     pointer-events: none; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.35)); }
   .tw-chara-name { position: absolute; right: 6px; top: 128px; width: 90px; z-index: 6; text-align: center;
@@ -261,7 +265,7 @@
   .tw-continue-btn:active { transform: scale(0.97); }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
   /* 회의록 스크롤 중 하단에 따라다니다 맨끝에서 제자리 고정 */
-  .tw-share-sticky { position: sticky; bottom: 10px; z-index: 8;
+  .tw-share-sticky { position: sticky; bottom: 5px; z-index: 8;
     background: var(--color-surface); border: 1px solid var(--color-border);
     border-radius: var(--radius-md); padding: 8px; box-shadow: 0 -6px 20px rgba(0,0,0,0.25); }
   .tw-share-img { border: none !important; background: #0d9c84 !important; color: #fff !important; }
@@ -690,7 +694,7 @@
         <span class="tw-help" tabindex="0" role="button" aria-label="강팀이란?">?
           <span class="tw-tip">강팀은 제작자의 성공적인 마케팅 노하우와 오랫동안 쌓아온 아이디어가 축적되어 탄생한 AI 팀이에요.</span>
         </span>
-        <a class="tw-consult" href="https://crownyclass.com/community.html?board=showcase&amp;mentorOnly=1" target="_blank" rel="noopener"><span class="tw-consult-ic">→</span> 디자이너에게 컨설팅받기</a>
+        <a class="tw-consult" href="https://crownyclass.com/community.html?board=showcase&amp;mentorOnly=1" target="_blank" rel="noopener"><span class="tw-consult-ic">→</span> 함께할사람 찾기</a>
       </div>
       <p class="tw-sub">강팀은 마케팅 성공경험과 여러 아이디어의<br>20년 노하우가 들어간 AI팀입니다</p>
       <img id="tw-chara" class="tw-chara" src="images/gang1.png" alt="강팀 캐릭터" width="90" height="110">
