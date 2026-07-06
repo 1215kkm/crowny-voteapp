@@ -1571,8 +1571,7 @@ function showActivityMeeting(idx) {
 }
 
 function meetingCaption(title, url) {
-  return "강팀 회의내용\n\"" + (title || "내 앱 아이디어") +
-    "\"\n\n전체 회의 보기 → " + url + "\n제작 @" + CREATOR_THREADS + " #Appter #강팀";
+  return "★★ " + (title || "내 앱 아이디어") + " ★★\n\n전체 회의 보기 → " + url;
 }
 
 function reshareMeeting(m) {
