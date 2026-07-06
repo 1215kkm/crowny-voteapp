@@ -174,9 +174,22 @@ service cloud.firestore {
 
     // ---- 사용자 문서 (강팀 무료 횟수 부여 등) ----
     match /users/{uid} {
-      // 본인 또는 관리자 읽기, 쓰기는 관리자만 (사용자 자가 부여 방지)
+      // 본인 또는 관리자 읽기. teamGrant/paidCredits 등 자산 필드는 관리자(함수)만 쓰기,
+      // 프로필 필드(email/name/photo/provider/lastLoginAt)는 본인 로그인 시 자가 갱신 허용.
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
-      allow write: if isAdmin();
+
+      allow create: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email','name','photo','provider','lastLoginAt'])
+      );
+
+      allow update: if isAdmin() || (
+        request.auth != null && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['email','name','photo','provider','lastLoginAt'])
+      );
+
+      allow delete: if isAdmin();
     }
 
     // ---- 사용자별 관심 미러 컬렉션 ----

@@ -1027,6 +1027,24 @@ export async function aggregateUserActivities() {
   return Array.from(map.values());
 }
 
+// users 컬렉션 전체 (로그인만 하고 글/댓글/좋아요가 없는 회원도 관리자 회원목록에 노출용)
+export async function getAllUsersLite() {
+  const snap = await getDocs(collection(db, "users"));
+  const out = [];
+  snap.forEach((d) => {
+    const data = d.data();
+    out.push({
+      uid: d.id,
+      name: data.name || "",
+      photo: data.photo || "",
+      email: data.email || "",
+      provider: data.provider || "",
+      lastLoginAt: data.lastLoginAt || null
+    });
+  });
+  return out;
+}
+
 // 별칭 import - aggregateUserActivities 가 위에서 쓴 collection/query/limit/getDocs 별칭
 import {
   collection as _c2, query as _q2, limit as _l2, getDocs as _gd2

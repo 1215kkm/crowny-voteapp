@@ -2,7 +2,7 @@
 // App Module - Main Page (인라인 펼치기 + 댓글)
 // ========================================
 
-import { onAuthChange, getCurrentUser } from "./auth.js";
+import { onAuthChange, getCurrentUser, loginWithGoogle, signUpWithEmail, loginWithEmail, resetPassword } from "./auth.js";
 import {
   subscribeToIdeas,
   addIdea,
@@ -100,6 +100,93 @@ const favBtn = document.getElementById("favorites-btn");
 const favModal = document.getElementById("favorites-modal");
 const favModalClose = document.getElementById("favorites-modal-close");
 const favModalList = document.getElementById("favorites-list");
+
+// ---- 로그인/회원가입 모달 (Google + 이메일) ----
+const loginModal = document.getElementById("login-modal");
+const loginModalClose = document.getElementById("login-modal-close");
+const loginModalTitle = document.getElementById("login-modal-title");
+const loginGoogleBtn = document.getElementById("login-google-btn");
+const loginNameGroup = document.getElementById("login-name-group");
+const loginNameInput = document.getElementById("login-name-input");
+const loginEmailInput = document.getElementById("login-email-input");
+const loginPasswordInput = document.getElementById("login-password-input");
+const loginErrorMsg = document.getElementById("login-error-msg");
+const loginSubmitBtn = document.getElementById("login-submit-btn");
+const loginForgotLink = document.getElementById("login-forgot-link");
+const loginSwitchText = document.getElementById("login-switch-text");
+const loginSwitchLink = document.getElementById("login-switch-link");
+let loginMode = "login"; // "login" | "signup"
+
+function openLoginModal() {
+  if (!loginModal) return;
+  loginMode = "login";
+  applyLoginMode();
+  loginModal.classList.remove("hidden");
+}
+function closeLoginModal() {
+  if (!loginModal) return;
+  loginModal.classList.add("hidden");
+  if (loginErrorMsg) { loginErrorMsg.classList.add("hidden"); loginErrorMsg.textContent = ""; }
+  if (loginEmailInput) loginEmailInput.value = "";
+  if (loginPasswordInput) loginPasswordInput.value = "";
+  if (loginNameInput) loginNameInput.value = "";
+}
+function applyLoginMode() {
+  const isSignup = loginMode === "signup";
+  if (loginModalTitle) loginModalTitle.textContent = isSignup ? "회원가입" : "로그인";
+  if (loginNameGroup) loginNameGroup.classList.toggle("hidden", !isSignup);
+  if (loginSubmitBtn) loginSubmitBtn.textContent = isSignup ? "회원가입" : "로그인";
+  if (loginSwitchText) loginSwitchText.textContent = isSignup ? "이미 계정이 있으신가요?" : "아직 계정이 없으신가요?";
+  if (loginSwitchLink) loginSwitchLink.textContent = isSignup ? "로그인" : "회원가입";
+  if (loginErrorMsg) { loginErrorMsg.classList.add("hidden"); loginErrorMsg.textContent = ""; }
+}
+function showLoginError(msg) {
+  if (!loginErrorMsg) return;
+  loginErrorMsg.textContent = msg;
+  loginErrorMsg.classList.remove("hidden");
+}
+
+if (document.getElementById("login-btn")) {
+  document.getElementById("login-btn").addEventListener("click", openLoginModal);
+}
+if (loginModalClose) loginModalClose.addEventListener("click", closeLoginModal);
+if (loginModal) loginModal.addEventListener("click", (e) => { if (e.target === loginModal) closeLoginModal(); });
+if (loginGoogleBtn) loginGoogleBtn.addEventListener("click", async () => {
+  try { await loginWithGoogle(); closeLoginModal(); } catch (e) { /* 사용자가 취소했거나 auth.js가 이미 안내 */ }
+});
+if (loginSwitchLink) loginSwitchLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  loginMode = loginMode === "signup" ? "login" : "signup";
+  applyLoginMode();
+});
+if (loginForgotLink) loginForgotLink.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const email = (loginEmailInput?.value || "").trim();
+  if (!email) { showLoginError("비밀번호를 재설정할 이메일을 입력해주세요."); return; }
+  try {
+    await resetPassword(email);
+    alert("비밀번호 재설정 메일을 보냈어요. 메일함을 확인해주세요.");
+  } catch (e2) { showLoginError(e2.message || "메일 전송에 실패했어요."); }
+});
+if (loginSubmitBtn) loginSubmitBtn.addEventListener("click", async () => {
+  const email = (loginEmailInput?.value || "").trim();
+  const password = loginPasswordInput?.value || "";
+  const name = (loginNameInput?.value || "").trim();
+  if (!email || !password) { showLoginError("이메일과 비밀번호를 입력해주세요."); return; }
+  loginSubmitBtn.disabled = true;
+  try {
+    if (loginMode === "signup") {
+      await signUpWithEmail(email, password, name);
+    } else {
+      await loginWithEmail(email, password);
+    }
+    closeLoginModal();
+  } catch (e) {
+    showLoginError(e.message || "처리 중 오류가 발생했어요.");
+  } finally {
+    loginSubmitBtn.disabled = false;
+  }
+});
 
 // 프로필(내 활동) + 목표 배지
 const profileBtn = document.getElementById("profile-btn");
