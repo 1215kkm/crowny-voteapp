@@ -485,25 +485,37 @@
     return false;
   }
 
+  // 실제 게시 여부는 알 방법이 없으므로(붙여넣기/게시는 다른 앱에서 일어남) 붙여넣고 게시할
+  // 시간을 준 뒤 본인 확인을 받아야만 적립 — 복사/공유창만 열어도 바로 적립되던 것을 방지.
+  function confirmShareBonus() {
+    setTimeout(function () {
+      if (confirm("게시를 완료하셨나요?\n확인을 누르면 질문 " + shareBonusN + "회가 적립됩니다.")) {
+        grantShareBonus();
+      }
+    }, 3000);
+  }
+
   // 공유 문구(멘트+링크)만 스레드/인스타로 — 이미지는 별도 '이미지 저장' 버튼 사용.
   function shareMeeting(title, mode) {
-    grantShareBonus(); // SNS 공유 보너스 (하루 최대 3번)
     var caption = shareCaption(title);
     copyText(caption); // 어떤 경로든 문구는 항상 복사해 둔다
 
     if (!isMobileDevice()) {
       if (mode === "threads") {
         var win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
-        if (!win) alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요.");
+        if (!win) { alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요."); return; }
       } else {
         alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
       }
+      confirmShareBonus();
       return;
     }
 
     // 모바일: 문구만 공유시트로 (스레드 선택 시 글에 자동 입력)
     if (navigator.share) {
-      navigator.share({ text: caption }).catch(function (e) {
+      navigator.share({ text: caption }).then(function () {
+        confirmShareBonus(); // 공유시트에서 앱을 골라 넘긴 경우만 — 취소(AbortError)는 제외
+      }).catch(function (e) {
         if (e && e.name === "AbortError") return;
         alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
       });

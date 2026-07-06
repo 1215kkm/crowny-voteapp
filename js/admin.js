@@ -30,6 +30,7 @@ import {
   personaPostComment,
   personaPostIdea,
   aggregateUserActivities,
+  getAllUsersLite,
   listSubscribers,
   listEmailsByIdea,
   getUserTeamGrant,
@@ -1199,7 +1200,26 @@ async function loadMembersList(force) {
   membersListEl.innerHTML = '<p class="empty">집계 중... (글 수에 따라 1~10초 걸립니다)</p>';
   try {
     if (force || allMembersCache.length === 0) {
-      allMembersCache = await aggregateUserActivities();
+      const [activityMembers, loginUsers] = await Promise.all([
+        aggregateUserActivities(),
+        getAllUsersLite().catch(() => [])
+      ]);
+      const byUid = new Map(activityMembers.map((m) => [m.uid, m]));
+      loginUsers.forEach((u) => {
+        const existing = byUid.get(u.uid);
+        if (existing) {
+          // 활동 집계엔 없던 이름/사진/이메일 보강 (글보다 로그인 프로필이 최신일 수 있음)
+          existing.name = existing.name && existing.name !== "(이름 없음)" ? existing.name : (u.name || existing.name);
+          existing.photo = existing.photo || u.photo;
+          existing.email = u.email || existing.email;
+        } else {
+          byUid.set(u.uid, {
+            uid: u.uid, name: u.name || "(이름 없음)", photo: u.photo || "", email: u.email || "",
+            ideas: [], comments: [], likes: [], waitlists: []
+          });
+        }
+      });
+      allMembersCache = Array.from(byUid.values());
     }
     filterMembers();
   } catch (e) {
@@ -1228,6 +1248,7 @@ function filterMembers() {
       <div class="member-head">
         <img class="member-avatar" src="${escapeHtml(m.photo || '')}" alt="">
         <strong>${escapeHtml(m.name)}</strong>
+        ${m.email ? `<span class="muted">${escapeHtml(m.email)}</span>` : ""}
         <code class="muted">${escapeHtml(m.uid)}</code>
         <span class="member-counts">
           글 ${m.ideas.length} · 댓글 ${m.comments.length} · 관심 ${m.likes.length} · 대기 ${m.waitlists.length}
