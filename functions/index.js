@@ -396,6 +396,7 @@ exports.viewMeeting = onRequest(
       return;
     }
     const title = escHtml((data.title || "강팀 회의").slice(0, 100));
+    const promptText = escHtml(String(data.prompt || "").slice(0, 300));
     let body = String(data.html || "").replace(/<div class="tw-m-title"[^>]*>[\s\S]*?<\/div>/i, "");
     // 허용 태그만 (div·b·span·ul·li) 남기고 나머지 제거 — 저장값은 우리 포맷이지만 방어적으로
     body = body.replace(/<(?!\/?(?:div|b|span|ul|li)\b)[^>]*>/gi, "");
@@ -463,6 +464,7 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .tw-next{margin-top:12px;padding:12px 14px;background:rgba(37,99,235,.06);border:1px solid var(--line);border-radius:10px;font-size:14px;color:#2563eb}
 .tw-next>b{display:block;color:#2563eb;margin-bottom:8px}
 .tw-next-opt{display:inline-block;margin:3px 6px 3px 0;padding:6px 12px;border-radius:999px;border:1.5px solid #2563eb;color:#2563eb;font-weight:700;font-size:13px}
+.reqbox{font-size:14px;color:var(--dim);line-height:1.55;background:rgba(138,56,245,.06);border-left:3px solid var(--acc1);border-radius:8px;padding:8px 12px;margin:6px 0 14px}
 .cta{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;display:block;text-align:center;width:min(360px,88vw);background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:999px;box-shadow:0 10px 30px rgba(213,58,107,.45)}
 .wrap{padding-bottom:110px}
 .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}
@@ -471,12 +473,13 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
   <div class="lbl">강팀 회의록</div>
   <div class="addr">강팀 주소 : <a href="${LIVE}" target="_blank" rel="noopener">appter.co.kr</a></div>
   <h1>${title}</h1>
-  <div class="sub">${dt} · 안건: ${title}</div>
+  <div class="sub">${dt}</div>
   <div class="mem"><span class="ml">참여</span>
     <span class="chip daepyo">강대표</span><span class="chip gdi">강디</span>
     <span class="chip gdev">강개발</span><span class="chip gchk">강체크</span><span class="chip abang">아뱅</span>
     ${data.requesterName ? '<span class="chip req">제안 · ' + escHtml(String(data.requesterName).slice(0, 20)) + "</span>" : ""}
   </div>
+  ${promptText ? '<div class="reqbox">📝 회의 안건: "' + promptText + (String(data.prompt || "").length > 300 ? "…" : "") + '"</div>' : ""}
   ${body}
 </div>
 <a class="cta" href="${CTA_URL}">나도 강팀과 회의하기 →</a>

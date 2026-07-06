@@ -227,16 +227,105 @@ teamLogEl?.addEventListener("click", (e) => {
   if (itemBtn) {
     const m = teamLogData[parseInt(itemBtn.getAttribute("data-idx"), 10)];
     if (!m || !teamLogView) return;
-    const { day, time } = fmtDay(m.createdAt);
-    const who = m.requesterName || (m.uid ? "uid:" + m.uid.slice(0, 10) + "…" : "?");
-    teamLogView.innerHTML =
-      '<div class="tlv-title">' + escapeHtml(m.title || "강팀 회의") + "</div>" +
-      '<div class="tlv-meta">' + day + " " + time + " · 작성자: <b>" + escapeHtml(who) + "</b> · 안건: " + escapeHtml(m.prompt || m.title || "") + "</div>" +
-      (m.html || "");
-    teamLogView.classList.remove("hidden");
-    teamLogView.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    renderTeamLogDetail(m);
   }
 });
+
+function renderTeamLogDetail(m) {
+  const { day, time } = fmtDay(m.createdAt);
+  const who = m.requesterName || (m.uid ? "uid:" + m.uid.slice(0, 10) + "…" : "?");
+  const reqBox = m.prompt
+    ? '<div class="tw-m-reqtext">📝 회의 안건: "' + escapeHtml(String(m.prompt).slice(0, 300)) + (String(m.prompt).length > 300 ? "…" : "") + '"</div>'
+    : "";
+  teamLogView.innerHTML =
+    '<div class="tlv-actions">' +
+      '<button type="button" class="amv-btn share" data-tlv-share>스레드로 퍼가기</button>' +
+      '<button type="button" class="amv-btn download" data-tlv-dl>📷 이미지 다운로드</button>' +
+    '</div>' +
+    '<div class="tlv-title">' + escapeHtml(m.title || "강팀 회의") + "</div>" +
+    '<div class="tlv-meta">' + day + " " + time + " · 작성자: <b>" + escapeHtml(who) + "</b></div>" +
+    reqBox +
+    (m.html || "");
+  teamLogView.classList.remove("hidden");
+  teamLogView.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const shareBtn = teamLogView.querySelector("[data-tlv-share]");
+  if (shareBtn) shareBtn.addEventListener("click", () => shareTeamLogMeeting(m));
+  const dlBtn = teamLogView.querySelector("[data-tlv-dl]");
+  if (dlBtn) dlBtn.addEventListener("click", () => downloadTeamLogImage(m, dlBtn));
+}
+
+function shareTeamLogMeeting(m) {
+  const url = "https://appter.co.kr/m/" + m.id;
+  const caption = "★★ " + (m.title || "강팀 회의") + " ★★\n\n전체 회의 보기 → " + url;
+  try {
+    if (navigator.clipboard) navigator.clipboard.writeText(caption);
+    else {
+      const ta = document.createElement("textarea");
+      ta.value = caption; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+    }
+  } catch (e) {}
+  window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+  showToast("공유 문구를 복사했어요. 스레드 작성창에 붙여넣으세요", "success");
+}
+
+let _teamLogH2C = null;
+function loadTeamLogH2C() {
+  if (window.html2canvas) return Promise.resolve();
+  if (!_teamLogH2C) {
+    _teamLogH2C = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  return _teamLogH2C;
+}
+
+async function downloadTeamLogImage(m, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "생성 중..."; }
+  let pad = null;
+  try {
+    await loadTeamLogH2C();
+    const { day, time } = fmtDay(m.createdAt);
+    const who = m.requesterName || (m.uid ? "uid:" + m.uid.slice(0, 10) + "…" : "?");
+    const reqBox = m.prompt
+      ? '<div class="tw-m-reqtext">📝 회의 안건: "' + escapeHtml(String(m.prompt).slice(0, 300)) + (String(m.prompt).length > 300 ? "…" : "") + '"</div>'
+      : "";
+    pad = document.createElement("div");
+    pad.style.cssText = "position:fixed;left:-99999px;top:0;width:400px;padding:22px;box-sizing:border-box;background:#ffffff;font-size:16px;";
+    const light = {
+      "--color-bg": "#ffffff", "--color-surface": "#ffffff", "--color-subtle": "#f9fafb",
+      "--color-border": "#eaecf0", "--color-text": "#101828", "--color-text-secondary": "#475467",
+      "--color-text-light": "#667085", "--color-accent-start": "#8a38f5", "--color-accent-end": "#d53a6b"
+    };
+    for (const k in light) pad.style.setProperty(k, light[k]);
+    pad.innerHTML =
+      '<div class="team-log-view" style="max-height:none;overflow:visible;padding:0;border:none;background:transparent;">' +
+        '<div style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#d53a6b;text-transform:uppercase;">강팀 회의록</div>' +
+        '<div style="font-size:20px;font-weight:800;margin:8px 0 4px;color:#101828;">' + escapeHtml(m.title || "강팀 회의") + '</div>' +
+        '<div style="font-size:13px;color:#667085;margin-bottom:10px;">' + day + " " + time + " · 작성자: " + escapeHtml(who) + '</div>' +
+        reqBox +
+        (m.html || "") +
+      '</div>';
+    document.body.appendChild(pad);
+    const canvas = await window.html2canvas(pad, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", 0.9));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const safeName = String(m.title || "강팀회의").replace(/[^가-힣a-zA-Z0-9]/g, "").slice(0, 24) || "강팀회의";
+    a.href = url; a.download = "appter.co.kr-" + safeName + ".jpg";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) {
+    showToast("이미지 생성 실패: " + (e.message || e), "");
+  } finally {
+    if (pad && pad.parentNode) pad.parentNode.removeChild(pad);
+    if (btn) { btn.disabled = false; btn.textContent = "📷 이미지 다운로드"; }
+  }
+}
 
 const aiTargetIdea = document.getElementById("ai-target-idea");
 const aiCommentCount = document.getElementById("ai-comment-count");
