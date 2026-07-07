@@ -10,6 +10,7 @@
   var followBonusN = 3;            // 스친추가 보너스 (관리자 설정)
   var signupBonusN = 0;           // 가입(로그인) 보너스 (관리자 설정)
   var shareBonusN = 3;            // SNS 공유 보너스 (관리자 설정)
+  var visitBonusN = 1;            // 실유입 보상 — 내 링크로 새 방문자 유입 시 (관리자 설정)
   var REGEN_MS = 12 * 60 * 60 * 1000;  // 12시간마다 질문 1회 재충전
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
@@ -58,6 +59,7 @@
       followBonusN = c.followBonus;
       signupBonusN = c.signupBonus;
       shareBonusN = c.shareBonus;
+      if (typeof c.visitBonus === "number") visitBonusN = c.visitBonus;
       meetingProviderVal = c.meetingProvider || "gemini";
       renderQuota();
       renderModelBadge();
@@ -534,6 +536,14 @@
     }, 1200);
   }
 
+  // 복사 안내창에 함께 띄울 실유입 보상 안내 — 로그인 사용자만 크레딧 대상이라 그 경우만 표시
+  function referralRewardLine() {
+    var u = window.__currentUser;
+    if (!(u && u.uid)) return "\n\n💡 로그인 후 퍼가면, 이 링크로 새 친구가 들어올 때마다 질문이 추가로 적립돼요!";
+    if (visitBonusN <= 0) return "";
+    return "\n\n🎁 복사된 글 속 링크로 새 친구가 들어오면 질문 " + visitBonusN + "회가 추가로 적립돼요! (내 계정으로 자동 적립)";
+  }
+
   // 공유 문구(멘트+링크)만 스레드/인스타로 — 이미지는 별도 '이미지 저장' 버튼 사용.
   function shareMeeting(title, mode) {
     var caption = shareCaption(title);
@@ -542,9 +552,9 @@
     if (!isMobileDevice()) {
       if (mode === "threads") {
         var win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
-        if (!win) { alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요."); return; }
+        if (!win) { alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요." + referralRewardLine()); return; }
       } else {
-        alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
+        alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!" + referralRewardLine());
       }
       confirmShareBonus();
       return;
@@ -556,11 +566,11 @@
         confirmShareBonus(); // 공유시트에서 앱을 골라 넘긴 경우만 — 취소(AbortError)는 제외
       }).catch(function (e) {
         if (e && e.name === "AbortError") return;
-        alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
+        alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!" + referralRewardLine());
       });
       return;
     }
-    alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
+    alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!" + referralRewardLine());
   }
 
   // ---- 결과 렌더 ----
