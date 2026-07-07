@@ -80,6 +80,20 @@
   .tw-run:disabled { opacity: .55; cursor: not-allowed; }
   .tw-quota { font-size: 16px; color: var(--color-text-secondary); text-align: center; }
   .tw-quota b { color: var(--color-accent-start); }
+  .tw-img-attach { margin: 8px 2px 4px; }
+  .tw-img-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    background: var(--color-subtle); border: 1px dashed var(--color-border); border-radius: var(--radius-md);
+    color: var(--color-text); font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 14px; }
+  .tw-img-btn:hover { border-color: var(--color-accent-start); }
+  .tw-img-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .tw-img-note { font-weight: 500; font-size: 12px; color: var(--color-text-light); }
+  .tw-img-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .tw-img-thumb { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--color-border); background: var(--color-subtle); }
+  .tw-img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tw-img-del { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; line-height: 18px;
+    text-align: center; border: none; border-radius: 50%; cursor: pointer; font-size: 13px; font-weight: 900;
+    color: #fff; background: rgba(0,0,0,.62); padding: 0; }
   .tw-search-wrap { display: flex; align-items: center; gap: 7px; margin: 4px 2px 10px; font-size: 14px;
     font-weight: 700; color: var(--color-text); cursor: pointer; }
   .tw-search-wrap input { width: 17px; height: 17px; accent-color: var(--color-accent-start); }
@@ -752,6 +766,12 @@
         </a>
         <div class="tw-load-float-msg" id="tw-load-float-msg">강팀이 모여 안건을 읽는 중…</div>
       </div>
+    </div>
+
+    <div class="tw-img-attach">
+      <button type="button" id="tw-img-btn" class="tw-img-btn">🖼 이미지 첨부 <span class="tw-img-note">(최대 3장 · 강팀이 보고 회의해요)</span></button>
+      <input type="file" id="tw-img-input" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      <div id="tw-img-preview" class="tw-img-preview"></div>
     </div>
 
     <label id="tw-search-wrap" class="tw-search-wrap" style="display:none">
