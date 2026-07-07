@@ -3,6 +3,7 @@
 // ========================================
 
 import { onAuthChange, getCurrentUser, loginWithGoogle, signUpWithEmail, loginWithEmail, resetPassword } from "./auth.js";
+import { buildMeetingCaption } from "./share-caption.js";
 import {
   subscribeToIdeas,
   addIdea,
@@ -1597,13 +1598,10 @@ function showActivityMeeting(idx) {
   activityMeetingView.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
-function meetingCaption(title, url) {
-  return "★★ " + (title || "내 앱 아이디어") + " ★★\n\n전체 회의 보기 → " + url;
-}
-
 function reshareMeeting(m) {
   const url = MEETING_SHARE_BASE + m.id;
-  const caption = meetingCaption(m.title, url);
+  // 위젯의 새 회의 공유와 동일하게 팀원 발언을 각각 일부만 담는다(제목+링크만 X).
+  const caption = buildMeetingCaption(m.html, m.title, url);
   window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
 }
 

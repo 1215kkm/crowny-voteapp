@@ -3,6 +3,7 @@
 // ========================================
 
 import { onAuthChange, getCurrentUser } from "./auth.js";
+import { buildMeetingCaption } from "./share-caption.js";
 import {
   subscribeToIdeas,
   adminUpdateIdea,
@@ -257,7 +258,8 @@ function renderTeamLogDetail(m) {
 
 function shareTeamLogMeeting(m) {
   const url = "https://appter.co.kr/m/" + m.id;
-  const caption = "★★ " + (m.title || "강팀 회의") + " ★★\n\n전체 회의 보기 → " + url;
+  // 위젯의 새 회의 공유와 동일하게 팀원 발언을 각각 일부만 담는다(제목+링크만 X).
+  const caption = buildMeetingCaption(m.html, m.title || "강팀 회의", url);
   try {
     if (navigator.clipboard) navigator.clipboard.writeText(caption);
     else {
