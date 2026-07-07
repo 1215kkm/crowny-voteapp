@@ -504,14 +504,34 @@
     return false;
   }
 
-  // 실제 게시 여부는 알 방법이 없으므로(붙여넣기/게시는 다른 앱에서 일어남) 붙여넣고 게시할
-  // 시간을 준 뒤 본인 확인을 받아야만 적립 — 복사/공유창만 열어도 바로 적립되던 것을 방지.
+  // 실제 게시 여부는 알 방법이 없으므로(붙여넣기/게시는 다른 앱에서 일어남) 게시글의 '공유 링크'를
+  // 직접 붙여넣게 하고, 그때만 적립한다 — 복사/공유창만 열어도 바로 적립되던 것을 방지.
+  // 적립 횟수는 항상 관리자 최신 설정(shareBonus)을 다시 읽어와 맞춘다(초기 로드 실패/지연 대비).
   function confirmShareBonus() {
     setTimeout(function () {
-      if (confirm("게시를 완료하셨나요?\n확인을 누르면 질문 " + shareBonusN + "회가 적립됩니다.")) {
+      function ask() {
+        if (shareBonusN <= 0) return; // 관리자가 공유 보너스를 0으로 둔 경우 적립 없음
+        var link = prompt(
+          "게시 완료하셨나요? 👏\n\n" +
+          "공유하신 게시글의 링크 주소를 붙여넣으시면 질문 " + shareBonusN + "회가 적립됩니다.\n" +
+          "(스레드/인스타에 올린 글의 주소를 복사해서 붙여넣어 주세요)"
+        );
+        if (link === null) return;             // 취소
+        link = String(link).trim();
+        if (!/^https?:\/\/\S+|\S+\.[a-z]{2,}\/?/i.test(link)) {
+          alert("링크 주소가 올바르지 않아요. 게시한 글의 주소를 붙여넣어야 적립돼요.");
+          return;
+        }
         grantShareBonus();
+        alert("적립 완료! 질문 " + shareBonusN + "회가 추가됐어요. 🎉");
       }
-    }, 3000);
+      if (window.appMeetings && window.appMeetings.config) {
+        window.appMeetings.config().then(function (c) {
+          if (c && typeof c.shareBonus === "number") shareBonusN = c.shareBonus;
+          ask();
+        }).catch(ask);
+      } else { ask(); }
+    }, 1200);
   }
 
   // 공유 문구(멘트+링크)만 스레드/인스타로 — 이미지는 별도 '이미지 저장' 버튼 사용.
@@ -579,7 +599,7 @@
       '<div class="tw-result-body">' + metaHtml(title) + bodyHtml + "</div>" +
       '<div class="tw-share tw-share-sticky">' +
         '<button type="button" class="tw-share-btn tw-share-threads">스레드로 퍼가기</button>' +
-        '<button type="button" class="tw-share-btn tw-share-img" disabled>📷 이미지 준비 중…</button>' +
+        '<button type="button" class="tw-share-btn tw-share-img" disabled>이미지 준비 중…</button>' +
       "</div>" +
       '<div class="tw-credit">이 회의 만든 곳 · <a href="https://www.threads.net/@' + CREATOR_THREADS + '" target="_blank" rel="noopener">@' + CREATOR_THREADS + "</a></div>";
     resultEl.classList.remove("hidden");
@@ -605,9 +625,9 @@
     preCapturedBlob = null;
     captureMeetingBlob().then(function (b) {
       preCapturedBlob = b;
-      if (b && imgBtn) { imgBtn.disabled = false; imgBtn.textContent = "📷 회의 이미지 저장"; }
-      else if (imgBtn) { imgBtn.textContent = "📷 이미지 생성 실패"; }
-    }).catch(function () { if (imgBtn) imgBtn.textContent = "📷 이미지 생성 실패"; });
+      if (b && imgBtn) { imgBtn.disabled = false; imgBtn.textContent = "회의 이미지 저장"; }
+      else if (imgBtn) { imgBtn.textContent = "이미지 생성 실패"; }
+    }).catch(function () { if (imgBtn) imgBtn.textContent = "이미지 생성 실패"; });
   }
 
   // 이미지 저장: 모바일=공유창(사진첩 '이미지 저장' 가능), 그 외=다운로드 + 새 탭으로 열기(길게 눌러 사진에 추가 가능)
