@@ -10,6 +10,7 @@
   var followBonusN = 3;            // 스친추가 보너스 (관리자 설정)
   var signupBonusN = 0;           // 가입(로그인) 보너스 (관리자 설정)
   var shareBonusN = 3;            // SNS 공유 보너스 (관리자 설정)
+  var visitBonusN = 1;            // 실유입 보상 — 내 링크로 새 방문자 유입 시 (관리자 설정)
   var REGEN_MS = 12 * 60 * 60 * 1000;  // 12시간마다 질문 1회 재충전
   var LS_COUNT = "appter_team_used";   // 사용한 횟수
   var LS_BONUS = "appter_team_bonus";  // 적립 횟수 (스친추가 등)
@@ -58,6 +59,7 @@
       followBonusN = c.followBonus;
       signupBonusN = c.signupBonus;
       shareBonusN = c.shareBonus;
+      if (typeof c.visitBonus === "number") visitBonusN = c.visitBonus;
       meetingProviderVal = c.meetingProvider || "gemini";
       renderQuota();
       renderModelBadge();
@@ -138,18 +140,12 @@
     } catch (e) { return ""; }
   }
 
-  // URL ?ref=<공유자uid> 로 들어오면 실유입 보상 요청 (서버가 자기제외·중복·상한 판정)
+  // URL ?ref=<공유자uid> 출처만 저장 — 보상은 '방문'이 아니라 이 방문자가 실제 '가입'할 때
+  // app.js(maybeClaimReferralSignup)에서 지급한다. (단순 접속만으로 적립되던 악용 방지)
   try {
     var p = new URLSearchParams(location.search);
     var ref = p.get("ref");
-    if (ref) {
-      localStorage.setItem("appter_came_from_ref", ref);
-      setTimeout(function () {
-        if (window.appMeetings && window.appMeetings.recordVisit) {
-          window.appMeetings.recordVisit(ref, visitorId());
-        }
-      }, 1200);
-    }
+    if (ref) localStorage.setItem("appter_came_from_ref", ref);
   } catch (e) {}
 
   // ---- 질문 횟수 ----
@@ -484,11 +480,27 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
+  // 레거시 복사 (Clipboard API 없는 환경) — iOS에서도 되도록 readonly + setSelectionRange
+  function legacyCopy(t) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = t;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.top = "-9999px"; ta.style.left = "0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { ta.setSelectionRange(0, t.length); } catch (e) {}
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
+  // 최신 Clipboard API 우선(사용자 제스처 안에서 iOS/안드로이드 확실히 복사), 실패 시 레거시
   function copyText(t) {
-    var ta = document.createElement("textarea");
-    ta.value = t; document.body.appendChild(ta); ta.select();
-    try { document.execCommand("copy"); } catch (e) {}
-    document.body.removeChild(ta);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).catch(function () { legacyCopy(t); });
+      return;
+    }
+    legacyCopy(t);
   }
 
   function openThreadsIntent(caption) {
@@ -534,33 +546,31 @@
     }, 1200);
   }
 
-  // 공유 문구(멘트+링크)만 스레드/인스타로 — 이미지는 별도 '이미지 저장' 버튼 사용.
+  // 복사 안내창에 함께 띄울 실유입 보상 안내 — 로그인 사용자만 크레딧 대상이라 그 경우만 표시.
+  // 보상은 '가입 기준': 링크로 들어온 사람이 실제 가입해야 지급된다.
+  function referralRewardLine() {
+    var u = window.__currentUser;
+    if (!(u && u.uid)) return "\n\n💡 로그인 후 퍼가면, 이 링크로 새 친구가 가입할 때마다 질문이 적립돼요!";
+    if (visitBonusN <= 0) return "";
+    return "\n\n🎁 복사된 글 속 링크로 새 친구가 가입하면 질문 " + visitBonusN + "회가 적립돼요! (내 계정으로 자동 적립)";
+  }
+
+  // 공유 문구(멘트+링크)만 복사해서 안내 — 아이폰 공유창(navigator.share)은 쓰지 않는다.
+  // 데스크톱 '스레드로 퍼가기'만 스레드 작성창을 새 탭으로 열어준다(문구도 함께 복사).
   function shareMeeting(title, mode) {
     var caption = shareCaption(title);
-    copyText(caption); // 어떤 경로든 문구는 항상 복사해 둔다
+    copyText(caption); // 항상 클립보드에 복사
 
-    if (!isMobileDevice()) {
-      if (mode === "threads") {
-        var win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
-        if (!win) { alert("팝업이 막혀 작성창을 못 열었어요. 공유 문구를 복사했으니 스레드에 붙여넣어 주세요."); return; }
-      } else {
-        alert("공유 문구를 복사했어요. 인스타/스레드에 붙여넣기 하세요!");
-      }
+    if (!isMobileDevice() && mode === "threads") {
+      var win = window.open("https://www.threads.net/intent/post?text=" + encodeURIComponent(caption), "_blank");
+      if (!win) { alert("회의 요약이 복사되었습니다. SNS에 가서 붙여넣으세요!" + referralRewardLine()); confirmShareBonus(); return; }
       confirmShareBonus();
       return;
     }
 
-    // 모바일: 문구만 공유시트로 (스레드 선택 시 글에 자동 입력)
-    if (navigator.share) {
-      navigator.share({ text: caption }).then(function () {
-        confirmShareBonus(); // 공유시트에서 앱을 골라 넘긴 경우만 — 취소(AbortError)는 제외
-      }).catch(function (e) {
-        if (e && e.name === "AbortError") return;
-        alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
-      });
-      return;
-    }
-    alert("복사됐습니다. 스레드에 가서 붙여넣기해주세요!");
+    // 모바일 + 그 외: 복사 안내만 (공유창 안 뜸)
+    alert("회의 요약이 복사되었습니다. SNS에 가서 붙여넣으세요!" + referralRewardLine());
+    confirmShareBonus();
   }
 
   // ---- 결과 렌더 ----

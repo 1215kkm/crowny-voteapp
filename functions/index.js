@@ -331,37 +331,48 @@ exports.claimSignup = onCall(
   }
 );
 
-// ── 실유입 보상: ?ref=<sharerUid> 링크로 새 방문자 착지 시 공유자에게 +N ──
+// ── (구) 방문 기준 실유입 보상 — 폐기됨. 단순 접속만으로 적립돼 악용 소지가 있어 '가입 기준'으로 전환.
+//    혹시 캐시된 옛 클라이언트가 호출해도 적립하지 않는다. (아래 claimReferralSignup 사용)
 exports.recordReferralVisit = onCall(
   { region: "us-central1" },
-  async (request) => {
-    const sharerUid = String((request.data && request.data.sharerUid) || "").trim();
-    const visitorId = String((request.data && request.data.visitorId) || "").slice(0, 80).trim();
-    if (!sharerUid || !visitorId) return { credited: false, reason: "missing" };
-    // 자기 자신 제외 (로그인 방문자 uid == 공유자, 또는 visitorId == 공유자 uid)
-    const callerUid = request.auth && request.auth.uid;
-    if (callerUid === sharerUid || visitorId === sharerUid) return { credited: false, reason: "self" };
+  async () => ({ credited: false, reason: "deprecated" })
+);
 
+// ── 실유입 보상(가입 기준): ?ref=<sharerUid> 링크로 들어온 사람이 '가입(첫 로그인)'하면 공유자에게 +N ──
+//    - 추천받은 사람 한 명당 평생 1회만 유발 (users/{caller}.referralSignupClaimed 플래그)
+//    - 자기 자신·게스트 id 제외, 공유자 기준 하루 상한(teamVisitDailyCap) 유지
+exports.claimReferralSignup = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const callerUid = request.auth && request.auth.uid;
+    if (!callerUid) throw new HttpsError("unauthenticated", "로그인이 필요합니다");
+    const sharerUid = String((request.data && request.data.sharerUid) || "").trim();
+    // 유효성: 없거나 자기 자신이거나 게스트 id(짧음 — 실제 uid는 28자)면 무시
+    if (!sharerUid || sharerUid === callerUid || sharerUid.length < 20) {
+      return { credited: false, reason: "invalid" };
+    }
     const db = admin.firestore();
     const day = new Date().toISOString().slice(0, 10);
-    const dedupRef = db.doc("referrals/" + sharerUid + "/visits/" + visitorId + "_" + day);
+    const callerRef = db.doc("users/" + callerUid);
     const dayRef = db.doc("referrals/" + sharerUid + "/days/" + day);
-    const userRef = db.doc("users/" + sharerUid);
+    const sharerRef = db.doc("users/" + sharerUid);
 
     return await db.runTransaction(async (tx) => {
-      const dedup = await tx.get(dedupRef);
-      if (dedup.exists) return { credited: false, reason: "dup" };
+      const callerSnap = await tx.get(callerRef);
+      const cd = callerSnap.exists ? callerSnap.data() : {};
+      if (cd.referralSignupClaimed) return { credited: false, reason: "already" };
       const sset = await tx.get(db.doc("settings/admin"));
       const s = sset.exists ? sset.data() : {};
-      const visitBonus = typeof s.teamVisitBonus === "number" ? s.teamVisitBonus : 1;
+      const bonus = typeof s.teamVisitBonus === "number" ? s.teamVisitBonus : 1;
       const cap = typeof s.teamVisitDailyCap === "number" ? s.teamVisitDailyCap : 5;
       const dayCnt = await tx.get(dayRef);
       const already = dayCnt.exists ? (dayCnt.data().count || 0) : 0;
-      tx.set(dedupRef, { at: admin.firestore.FieldValue.serverTimestamp() });
-      if (visitBonus <= 0 || already >= cap) return { credited: false, reason: "cap" };
+      // 이 사용자는 앞으로 다시는 추천 보상을 유발하지 않도록 표시(중복 방지)
+      tx.set(callerRef, { referralSignupClaimed: true, referredBy: sharerUid }, { merge: true });
+      if (bonus <= 0 || already >= cap) return { credited: false, reason: "cap" };
       tx.set(dayRef, { count: already + 1 }, { merge: true });
-      tx.set(userRef, { refBonus: admin.firestore.FieldValue.increment(visitBonus) }, { merge: true });
-      return { credited: true, bonus: visitBonus };
+      tx.set(sharerRef, { refBonus: admin.firestore.FieldValue.increment(bonus) }, { merge: true });
+      return { credited: true, bonus };
     });
   }
 );

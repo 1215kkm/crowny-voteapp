@@ -218,6 +218,9 @@ window.appMeetings = {
   idToken: () => { const u = getCurrentUser(); return u ? u.getIdToken().catch(() => "") : Promise.resolve(""); },
   recordVisit: (sharerUid, visitorId) => (functions
     ? httpsCallable(functions, "recordReferralVisit")({ sharerUid, visitorId }).then((r) => r.data).catch(() => null)
+    : Promise.resolve(null)),
+  claimReferralSignup: (sharerUid) => (functions
+    ? httpsCallable(functions, "claimReferralSignup")({ sharerUid }).then((r) => r.data).catch(() => null)
     : Promise.resolve(null))
 };
 const shareModal = document.getElementById("share-success-modal");
@@ -418,7 +421,7 @@ async function handleAuthState(user) {
     userPhoto.alt = user.displayName || "";
     userName.textContent = user.displayName || "사용자";
     updateProfileBadge(user);
-    maybeOpenReferralModal(user);
+    maybeClaimReferralSignup(user);
 
     if (subscribeEmailForm) subscribeEmailForm.classList.add("hidden");
     if (subscribeCheckboxArea) subscribeCheckboxArea.classList.remove("hidden");
@@ -1349,9 +1352,29 @@ const referralModal = document.getElementById("referral-modal");
 const referralInput = document.getElementById("referral-input");
 let referralShownThisSession = false;
 
+// 추천 링크(?ref=uid)로 들어온 사람이 '가입(첫 로그인)'할 때만 공유자에게 실유입 보상 지급.
+// 단순 방문으로는 지급하지 않는다(악용 방지). 서버가 자기제외·게스트제외·1회한정·하루상한 판정.
+async function maybeClaimReferralSignup(user) {
+  if (!user || !window.appMeetings || !window.appMeetings.claimReferralSignup) return;
+  let ref = "";
+  try { ref = localStorage.getItem("appter_came_from_ref") || ""; } catch (e) {}
+  if (!ref) return;
+  try { if (localStorage.getItem("appter_ref_signup_claimed")) return; } catch (e) {}
+  // 갓 가입한(첫 로그인) 계정만 — 기존 회원이 남의 링크 눌러 보상 유발하는 것 방지
+  const meta = user.metadata || {};
+  const isFirstLogin = meta.creationTime && meta.lastSignInTime && meta.creationTime === meta.lastSignInTime;
+  if (!isFirstLogin) {
+    try { localStorage.setItem("appter_ref_signup_claimed", "1"); } catch (e) {}
+    return;
+  }
+  try {
+    await window.appMeetings.claimReferralSignup(ref);
+  } catch (e) { /* 조용히 */ }
+  try { localStorage.setItem("appter_ref_signup_claimed", "1"); } catch (e) {}
+}
+
+// (미사용) 예전 '추천인이 있나요?' 모달 — 유지만, 호출 안 함
 async function maybeOpenReferralModal(user) {
-  // '추천인이 있나요?' 모달 비활성화 — 수집한 referredBy 를 쓰는 곳이 없어 제거함.
-  // 실제 추천 보상은 공유링크(?ref=uid) + recordReferralVisit 자동 시스템이 담당한다.
   return;
   // eslint-disable-next-line no-unreachable
   if (!referralModal || !user || referralShownThisSession) return;

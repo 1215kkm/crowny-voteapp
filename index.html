@@ -248,13 +248,22 @@
     background: rgba(128,128,128,0.14); color: var(--color-text-light); }
   .tw-steps span.done { background: rgba(138,56,245,0.15); color: var(--color-text); }
   /* 이어서 회의: 다음 방향 보기 + 이어가기 버튼 */
-  .tw-next { margin: 12px 0; padding: 12px 14px; background: rgba(37,99,235,0.06);
-    border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 14px; color: #2563eb; }
-  .tw-next > b { display: block; color: #2563eb; margin-bottom: 8px; }
+  .tw-next { margin: 12px 0; padding: 12px 14px; background: rgba(59,130,246,0.10);
+    border: 1px solid rgba(59,130,246,0.30); border-radius: var(--radius-md); font-size: 14px; color: #2f6fed; }
+  .tw-next > b { display: block; color: #2f6fed; margin-bottom: 8px; }
   .tw-next-opt { display: inline-block; margin: 3px 6px 3px 0; padding: 7px 13px; border-radius: var(--radius-full);
-    border: 1.5px solid #2563eb; color: #2563eb;
+    border: 1.5px solid #3b82f6; color: #2f6fed;
     font-weight: 700; font-size: 13px; cursor: pointer; transition: var(--transition); }
-  .tw-next-opt:hover { background: #2563eb; color: #fff; border-color: transparent; }
+  .tw-next-opt:hover { background: #3b82f6; color: #fff; border-color: transparent; }
+  /* 다크 모드에서 이어서 회의 안내가 어두워 보이지 않도록 밝은 파랑으로 */
+  html[data-theme="dark"] .tw-next,
+  html[data-theme="dark"] .tw-next > b,
+  html[data-theme="dark"] .tw-next-opt { color: #93b8ff; }
+  html[data-theme="dark"] .tw-next { background: rgba(96,165,250,0.16); border-color: rgba(147,184,255,0.40); }
+  html[data-theme="dark"] .tw-next-opt { border-color: #93b8ff; }
+  html[data-theme="dark"] .tw-next-opt:hover { background: #93b8ff; color: #0b0a14; }
+  /* '이전 회의 이어가기'·충전 링크 — 다크에서 밝게 */
+  html[data-theme="dark"] .tw-charge-link { color: #ff86b3; }
   /* 이어서 회의: 우측 플로팅 버튼 — sticky로 화면 중간을 따라다님 (플립 transform에서도 동작) */
   .tw-continue-btn { display: none; }
   .tw-share { display: flex; gap: 8px; margin-top: 12px; }
