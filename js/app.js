@@ -1350,6 +1350,10 @@ const referralInput = document.getElementById("referral-input");
 let referralShownThisSession = false;
 
 async function maybeOpenReferralModal(user) {
+  // '추천인이 있나요?' 모달 비활성화 — 수집한 referredBy 를 쓰는 곳이 없어 제거함.
+  // 실제 추천 보상은 공유링크(?ref=uid) + recordReferralVisit 자동 시스템이 담당한다.
+  return;
+  // eslint-disable-next-line no-unreachable
   if (!referralModal || !user || referralShownThisSession) return;
   try {
     const flags = await getUserProfileFlags(user.uid);
