@@ -285,20 +285,31 @@
   }
 
   // ---- 공유 ----
-  // 발언들을 "이름 : 대사" 줄 배열로 추출 (공유 멘트용)
-  function meetingLines() {
+  // 발언을 '팀원별'로 묶어 추출 (공유 멘트용) — 한 팀원이 여러 번 말해도 한 덩어리로 합침.
+  // 이렇게 해야 공유 문구에 5명 전원이 빠짐없이 들어간다(예전엔 앞쪽 발언만 담고 뒤 팀원이 잘림).
+  function meetingGroups() {
     var body = resultEl && resultEl.querySelector(".tw-result-body");
     if (!body) return [];
     var acts = body.querySelectorAll(".tw-m-act");
-    var lines = [];
+    var order = [];
+    var byName = {};
     for (var i = 0; i < acts.length; i++) {
       var nameEl = acts[i].querySelector("b");
       var name = nameEl ? nameEl.textContent.trim() : "";
-      var rest = acts[i].textContent.replace(/\s+/g, " ").trim();
-      if (name && rest.indexOf(name) === 0) rest = rest.slice(name.length).trim();
-      lines.push((name ? name + " : " : "") + rest);
+      // <b>이름</b> 과 속마음(.tw-think) 은 제외하고 실제 발언만
+      var clone = acts[i].cloneNode(true);
+      var b = clone.querySelector("b"); if (b) b.parentNode.removeChild(b);
+      var thinks = clone.querySelectorAll(".tw-think");
+      for (var j = 0; j < thinks.length; j++) thinks[j].parentNode.removeChild(thinks[j]);
+      var rest = clone.textContent.replace(/\s+/g, " ").trim();
+      // 따옴표만 남는 조각 정리
+      rest = rest.replace(/^["“”'']+|["“”'']+$/g, "").trim();
+      if (!name && !rest) continue;
+      var key = name || "_" + i;
+      if (!byName[key]) { byName[key] = { name: name, text: rest }; order.push(key); }
+      else if (rest) { byName[key].text += (byName[key].text ? " " : "") + rest; }
     }
-    return lines;
+    return order.map(function (k) { return byName[k]; });
   }
 
   // ── 이어서 회의 ──
@@ -353,28 +364,36 @@
     return myRefLink();
   }
 
-  // 형식: ★★ 제목 ★★ / (빈줄) / 이름 : 대사(절반 말줄임, 전원 포함) / 전체 회의 보기
+  // 형식: ★★ 제목 ★★ / (빈줄) / 이름 : 대사(말줄임) / … / 전체 회의 보기
+  // 팀원 전원(5명)이 반드시 들어가도록 예산을 팀원 수로 균등 배분한다. 예전처럼 앞에서부터
+  // 채우다 예산이 차면 break 하지 않으므로 뒤쪽 팀원(마무리 발언 등)이 잘리지 않는다.
   function shareCaption(title) {
     var head = "★★ " + (title || "내 앱 아이디어") + " ★★";
     var foot = "\n\n전체 회의 보기 → " + shareLink();
     var LIMIT = 470; // 스레드 500자 제한 안전선
     var budget = LIMIT - head.length - foot.length;
-    var lines = meetingLines();
-    if (lines.length) {
-      // 모든 발언을 담되 각 발언은 원문의 절반(그리고 줄당 예산) 이내로 말줄임
-      var perLine = Math.max(24, Math.floor(budget / lines.length) - 2);
-      var mid = "";
-      for (var i = 0; i < lines.length; i++) {
-        var t = lines[i];
-        var cap = Math.min(Math.ceil(t.length / 2), perLine);
-        if (t.length > cap) t = t.slice(0, cap).trim() + "…";
-        var add = "\n\n" + t;
-        if (mid.length + add.length > budget) break;
-        mid += add;
-      }
-      return head + mid + foot;
+    var groups = meetingGroups();
+    if (!groups.length) return head + foot;
+
+    var SEP = 2; // "\n\n"
+    var perLine = Math.floor(budget / groups.length) - SEP; // 팀원당 공평 배분
+    if (perLine < 16) perLine = 16; // 팀원이 많아도 최소 한 조각은 보이게
+    var mid = "";
+    for (var i = 0; i < groups.length; i++) {
+      var prefix = groups[i].name ? groups[i].name + " : " : "";
+      var avail = perLine - prefix.length;
+      if (avail < 8) avail = 8;
+      var t = groups[i].text || "";
+      if (t.length > avail) t = t.slice(0, avail).trim() + "…";
+      mid += "\n\n" + prefix + t;
     }
-    return head + foot;
+    // 안전선 초과 시(팀원이 아주 많은 극단적 경우) 링크는 보존하고 본문만 하드 컷
+    var full = head + mid + foot;
+    if (full.length > LIMIT) {
+      var room = Math.max(0, LIMIT - head.length - foot.length);
+      full = head + mid.slice(0, room) + foot;
+    }
+    return full;
   }
 
   // 회의 화면 캡처 (meeting.html의 이미지 저장과 같은 html2canvas 방식 — 필요할 때만 로드)
