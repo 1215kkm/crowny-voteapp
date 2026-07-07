@@ -140,18 +140,12 @@
     } catch (e) { return ""; }
   }
 
-  // URL ?ref=<공유자uid> 로 들어오면 실유입 보상 요청 (서버가 자기제외·중복·상한 판정)
+  // URL ?ref=<공유자uid> 출처만 저장 — 보상은 '방문'이 아니라 이 방문자가 실제 '가입'할 때
+  // app.js(maybeClaimReferralSignup)에서 지급한다. (단순 접속만으로 적립되던 악용 방지)
   try {
     var p = new URLSearchParams(location.search);
     var ref = p.get("ref");
-    if (ref) {
-      localStorage.setItem("appter_came_from_ref", ref);
-      setTimeout(function () {
-        if (window.appMeetings && window.appMeetings.recordVisit) {
-          window.appMeetings.recordVisit(ref, visitorId());
-        }
-      }, 1200);
-    }
+    if (ref) localStorage.setItem("appter_came_from_ref", ref);
   } catch (e) {}
 
   // ---- 질문 횟수 ----
@@ -536,12 +530,13 @@
     }, 1200);
   }
 
-  // 복사 안내창에 함께 띄울 실유입 보상 안내 — 로그인 사용자만 크레딧 대상이라 그 경우만 표시
+  // 복사 안내창에 함께 띄울 실유입 보상 안내 — 로그인 사용자만 크레딧 대상이라 그 경우만 표시.
+  // 보상은 '가입 기준': 링크로 들어온 사람이 실제 가입해야 지급된다.
   function referralRewardLine() {
     var u = window.__currentUser;
-    if (!(u && u.uid)) return "\n\n💡 로그인 후 퍼가면, 이 링크로 새 친구가 들어올 때마다 질문이 추가로 적립돼요!";
+    if (!(u && u.uid)) return "\n\n💡 로그인 후 퍼가면, 이 링크로 새 친구가 가입할 때마다 질문이 적립돼요!";
     if (visitBonusN <= 0) return "";
-    return "\n\n🎁 복사된 글 속 링크로 새 친구가 들어오면 질문 " + visitBonusN + "회가 추가로 적립돼요! (내 계정으로 자동 적립)";
+    return "\n\n🎁 복사된 글 속 링크로 새 친구가 가입하면 질문 " + visitBonusN + "회가 적립돼요! (내 계정으로 자동 적립)";
   }
 
   // 공유 문구(멘트+링크)만 스레드/인스타로 — 이미지는 별도 '이미지 저장' 버튼 사용.
