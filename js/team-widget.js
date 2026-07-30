@@ -515,7 +515,11 @@
         "--color-text-light": "#667085", "--color-accent-start": "#8a38f5", "--color-accent-end": "#d53a6b"
       };
       for (var k in light) pad.style.setProperty(k, light[k]);
-      pad.appendChild(body.cloneNode(true));
+      var capClone = body.cloneNode(true);
+      // 읽어주기 흔적(▶ 버튼·현재 줄 강조)은 저장 이미지에 안 나오게 제거
+      capClone.querySelectorAll(".tw-ttsbtn").forEach(function (b) { b.remove(); });
+      capClone.querySelectorAll(".tts-now").forEach(function (e) { e.classList.remove("tts-now"); });
+      pad.appendChild(capClone);
       document.body.appendChild(pad);
       var SCALE = 2;
       return window.html2canvas(pad, { scale: SCALE, backgroundColor: "#ffffff", useCORS: true })
@@ -725,6 +729,13 @@
       });
     });
     bindHistoryClicks();
+    // 읽어주기(TTS) — 회의록 본문에 ▶ 버튼·컨트롤 바 붙임
+    try {
+      if (window.MeetingTTS) {
+        var ttsBody = resultEl.querySelector(".tw-result-body");
+        if (ttsBody) window.MeetingTTS.attach(ttsBody);
+      }
+    } catch (e) {}
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     // 이미지 미리 캡처 → 준비되면 이미지 저장 버튼 활성화 (모바일은 제스처 안에서 즉시 공유 가능해짐)
     preCapturedBlob = null;

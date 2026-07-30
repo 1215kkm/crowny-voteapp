@@ -501,6 +501,18 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .cta{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;display:block;text-align:center;width:min(360px,88vw);background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:999px;box-shadow:0 10px 30px rgba(213,58,107,.45)}
 .wrap{padding-bottom:110px}
 .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}
+.tw-ttsbtn{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;margin-right:6px;vertical-align:1px;border:none;cursor:pointer;padding:0;border-radius:50%;font-size:10px;line-height:1;color:#fff;background:linear-gradient(135deg,var(--acc1),var(--acc2));opacity:.55;transition:opacity .15s,transform .15s}
+.tw-ttsbtn:hover{opacity:1;transform:scale(1.12)}
+.tw-m-act:hover .tw-ttsbtn{opacity:.85}
+.tts-now{background:rgba(138,56,245,.10);box-shadow:-6px 0 0 0 var(--acc1);border-radius:4px}
+#tw-tts-bar{position:fixed;left:14px;bottom:80px;z-index:60;display:none;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 8px 26px rgba(16,24,40,.22)}
+#tw-tts-bar button{border:none;background:var(--sub);color:var(--acc1);border-radius:999px;width:38px;height:38px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+#tw-tts-bar button:hover{background:rgba(138,56,245,.12)}
+#tw-tts-bar button:disabled{opacity:.35;cursor:default}
+#tw-tts-bar button.wide{width:auto;padding:0 12px;font-size:13px}
+#tw-tts-bar button.on{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff}
+#tw-tts-hint{position:fixed;left:14px;bottom:128px;z-index:60;display:none;max-width:min(280px,68vw);background:#20293f;color:#fff;font-size:13px;line-height:1.45;padding:9px 13px;border-radius:10px;box-shadow:0 8px 26px rgba(16,24,40,.3)}
+@media print{.tw-ttsbtn,#tw-tts-bar,#tw-tts-hint{display:none!important}}
 </style></head><body>
 <div class="wrap"><div class="paper">
   <div class="lbl">강팀 회의록</div>
@@ -517,7 +529,10 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 </div>
 <a class="cta" href="${CTA_URL}">나도 강팀과 회의하기 →</a>
 <div class="foot">© 2026 Appter · 강팀 AI</div>
-</div></body></html>`;
+</div>
+<script src="https://crowny-appter.web.app/js/tts-meeting.js"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.MeetingTTS){var p=document.querySelector('.paper');if(p)window.MeetingTTS.attach(p);}}catch(e){}});</script>
+</body></html>`;
     res.set("Cache-Control", "public, max-age=300");
     res.status(200).send(html);
   }
