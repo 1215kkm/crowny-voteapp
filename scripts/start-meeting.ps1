@@ -44,6 +44,6 @@ $mockupTpl  = Find-Template "mockup.html"
 
 Write-Host "회의 폴더 생성:"
 Write-Host "  $dir/meeting.html  (브라우저로 열어 회의 진행)"
-Write-Host "  $dir/mockup.html   (강디2가 화면 안건 시 채움)"
+Write-Host "  $dir/mockup.html   (강디가 화면 안건 시 채움)"
 Write-Host ""
 Write-Host "다음: 강팀장이 'meeting.html'을 열고 첫 턴 (안건·참석자·진행 순서)을 적는다."

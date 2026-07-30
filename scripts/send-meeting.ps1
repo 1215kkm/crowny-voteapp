@@ -48,6 +48,15 @@ $MeetingHtml = Join-Path $MeetingDir "meeting.html"
 $MockupHtml  = Join-Path $MeetingDir "mockup.html"
 if (-not (Test-Path $MeetingHtml)) { Die "meeting.html 없음: $MeetingHtml" }
 
+# 성우 목소리가 녹음된 사본이 있으면 그걸 보낸다.
+# (voice-record.py 는 git 이 추적하는 회의록을 부풀리지 않으려고 음성을
+#  meeting-voice.html 이라는 사본에 넣는다. 폰에서 들으려면 그 사본이 필요하다.)
+$VoiceHtml = Join-Path $MeetingDir "meeting-voice.html"
+if (Test-Path $VoiceHtml) {
+  $MeetingHtml = $VoiceHtml
+  Write-Host "성우 목소리가 녹음된 사본을 보냅니다: meeting-voice.html"
+}
+
 $Title = (Select-String -Path $MeetingHtml -Pattern "<title>(.+?)</title>" -List).Matches.Groups[1].Value
 if (-not $Title) { $Title = "강팀 회의" }
 $DateMatch = Select-String -Path $MeetingHtml -Pattern "날짜: ([0-9-]+)" -List
@@ -73,7 +82,11 @@ $Api = "https://api.telegram.org/bot$Token"
 # ---------- 요약 추출 ----------
 function Extract-Summary($html) {
   $content = Get-Content -Raw $html
-  if ($content -match '(?s)<!-- SUMMARY_START -->(.*?)<!-- SUMMARY_END -->') {
+  # 마커는 두 형태가 섞여 있다.
+  #   (가) 템플릿·실제 회의록:  "<!-- SUMMARY_START"  …  "SUMMARY_END -->"
+  #   (나) 예전 표기:           "<!-- SUMMARY_START -->" … "<!-- SUMMARY_END -->"
+  # 예전에는 (나)만 찾아서 (가)로 쓰인 회의록의 요약이 전부 빈 채로 발송됐다.
+  if ($content -match '(?s)<!--\s*SUMMARY_START\s*(?:-->)?(.*?)(?:<!--\s*)?SUMMARY_END') {
     $body = $Matches[1]
     $body = $body -replace '<br[^>]*>', "`n"
     $body = $body -replace '</li>', "`n"
@@ -164,11 +177,12 @@ Send-TG "sendMessage" @{
 }
 
 if (-not $NoHtml) {
-  Write-Host "→ meeting.html 전송"
+  $MeetingName = Split-Path -Leaf $MeetingHtml
+  Write-Host "→ $MeetingName 전송"
   Send-TG "sendDocument" @{
     chat_id = $ChatId
     document = Get-Item $MeetingHtml
-    caption = "meeting.html"
+    caption = $MeetingName
   }
   if (Test-Path $MockupHtml) {
     $mockupContent = Get-Content -Raw $MockupHtml

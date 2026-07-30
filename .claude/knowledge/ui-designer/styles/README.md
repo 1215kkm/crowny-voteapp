@@ -15,6 +15,12 @@ $(cat active.txt)
 | 번호 | 이름 | 슬러그 | 한 줄 | 파일 |
 |---|---|---|---|---|
 | **1** | Crowny Class | crowny-class | 보라→분홍 그라데이션, Pretendard, 16px 본문, radius 10/16 | [`01-crowny-class.md`](./01-crowny-class.md) |
+| **2** | Apple Liquid Glass | liquid-glass | 반투명 유리·backdrop-blur·컬러 배경광, 떠있는 알약 헤더 (다크 친화) | [`02-liquid-glass.md`](./02-liquid-glass.md) |
+| **3** | Vercel Geist | geist | 극미니멀·고대비 흑백 + 강조색 1개, 얇은 보더, 작은 radius | [`03-geist.md`](./03-geist.md) |
+| **5** | Untitled UI | untitled-ui | 프리미엄 화이트 SaaS, 중성 회색조, 다단계 그림자, radius 12~16 | [`05-untitled-ui.md`](./05-untitled-ui.md) |
+| **6** | Neo-Brutalism | neo-brutalism | 두꺼운 검정 보더·하드 오프셋 그림자·쨍한 원색, radius 0~8 | [`06-neo-brutalism.md`](./06-neo-brutalism.md) |
+
+> Crowny 프로젝트 메모: **라이트 모드 = #5 Untitled UI, 다크 모드 = #2 Liquid Glass** 로 운영(헤더 토글). #4 shadcn/ui 는 React/Tailwind 전제라 순수 HTML/JS Crowny엔 미등록.
 
 > 새 스타일을 추가하려면:
 > 1. `NN-슬러그.md` 형식으로 파일 생성 (기존 스타일의 §2~§17 구조 그대로 따라야 함)
