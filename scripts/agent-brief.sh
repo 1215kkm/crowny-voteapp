@@ -17,7 +17,7 @@ TOPIC="${2:-}"
 
 if [[ -z "$AGENT" || -z "$TOPIC" ]]; then
   echo "사용: $0 <agent-id> \"<topic>\"" >&2
-  echo "agents: pm | designer | developer | qa | marketer" >&2
+  echo "agents: pm | designer | developer | qa | marketer | interaction-designer(선택 참석)" >&2
   exit 1
 fi
 
@@ -87,6 +87,15 @@ EOF
 - 끝에: "적용 원칙 #N / 당긴 레버 XX / 수익 경로 XX"
 EOF
       ;;
+    interaction-designer)
+      cat <<'EOF'
+[강톡 지도] — 인터랙션 디자이너 (⚠️ 선택 참석: CEO 가 이름을 불렀을 때만 회의 참여)
+- 책임: 강디 시안·기존 화면의 *행동 결함* 진단 (상태표현·잘림·중복·숨김vs비활성·플랫폼 미러링·단축키·창관리·모달vs토스트·상태보존) + 결함마다 수정안
+- 절대 금기: 색·폰트·간격 훈수(강디 영역) / 원칙 번호 없는 지적 / 확인창 추가 제안(프리뷰+Undo로) / 호출 안 된 회의 난입 / 픽셀 수치 확정(CEO 몫)
+- 응답 형식: ① 검사 대상 ② 행동 결함 표(결함|위반 원칙|언제 터지나|수정안) ③ 시간축 명세(loading/empty/error/재접속/재열기) ④ 단축키 ⑤ 강개발 핸드오프 ⑥ 셀프 체크 17항
+- 지식: .claude/knowledge/interaction-designer/interaction-principles.md (원칙 17 + M1~M4) — 판단 근거 전부
+EOF
+      ;;
     *)
       echo "알 수 없는 agent: $role" >&2
       exit 1
@@ -101,7 +110,7 @@ print_keyword_excerpts() {
   local kws=("$@")
 
   # 디자인 안건이면 활성 스타일의 §10 컴포넌트·§15 토큰 중 키워드 매칭만
-  if [[ "$role" == "designer" || "$role" == "developer" ]] && [[ -n "$ACTIVE_STYLE" && -f "$STYLE_FILE" ]]; then
+  if [[ "$role" == "designer" || "$role" == "developer" || "$role" == "interaction-designer" ]] && [[ -n "$ACTIVE_STYLE" && -f "$STYLE_FILE" ]]; then
     echo ""
     echo "[활성 스타일에서 키워드 매칭 발췌]"
     for kw in "${kws[@]}"; do
@@ -157,7 +166,7 @@ print_map "$AGENT"
 print_keyword_excerpts "$AGENT" "${KEYWORDS[@]}"
 
 # Ralph Wiggum Loop 입력 (강개발·강체크·강디 호출 시)
-if [[ "$AGENT" == "developer" || "$AGENT" == "qa" || "$AGENT" == "designer" ]]; then
+if [[ "$AGENT" == "developer" || "$AGENT" == "qa" || "$AGENT" == "designer" || "$AGENT" == "interaction-designer" ]]; then
   print_prior_qa_findings
   print_last_test
 fi

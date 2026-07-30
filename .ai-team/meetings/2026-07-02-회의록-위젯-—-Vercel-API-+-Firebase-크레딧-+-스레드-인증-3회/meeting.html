@@ -72,6 +72,39 @@ h1{font-size:28px;font-weight:800;line-height:1.3;margin:8px 0 6px;letter-spacin
 .sum ul{margin:6px 0 0 18px} .sum li{margin:3px 0;color:var(--ink)}
 .end{text-align:center;color:var(--dir);font-style:italic;margin-top:40px;font-size:15px}
 .note{color:var(--think);font-size:13px;text-align:center;margin-top:26px}
+/* TTS_PLAYER_CSS_START (scripts/voice-upgrade.py 가 넣음 — 손대지 마세요) */
+/* TTS_CSS_START — 여기부터 TTS_CSS_END 까지가 읽어주기 스타일.
+   scripts/voice-upgrade.py 가 이 구간을 떼어 예전 회의록에 붙인다. 표시를 지우지 말 것. */
+/* ───── 읽어주기(TTS) ───── */
+.ttsbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:5px;vertical-align:2px;
+  border:none;border-radius:999px;background:#f1ecfb;color:var(--gchk);font-size:10px;line-height:1;cursor:pointer;
+  opacity:.35;transition:opacity .15s,transform .1s;padding:0;font-family:inherit;flex:none}
+.ttsbtn:hover{opacity:1;transform:scale(1.12)}
+.ttsbtn:focus-visible{opacity:1;outline:2px solid var(--gchk);outline-offset:2px}
+.l:hover .ttsbtn,.dir:hover .ttsbtn,.act:hover .ttsbtn{opacity:.8}
+.tts-now{background:#fffbe8;box-shadow:-6px 0 0 0 #ffd966;border-radius:3px}
+.tts-now.dir,.tts-now.end{background:#fffbe8}
+#ttsBar{position:fixed;left:14px;bottom:18px;z-index:50;display:flex;align-items:center;gap:5px;
+  background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 8px 24px rgba(31,36,48,.16)}
+#ttsBar button{border:none;background:#f4f0fd;color:var(--gchk);border-radius:999px;width:38px;height:38px;
+  font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;padding:0;display:flex;align-items:center;justify-content:center}
+#ttsBar button:hover{background:#e9e0fb}
+#ttsBar button:disabled{opacity:.35;cursor:default}
+#ttsBar button.wide{width:auto;padding:0 12px;font-size:13px}
+#ttsBar button.on{background:linear-gradient(135deg,#8A38F5,#D53A6B);color:#fff}
+#ttsHint{position:fixed;left:14px;bottom:66px;z-index:50;max-width:min(280px,68vw);background:#20293f;color:#fff;
+  font-size:12.5px;line-height:1.5;padding:9px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);display:none}
+@media (max-width:420px){
+  #ttsBar{padding:5px 6px;gap:4px}
+  #ttsBar button{width:34px;height:34px;font-size:14px}
+  #ttsBar button.wide{padding:0 9px;font-size:12px}
+}
+@media print{.ttsbtn,#ttsBar,#ttsHint{display:none!important}}
+/* 이미지로 저장할 때 ▶ 버튼과 노란 형광이 사진에 안 찍히게 */
+.tts-exporting .ttsbtn{visibility:hidden!important}
+.tts-exporting .tts-now{background:transparent!important;box-shadow:none!important}
+/* TTS_CSS_END */
+/* TTS_PLAYER_CSS_END */
 </style>
 </head>
 <body>
@@ -319,5 +352,406 @@ async function exportImg(){
   btn.textContent=oldTxt; btn.disabled=false; btn.style.opacity=1;
 }
 </script>
+<!-- TTS_PLAYER_START (scripts/voice-upgrade.py 가 넣음 — 손대지 마세요) -->
+<!-- TTS_UI_START -->
+<!-- 읽어주기 컨트롤 (아이폰 사파리 등 브라우저 내장 음성 사용 — 인터넷 불필요) -->
+<div id="ttsBar">
+  <button id="ttsPlay" onclick="ttsToggle()" title="읽어주기 시작/일시정지">▶</button>
+  <button id="ttsStop" onclick="ttsStop()" title="정지" disabled>■</button>
+  <button id="ttsSpeed" class="wide" onclick="ttsCycleSpeed()" title="읽는 속도">1.0×</button>
+  <button id="ttsAct" class="wide on" onclick="ttsToggleAct()" title="속마음·지문을 연기하듯 읽기">🎭</button>
+</div>
+<div id="ttsHint"></div>
+<!-- TTS_UI_END -->
+
+<!-- TTS_JS_START -->
+<script>
+/* ═══════════ 강팀 회의록 읽어주기 ═══════════
+   · 브라우저 내장 음성(Web Speech API) — 인터넷·서비스 가입 불필요
+   · 멤버마다 목소리 톤(높낮이·속도) 다르게 → 연기하듯이
+   · (괄호 속마음)·지문은 낮고 느리게, 작은 소리로 = 연기
+   · 각 줄 앞 ▶ 를 누르면 그 줄부터 읽음
+   ※ iOS 제약: 화면이 꺼지거나 다른 앱으로 가면 음성이 멈춥니다(브라우저 정책).      */
+
+/* 멤버별 목소리 성격 — personas.md 캐릭터 시트를 소리로 옮긴 값 */
+var TTS_CAST={
+  daepyo:{name:'강팀장', pitch:0.72, rate:0.94},  // 45세 남, 짧고 묵직
+  gdev  :{name:'강개발', pitch:0.88, rate:1.06},  // 35세 직설, 딱딱 끊음
+  gtok  :{name:'강톡',   pitch:0.82, rate:0.90},  // 32세 과묵한 장인
+  abang :{name:'아뱅',   pitch:1.08, rate:1.16},  // 자문위원, 들뜨고 빠름
+  gchk  :{name:'강체크', pitch:1.18, rate:0.98},  // 28세 여, 꼼꼼·또박또박
+  gdi   :{name:'강디',   pitch:1.38, rate:1.12},  // 26세 여 신입, 발랄
+  ceo   :{name:'CEO',    pitch:0.95, rate:1.00}   // 강사님 — 실시간회의에서 직접 발언
+};
+var TTS_NARR={pitch:0.98, rate:0.95, vol:0.85};   // 지문 읽는 해설자
+
+/* ── 괄호 지문을 *읽지 않고* 말투로 연기 ──
+   "(웃으며)" 처럼 *어떻게 말하라는 지시*는 소리로 읽지 않고, 그 줄의 말투를 바꾼다.
+   "(안 되면 곤란한데)" 처럼 *속마음 내용*은 지금처럼 낮게 읽는다.
+   구분 기준: 아래 표에 걸리고 + 12자 이하면 지시로 본다. 길면 속마음 내용으로 본다. */
+var TTS_DIRECTION=[
+  [/속삭이|작게|조용히|낮은 목소리|나직/,        {pitch:-0.10, rate:0.85, vol:0.45}],
+  [/웃으며|웃음|웃는|피식|킥킥|씩 웃|밝게/,      {pitch:+0.14, rate:1.08}],
+  [/한숨|지친|힘없|맥없|축 처/,                 {pitch:-0.12, rate:0.80, vol:0.78}],
+  [/버럭|소리치|고함|크게|화내|짜증|발끈/,       {pitch:+0.10, rate:1.16}],
+  [/단호|딱 잘라|못 박|확신|힘주어/,            {pitch:-0.07, rate:0.88}],
+  [/급하게|빠르게|서둘러|다급|허둥/,            {rate:1.28}],
+  [/천천히|느리게|또박또박|차분/,               {rate:0.80}],
+  [/망설이|머뭇|주저|말끝을 흐|더듬/,           {rate:0.84, pauseBefore:420}],
+  [/놀라|깜짝|헉|당황/,                        {pitch:+0.16, rate:1.14}],
+  [/진지|무겁게|심각|굳은/,                     {pitch:-0.11, rate:0.86}],
+  [/비꼬|시니컬|비아냥|삐딱/,                   {pitch:-0.05, rate:0.90}],
+  [/^\s*(사이|침묵|정적|잠깐|멈춤|정색)\s*$/,    {pauseOnly:900}]
+];
+var TTS_DIR_MAXLEN=12;   // 이보다 길면 지시가 아니라 속마음 내용으로 취급
+
+/* 지문이면 연기 지시를 돌려주고, 속마음 내용이면 null */
+function ttsDirection(text){
+  var t=(text||'').trim();
+  if(!t || t.length>TTS_DIR_MAXLEN) return null;
+  for(var i=0;i<TTS_DIRECTION.length;i++){
+    if(TTS_DIRECTION[i][0].test(t)) return TTS_DIRECTION[i][1];
+  }
+  return null;
+}
+/* 여러 지문이 겹치면 곱해서 합친다 */
+function ttsMergeAct(act, d){
+  if(!act) act={pitch:0, rate:1, vol:1, pauseBefore:0};
+  if(d.pitch) act.pitch += d.pitch;
+  if(d.rate)  act.rate  *= d.rate;
+  if(d.vol)   act.vol   *= d.vol;
+  if(d.pauseBefore) act.pauseBefore = Math.max(act.pauseBefore, d.pauseBefore);
+  return act;
+}
+var ttsQ=[], ttsI=0, ttsOn=false, ttsPaused=false, ttsAct=true, ttsRate=1.0, ttsVoices={}, ttsPrimed=false, ttsTimer=null;
+var TTS_SPEEDS=[1.0,1.25,1.5,0.85];
+
+/* ── 진짜 목소리 모드 ──
+   scripts/voice-record.py 로 녹음하면 window.__ttsManifest 가 심겨 있다.
+   그러면 브라우저 내장 음성 대신 *실제 성우 음성 파일*을 재생한다.
+   → 멤버마다 진짜 남/여 목소리가 다르고, 화면이 꺼져도 대체로 이어서 재생된다. */
+var ttsAudio=null, ttsMan=null, ttsEls=[];
+/* 심어진 목록은 이 스크립트보다 뒤에 올 수 있으니 그때그때 읽는다 */
+function ttsMani(){
+  if(!ttsMan && typeof window!=='undefined' && window.__ttsManifest) ttsMan=window.__ttsManifest;
+  return ttsMan;
+}
+function ttsAudioMode(){ var m=ttsMani(); return !!(m && m.items && m.items.length); }
+function ttsElList(){
+  var paper=document.querySelector('.paper');
+  ttsEls = paper ? [].slice.call(paper.querySelectorAll('.act, .dir, .l, .sum, .end')) : [];
+  return ttsEls;
+}
+function ttsSupported(){
+  if(ttsAudioMode()) return true;
+  return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+}
+function ttsHint(msg,ms){
+  var h=document.getElementById('ttsHint'); if(!h) return;
+  h.textContent=msg; h.style.display='block';
+  clearTimeout(ttsHint._t); if(ms!==0) ttsHint._t=setTimeout(function(){h.style.display='none'}, ms||3600);
+}
+
+/* 한국어 음성 확보 — 여러 개 있으면 멤버별로 서로 다른 음성을 배정 */
+function ttsLoadVoices(){
+  if(!ttsSupported()) return;
+  var all=window.speechSynthesis.getVoices()||[];
+  var ko=all.filter(function(v){return /^ko/i.test(v.lang||'')});
+  if(!ko.length) return;
+  // 남성/여성 힌트가 있는 음성을 성별에 맞춰 우선 배정, 없으면 순서대로 돌려 씀
+  var roles=['ceo','daepyo','gdev','gtok','abang','gchk','gdi'];
+  roles.forEach(function(r,idx){ ttsVoices[r]=ko[idx % ko.length]; });
+  ttsVoices._narr=ko[0];
+}
+if(ttsSupported()){
+  ttsLoadVoices();
+  window.speechSynthesis.onvoiceschanged=ttsLoadVoices;
+}
+
+/* 읽을 내용을 화면 순서대로 수집 */
+function ttsBuild(){
+  ttsQ=[];
+  var paper=document.querySelector('.paper'); if(!paper) return;
+  if(ttsAudioMode()){                       // 진짜 목소리 모드 — 녹음된 파일 순서 그대로
+    ttsElList();
+    var base=(ttsMan.dir||'voices').replace(/\/+$/,'');
+    ttsMan.items.forEach(function(it){
+      if(it.p){ ttsQ.push({el:ttsEls[it.e]||null, kind:'pause', ms:it.p}); return; }
+      // it.d = 회의록 안에 같이 들어있는 음성 / it.f = voices 폴더의 파일
+      ttsQ.push({el:ttsEls[it.e]||null, src:it.d||(base+'/'+it.f)});
+    });
+    return;
+  }
+  var nodes=paper.querySelectorAll('.act, .dir, .l, .sum, .end');
+  nodes.forEach(function(el){
+    if(el.classList.contains('act')){
+      var no=el.querySelector('.no'), h=el.querySelector('h2');
+      var t=[no?ttsClean(no.textContent):'', h?ttsClean(h.textContent):''].filter(Boolean).join('. ');
+      if(t) ttsQ.push({el:el, kind:'narr', text:t, lead:true});
+      return;
+    }
+    if(el.classList.contains('dir')||el.classList.contains('end')){
+      var t2=ttsClean(ttsOwnText(el));
+      if(t2) ttsQ.push({el:el, kind:'narr', text:t2});
+      return;
+    }
+    if(el.classList.contains('sum')){
+      var items=[].map.call(el.querySelectorAll('li'), function(li){return ttsClean(li.textContent)}).filter(Boolean);
+      if(items.length) ttsQ.push({el:el, kind:'narr', text:'정리. '+items.join('. ')});
+      return;
+    }
+    if(el.classList.contains('l')){
+      var role=null;
+      for(var r in TTS_CAST){ if(el.classList.contains(r)){ role=r; break; } }
+
+      // 1단계 — 대사와 괄호를 순서대로 모으고, 괄호는 '지시'인지 '속마음'인지 가른다
+      var chunks=[], act=null;
+      [].forEach.call(el.childNodes, function(n){
+        if(n.nodeType===3){
+          var t3=ttsClean(n.textContent);
+          if(t3) chunks.push({kind:'line', text:t3});
+        }else if(n.nodeType===1 && (n.classList.contains('think')||n.classList.contains('beat'))){
+          var t4=ttsClean(n.textContent);
+          if(!t4) return;
+          var d=ttsDirection(t4);
+          if(d){                                   // 지문 → 읽지 않고 말투로
+            act=ttsMergeAct(act, d);
+            if(d.pauseOnly) chunks.push({kind:'pause', ms:d.pauseOnly});
+          }else{
+            chunks.push({kind:'think', text:t4});  // 속마음 내용 → 그대로 읽음
+          }
+        }
+      });
+
+      // 2단계 — 이름 먼저, 그 다음 조각들에 연기 지시를 입혀 담는다
+      var who=el.querySelector('.who');
+      if(who) ttsQ.push({el:el, kind:'who', role:role, text:ttsClean(who.textContent)});
+      chunks.forEach(function(c){
+        if(c.kind==='pause'){ ttsQ.push({el:el, kind:'pause', ms:c.ms}); return; }
+        ttsPush({el:el, kind:c.kind, role:role, text:c.text, act:act});
+      });
+    }
+  });
+}
+/* 긴 문장은 잘라 담는다 — iOS 는 한 번에 긴 문장을 읽다 끊기는 일이 있어서 */
+function ttsPush(item){
+  var MAX=170;
+  if(item.text.length<=MAX){ ttsQ.push(item); return; }
+  // 문장 끝(. ! ? …) 기준으로 자름. 구형 사파리에서도 되는 방식(lookbehind 안 씀)
+  var parts=item.text.match(/[^.!?…]+[.!?…]*\s*/g)||[item.text], buf='';
+  parts.forEach(function(p){
+    if((buf+' '+p).trim().length>MAX && buf){ ttsQ.push(Object.assign({},item,{text:buf.trim()})); buf=p; }
+    else buf=(buf?buf+' ':'')+p;
+  });
+  if(buf.trim()) ttsQ.push(Object.assign({},item,{text:buf.trim()}));
+}
+/* 요소의 글자만 뽑기 — 우리가 넣은 ▶ 버튼은 빼고 (음성에 섞이면 안 되니까) */
+function ttsOwnText(el){
+  var c=el.cloneNode(true);
+  c.querySelectorAll('.ttsbtn').forEach(function(b){ b.remove(); });
+  return c.textContent;
+}
+/* 읽기 좋게 다듬기 — 따옴표·괄호·이모지·화살표·도형기호 제거 */
+function ttsClean(s){
+  if(!s) return '';
+  return s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}\u{25A0}-\u{25FF}\u{2B00}-\u{2BFF}]/gu,' ')
+          .replace(/["“”'‘’()\[\]（）]/g,' ')
+          .replace(/[·•]/g,', ')
+          .replace(/\s+/g,' ').trim();
+}
+
+/* 재생 한 조각 — 모드에 따라 갈라진다 */
+function ttsGoto(i){ if(ttsAudioMode()) ttsPlayAt(i); else ttsSpeakAt(i); }
+
+/* 진짜 목소리 모드: 녹음 파일 재생 */
+function ttsPlayAt(i){
+  if(i>=ttsQ.length){ ttsFinish(); return; }
+  ttsI=i;
+  var it=ttsQ[i];
+  if(it.kind==='pause'){                 // (사이) — 녹음 파일 없이 그만큼 쉰다
+    ttsMark(it.el);
+    ttsTimer=setTimeout(function(){ if(ttsOn && !ttsPaused) ttsPlayAt(ttsI+1); }, it.ms||700);
+    return;
+  }
+  if(!ttsAudio){
+    ttsAudio=new Audio();
+    ttsAudio.preload='auto';
+    ttsAudio.addEventListener('ended', function(){ if(ttsOn && !ttsPaused) ttsPlayAt(ttsI+1); });
+    ttsAudio.addEventListener('error', function(){
+      if(!ttsOn) return;
+      ttsHint('음성 파일을 못 찾았어요 — voices 폴더가 회의록과 같은 곳에 있어야 해요.',5000);
+      ttsFinish();
+    });
+  }
+  ttsAudio.src=it.src;
+  ttsAudio.playbackRate=ttsRate;
+  ttsMark(it.el);
+  var pr=ttsAudio.play();
+  if(pr && pr.catch) pr.catch(function(){ ttsHint('재생이 막혔어요. ▶ 를 한 번 더 눌러 주세요.'); ttsFinish(); });
+}
+
+function ttsSpeakAt(i){
+  if(i>=ttsQ.length){ ttsFinish(); return; }
+  ttsI=i;
+  var it=ttsQ[i];
+  // (사이)·(침묵) 같은 지문 → 소리 없이 그만큼 쉰다
+  if(it.kind==='pause'){
+    ttsMark(it.el);
+    ttsTimer=setTimeout(function(){ if(ttsOn && !ttsPaused) ttsSpeakAt(ttsI+1); }, it.ms||700);
+    return;
+  }
+  // "(망설이며)" 같은 지문 → 말하기 전에 잠깐 뜸을 들인다
+  if(it.act && ttsAct && it.act.pauseBefore && !it._waited){
+    it._waited=true; ttsMark(it.el);
+    ttsTimer=setTimeout(function(){ if(ttsOn && !ttsPaused) ttsSpeakAt(i); }, it.act.pauseBefore);
+    return;
+  }
+  var u=new SpeechSynthesisUtterance(it.text);
+  u.lang='ko-KR';
+  var cast=(it.role&&TTS_CAST[it.role])||null;
+  if(it.kind==='narr'){
+    u.pitch=TTS_NARR.pitch; u.rate=TTS_NARR.rate*ttsRate; u.volume=TTS_NARR.vol;
+    if(ttsVoices._narr) u.voice=ttsVoices._narr;
+  }else if(cast){
+    u.pitch=cast.pitch; u.rate=cast.rate*ttsRate; u.volume=1;
+    if(ttsVoices[it.role]) u.voice=ttsVoices[it.role];
+    if(it.kind==='who'){ u.rate=cast.rate*ttsRate*1.05; u.volume=0.9; }
+    if(it.kind==='think' && ttsAct){          // 속마음 = 낮고 느리게, 작게 (연기)
+      u.pitch=Math.max(0.1, cast.pitch-0.18); u.rate=cast.rate*ttsRate*0.86; u.volume=0.62;
+    }
+  }else{
+    u.pitch=1; u.rate=ttsRate; u.volume=1;
+  }
+  // 괄호 지문에서 뽑은 연기 지시를 얹는다 (이름 부르는 조각엔 적용 안 함)
+  if(it.act && ttsAct && it.kind!=='who'){
+    u.pitch=Math.max(0.1, Math.min(2, u.pitch + (it.act.pitch||0)));
+    u.rate =Math.max(0.1, Math.min(4, u.rate  * (it.act.rate||1)));
+    u.volume=Math.max(0, Math.min(1, u.volume * (it.act.vol||1)));
+  }
+  u.onstart=function(){ ttsMark(it.el); };
+  u.onend=function(){ if(ttsOn && !ttsPaused) ttsSpeakAt(ttsI+1); };
+  u.onerror=function(e){ if(e && e.error==='interrupted') return; if(ttsOn && !ttsPaused) ttsSpeakAt(ttsI+1); };
+  if(it.kind==='who'){ u.text=it.text+','; }   // 이름 뒤 짧은 쉼
+  try{ window.speechSynthesis.speak(u); }
+  catch(err){ ttsHint('음성 재생에 실패했어요: '+((err&&err.message)||err)); ttsFinish(); }
+}
+function ttsMark(el){
+  var prev=document.querySelector('.tts-now'); if(prev) prev.classList.remove('tts-now');
+  if(!el) return;
+  el.classList.add('tts-now');
+  var r=el.getBoundingClientRect();
+  if(r.top<70 || r.bottom>window.innerHeight-110){
+    el.scrollIntoView({block:'center', behavior:(matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth')});
+  }
+}
+function ttsSync(){
+  var p=document.getElementById('ttsPlay'), s=document.getElementById('ttsStop');
+  p.textContent=(ttsOn&&!ttsPaused)?'❚❚':'▶';
+  p.title=(ttsOn&&!ttsPaused)?'일시정지':'읽어주기';
+  s.disabled=!ttsOn;
+}
+function ttsFinish(){
+  ttsOn=false; ttsPaused=false;
+  var prev=document.querySelector('.tts-now'); if(prev) prev.classList.remove('tts-now');
+  ttsSync();
+}
+function ttsHalt(){                       // 지금 내는 소리를 멈춘다 (모드 공통)
+  if(ttsTimer){ clearTimeout(ttsTimer); ttsTimer=null; }
+  if(ttsAudioMode()){ if(ttsAudio){ try{ ttsAudio.pause(); }catch(e){} } }
+  else{ try{ window.speechSynthesis.cancel(); }catch(e){} }
+}
+function ttsStop(){
+  ttsOn=false; ttsPaused=false;
+  ttsHalt();
+  if(ttsAudio){ try{ ttsAudio.currentTime=0; }catch(e){} }
+  ttsI=0; ttsFinish();
+}
+/* iOS 는 사용자가 직접 누른 순간에만 음성을 열어준다 — 첫 탭에서 잠금 해제 */
+function ttsPrime(){
+  if(ttsPrimed) return;
+  try{ var w=new SpeechSynthesisUtterance(' '); w.volume=0; window.speechSynthesis.speak(w); ttsPrimed=true; }catch(e){}
+}
+function ttsStart(from){
+  if(!ttsSupported()){ ttsHint('이 브라우저는 읽어주기를 지원하지 않아요. 사파리나 크롬으로 열어 주세요.',5000); return; }
+  if(!ttsAudioMode()){ ttsPrime(); ttsLoadVoices(); }
+  ttsBuild();
+  if(!ttsQ.length){ ttsHint('읽을 내용이 아직 없어요. 회의록이 채워지면 눌러 주세요.'); return; }
+  ttsHalt();
+  var start=0;
+  if(from){ for(var i=0;i<ttsQ.length;i++){ if(ttsQ[i].el===from){ start=i; break; } } }
+  ttsOn=true; ttsPaused=false; ttsSync();
+  if(ttsAudioMode()) ttsGoto(start);                       // 탭한 순간 바로 재생(iOS 정책)
+  else setTimeout(function(){ ttsGoto(start); }, 60);
+}
+function ttsToggle(){
+  if(!ttsOn){ ttsStart(null); return; }
+  if(ttsPaused){
+    ttsPaused=false; ttsSync();
+    // 진짜 목소리 모드는 멈춘 지점부터 이어서, 내장 음성은 그 줄 처음부터
+    if(ttsAudioMode() && ttsAudio && ttsAudio.src){ ttsAudio.play(); }
+    else ttsGoto(ttsI);
+  }else{
+    ttsPaused=true; ttsHalt(); ttsSync();
+  }
+}
+function ttsCycleSpeed(){
+  var i=TTS_SPEEDS.indexOf(ttsRate); ttsRate=TTS_SPEEDS[(i+1)%TTS_SPEEDS.length];
+  document.getElementById('ttsSpeed').textContent=ttsRate.toFixed(2).replace(/0$/,'')+'×';
+  if(ttsAudioMode()){ if(ttsAudio) ttsAudio.playbackRate=ttsRate; return; }  // 끊김 없이 즉시 반영
+  if(ttsOn && !ttsPaused){ ttsHalt(); ttsGoto(ttsI); }
+}
+function ttsToggleAct(){
+  ttsAct=!ttsAct;
+  var b=document.getElementById('ttsAct');
+  b.classList.toggle('on', ttsAct);
+  ttsHint(ttsAct?'속마음·지문을 연기하듯 읽습니다 (낮고 느리게)':'전부 같은 톤으로 읽습니다');
+}
+/* 각 줄 앞에 ▶ — 그 줄부터 읽기 */
+function ttsInjectButtons(){
+  var paper=document.querySelector('.paper'); if(!paper) return;
+  paper.querySelectorAll('.act, .dir, .l, .end').forEach(function(el){
+    if(el.getAttribute('data-tts')==='1') return;
+    el.setAttribute('data-tts','1');
+    var b=document.createElement('button');
+    b.className='ttsbtn'; b.type='button'; b.textContent='▶';
+    b.setAttribute('aria-label','여기서부터 읽어주기');
+    b.title='여기서부터 읽어주기';
+    b.onclick=function(ev){ ev.stopPropagation(); ttsStart(el); };
+    // ACT 헤더는 'ACT 1' 라벨 줄 안에 붙여야 줄바꿈이 안 생긴다
+    var host=el.classList.contains('act') ? (el.querySelector('.no')||el) : el;
+    host.insertBefore(b, host.firstChild);
+  });
+}
+document.addEventListener('DOMContentLoaded', function(){
+  if(!ttsSupported()){ var bar=document.getElementById('ttsBar'); if(bar) bar.style.display='none'; return; }
+  ttsInjectButtons();
+  if(ttsAudioMode()){
+    // 녹음된 진짜 목소리가 있으면: 연기 토글 대신 표시등
+    var b=document.getElementById('ttsAct');
+    if(b){ b.textContent='🎙'; b.title='녹음된 성우 목소리로 재생 중 (멤버마다 다른 목소리)'; b.classList.add('on');
+           b.onclick=function(){ ttsHint('이 회의록은 성우 목소리로 녹음돼 있어요. 멤버마다 목소리가 다르고 연기도 들어가 있어요.',4200); }; }
+  }
+});
+window.addEventListener('beforeunload', function(){ ttsHalt(); });
+
+/* 이미지로 저장하는 동안만 ▶ 버튼·형광을 숨긴다.
+   예전 회의록은 exportImg 가 ▶ 버튼을 지우지 않으니 여기서 대신 가려준다. */
+(function(){
+  var orig = window.exportImg;
+  if (typeof orig !== 'function' || orig.__ttsWrapped) return;
+  window.exportImg = function(){
+    document.body.classList.add('tts-exporting');
+    var done = function(){ document.body.classList.remove('tts-exporting'); };
+    try {
+      var r = orig.apply(this, arguments);
+      if (r && typeof r.then === 'function') { r.then(done, done); } else { done(); }
+      return r;
+    } catch(e) { done(); throw e; }
+  };
+  window.exportImg.__ttsWrapped = true;
+})();
+</script>
+<!-- TTS_JS_END -->
+<!-- TTS_PLAYER_END -->
 </body>
 </html>

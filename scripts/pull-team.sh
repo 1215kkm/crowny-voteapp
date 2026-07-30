@@ -55,6 +55,10 @@ if [[ $LOCAL -eq 1 ]]; then
   cp -r "$TMP/ai_team/templates/." templates/ 2>/dev/null || true
   cp "$TMP/ai_team/scripts/"*.sh scripts/ 2>/dev/null || true
   cp "$TMP/ai_team/scripts/"*.ps1 scripts/ 2>/dev/null || true
+  # 파이썬 도우미도 같이 — voice.sh / voice.ps1 이 voice-record.py 와
+  # voice-upgrade.py 를 호출한다. 예전에는 .sh 와 .ps1 만 복사해서
+  # 다른 레포에서 목소리 녹음이 "파일 없음" 으로 죽었다.
+  cp "$TMP/ai_team/scripts/"*.py scripts/ 2>/dev/null || true
   chmod +x scripts/*.sh .claude/hooks/*.sh 2>/dev/null || true
 
   # 강팀 본체 버전 SHA 기록 — SessionStart 훅이 이걸로 업데이트 알림
