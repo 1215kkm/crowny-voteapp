@@ -395,9 +395,13 @@ if (favModal) {
 
 // ---- 내 활동 모달 (프로필 버튼) ----
 if (profileBtn) profileBtn.addEventListener("click", openActivityModal);
-if (activityModalClose) activityModalClose.addEventListener("click", () => activityModal.classList.add("hidden"));
+function closeActivityModal() {
+  activityModal.classList.add("hidden");
+  try { if (window.MeetingTTS) window.MeetingTTS.stop(); } catch (e) {} // 읽어주기 중지·바 숨김
+}
+if (activityModalClose) activityModalClose.addEventListener("click", closeActivityModal);
 if (activityModal) {
-  activityModal.addEventListener("click", (e) => { if (e.target === activityModal) activityModal.classList.add("hidden"); });
+  activityModal.addEventListener("click", (e) => { if (e.target === activityModal) closeActivityModal(); });
 }
 
 // ---- 등록 성공 공유 모달 ----
@@ -1595,6 +1599,8 @@ function showActivityMeeting(idx) {
   activityMeetingView.classList.remove("hidden");
   activityMeetingView.querySelector("[data-mshare]").addEventListener("click", () => reshareMeeting(m));
   activityMeetingView.querySelector("[data-mcopy]").addEventListener("click", () => copyMeetingUrl(url));
+  // 읽어주기(TTS) — 마이페이지 지난 회의도 소리로 듣기
+  try { if (window.MeetingTTS) window.MeetingTTS.attach(activityMeetingView); } catch (e) {}
   activityMeetingView.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 

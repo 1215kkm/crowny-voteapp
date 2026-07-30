@@ -254,6 +254,8 @@ function renderTeamLogDetail(m) {
   if (shareBtn) shareBtn.addEventListener("click", () => shareTeamLogMeeting(m));
   const dlBtn = teamLogView.querySelector("[data-tlv-dl]");
   if (dlBtn) dlBtn.addEventListener("click", () => downloadTeamLogImage(m, dlBtn));
+  // 읽어주기(TTS) — 지난 회의도 소리로 듣기
+  try { if (window.MeetingTTS) window.MeetingTTS.attach(teamLogView); } catch (e) {}
 }
 
 function shareTeamLogMeeting(m) {
