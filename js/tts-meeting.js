@@ -20,11 +20,11 @@
   //     그래서 voice-record.py 주석의 지침대로("강톡만 쓰는 InJoon 을 한쪽에 주면 된다") 한국어 남성 InJoon 배정.
   //   · wide = 한국어 음성이 1~2개뿐인 기기용 대체 높낮이. 성우가 겹칠 때 멤버 구분이 죽지 않게 폭을 넓게 준다.
   var CAST = {
-    daepyo: { name: "강대표", pitch: 1.00, rate: 1.00, gender: "M", vpref: [/injoon|인준/i, /hyunsu|현수/i], wide: 0.72 }, // 45세 남, 짧고 묵직
-    gdev:   { name: "강개발", pitch: 0.94, rate: 1.08, gender: "M", vpref: [/hyunsu|현수/i, /injoon|인준/i], wide: 0.88 }, // 35세 직설, 딱딱 끊음
-    abang:  { name: "아뱅",   pitch: 1.08, rate: 1.18, gender: "M", vpref: [/hyunsu|현수/i, /injoon|인준/i], wide: 1.08 }, // 자문위원, 들뜨고 빠름
-    gchk:   { name: "강체크", pitch: 1.04, rate: 1.00, gender: "F", vpref: [/sunhi|선히/i, /heami|해미/i],   wide: 1.18 }, // 28세 여, 꼼꼼·또박또박
-    gdi:    { name: "강디",   pitch: 1.22, rate: 1.12, gender: "F", vpref: [/sunhi|선히/i, /heami|해미/i],   wide: 1.38 }  // 26세 여 신입, 발랄
+    daepyo: { name: "강대표", pitch: 1.00, rate: 1.00, gender: "M", vpref: [/injoon|인준/i, /hyunsu|현수/i], wide: 0.66, wideRate: 0.90 }, // 45세 남, 짧고 묵직
+    gdev:   { name: "강개발", pitch: 0.94, rate: 1.08, gender: "M", vpref: [/hyunsu|현수/i, /injoon|인준/i], wide: 0.86, wideRate: 1.06 }, // 35세 직설, 딱딱 끊음
+    abang:  { name: "아뱅",   pitch: 1.08, rate: 1.18, gender: "M", vpref: [/hyunsu|현수/i, /injoon|인준/i], wide: 1.06, wideRate: 1.22 }, // 자문위원, 들뜨고 빠름
+    gchk:   { name: "강체크", pitch: 1.04, rate: 1.00, gender: "F", vpref: [/sunhi|선히/i, /heami|해미/i],   wide: 1.26, wideRate: 0.96 }, // 28세 여, 꼼꼼·또박또박
+    gdi:    { name: "강디",   pitch: 1.22, rate: 1.12, gender: "F", vpref: [/sunhi|선히/i, /heami|해미/i],   wide: 1.48, wideRate: 1.16 }  // 26세 여 신입, 발랄
   };
   var ROLES = ["daepyo", "gdev", "abang", "gchk", "gdi"];
   var NARR = { pitch: 0.96, rate: 0.95, vol: 0.85 }; // 해설자 — voice-record.py NARRATOR(pitch -4, rate -5)
@@ -124,6 +124,13 @@
       voices[r] = (rest.length ? rest : ko)[0];        // ③ 대체 — wide 로 구분
       voiceOk[r] = false;
     });
+    // 실제로 배정된 '서로 다른 음성' 개수를 센다.
+    // 3개 미만이면(아이폰처럼 한국어 음성이 1개뿐인 기기 등) CEO 값은 성우가 다 다를 때를 가정한 좁은 폭이라
+    // 멤버가 뭉개진다 → 전원을 wide 사다리로 돌려 높낮이·속도로 최대한 벌린다.
+    var uniq = [];
+    ROLES.forEach(function (r) { if (voices[r] && uniq.indexOf(voices[r]) < 0) uniq.push(voices[r]); });
+    if (uniq.length < 3) ROLES.forEach(function (r) { voiceOk[r] = false; });
+
     voices._narr = byName([/sunhi|선히/i, /heami|해미/i]) || (females.length ? females[0] : ko[0]);
   }
 
@@ -231,13 +238,15 @@
       u.pitch = NARR.pitch; u.rate = NARR.rate * rate; u.volume = NARR.vol;
       if (voices._narr) u.voice = voices._narr;
     } else if (cast) {
-      // 지정 성우/성별 음성을 못 받았으면 wide(넓은 높낮이)로 멤버를 구분한다
-      var basePitch = (voiceOk[it.role] === false && cast.wide) ? cast.wide : cast.pitch;
-      u.pitch = basePitch; u.rate = cast.rate * rate; u.volume = 1;
+      // 성우가 겹치거나 못 받았으면 wide(넓은 높낮이·속도)로 멤버를 구분한다
+      var degraded = voiceOk[it.role] === false;
+      var basePitch = (degraded && cast.wide) ? cast.wide : cast.pitch;
+      var baseRate = (degraded && cast.wideRate) ? cast.wideRate : cast.rate;
+      u.pitch = basePitch; u.rate = baseRate * rate; u.volume = 1;
       if (voices[it.role]) u.voice = voices[it.role];
-      if (it.kind === "who") { u.rate = cast.rate * rate * 1.05; u.volume = 0.9; }
+      if (it.kind === "who") { u.rate = baseRate * rate * 1.05; u.volume = 0.9; }
       if (it.kind === "think" && actMode) { // 속마음 = 낮고 느리게, 작게
-        u.pitch = Math.max(0.1, basePitch - 0.18); u.rate = cast.rate * rate * 0.86; u.volume = 0.62;
+        u.pitch = Math.max(0.1, basePitch - 0.18); u.rate = baseRate * rate * 0.86; u.volume = 0.62;
       }
     } else {
       u.pitch = 1; u.rate = rate; u.volume = 1;
