@@ -13,16 +13,22 @@
 (function () {
   "use strict";
 
-  // 멤버별 목소리 성격 (personas 를 소리로 — 높낮이 pitch / 속도 rate)
+  // 멤버별 목소리 — 강팀 본체 scripts/voice-record.py 의 CAST(CEO 가 직접 듣고 고른 값, 2026-07-30)를
+  // 브라우저 읽어주기로 옮긴 것. edge-tts 의 Hz·% 를 Web Speech 배수로 변환(pitch: 1+Hz/100, rate: 1+%/100).
+  //   · vpref = CEO 가 지정한 성우. 브라우저(주로 엣지/윈도우)에 그 성우가 있으면 그대로 쓴다.
+  //   · 강대표는 원본이 en-AU-William(다국어 성우)인데, 브라우저 영어 음성으로 한국어를 읽으면 발음이 깨진다.
+  //     그래서 voice-record.py 주석의 지침대로("강톡만 쓰는 InJoon 을 한쪽에 주면 된다") 한국어 남성 InJoon 배정.
+  //   · wide = 한국어 음성이 1~2개뿐인 기기용 대체 높낮이. 성우가 겹칠 때 멤버 구분이 죽지 않게 폭을 넓게 준다.
   var CAST = {
-    daepyo: { name: "강대표", pitch: 0.72, rate: 0.94 }, // 45세 남, 짧고 묵직
-    gdev:   { name: "강개발", pitch: 0.88, rate: 1.06 }, // 35세 직설, 딱딱 끊음
-    abang:  { name: "아뱅",   pitch: 1.08, rate: 1.16 }, // 자문위원, 들뜨고 빠름
-    gchk:   { name: "강체크", pitch: 1.18, rate: 0.98 }, // 28세 여, 꼼꼼·또박또박
-    gdi:    { name: "강디",   pitch: 1.38, rate: 1.12 }  // 26세 여 신입, 발랄
+    daepyo: { name: "강대표", pitch: 1.00, rate: 1.00, gender: "M", vpref: [/injoon|인준/i, /hyunsu|현수/i], wide: 0.72 }, // 45세 남, 짧고 묵직
+    gdev:   { name: "강개발", pitch: 0.94, rate: 1.08, gender: "M", vpref: [/hyunsu|현수/i, /injoon|인준/i], wide: 0.88 }, // 35세 직설, 딱딱 끊음
+    abang:  { name: "아뱅",   pitch: 1.08, rate: 1.18, gender: "M", vpref: [/hyunsu|현수/i, /injoon|인준/i], wide: 1.08 }, // 자문위원, 들뜨고 빠름
+    gchk:   { name: "강체크", pitch: 1.04, rate: 1.00, gender: "F", vpref: [/sunhi|선히/i, /heami|해미/i],   wide: 1.18 }, // 28세 여, 꼼꼼·또박또박
+    gdi:    { name: "강디",   pitch: 1.22, rate: 1.12, gender: "F", vpref: [/sunhi|선히/i, /heami|해미/i],   wide: 1.38 }  // 26세 여 신입, 발랄
   };
   var ROLES = ["daepyo", "gdev", "abang", "gchk", "gdi"];
-  var NARR = { pitch: 0.98, rate: 0.95, vol: 0.85 }; // 지문·정리 읽는 해설자
+  var NARR = { pitch: 0.96, rate: 0.95, vol: 0.85 }; // 해설자 — voice-record.py NARRATOR(pitch -4, rate -5)
+  var voiceOk = {}; // 역할별로 '지정 성우/성별에 맞는 음성'을 받았는지 (아니면 wide 로 대체)
 
   // 괄호 지문을 '읽지 않고' 말투로 연기 — 표에 걸리고 12자 이하면 지시로 본다
   var DIRECTION = [
@@ -85,9 +91,8 @@
   var isMale = function (v) { var s = (v.name || "") + " " + (v.voiceURI || ""); return VMALE.test(s); };
   var isFemale = function (v) { var s = (v.name || "") + " " + (v.voiceURI || ""); return VFEMALE.test(s); };
 
-  // 한국어 음성 확보 — 성별에 맞춰 멤버별로 '가능한 한 다른' 목소리 배정
-  // 남성 멤버(강대표·강개발)=남성 음성, 여성 멤버(강체크·강디)=여성 음성, 아뱅=남는 것.
-  // 실제 음성이 1~2개뿐인 기기가 많으므로, 목소리가 겹쳐도 CAST 의 pitch/rate 로 확실히 구분된다.
+  // 한국어 음성 배정 — ① CEO 가 고른 성우 이름(vpref) 우선 ② 없으면 성별 맞는 음성 ③ 그래도 없으면 아무 한국어
+  // 지정 성우도 성별 음성도 못 받은 역할은 voiceOk=false → 읽을 때 CAST.wide(넓은 높낮이)로 구분한다.
   function loadVoices() {
     if (!supported()) return;
     var all = window.speechSynthesis.getVoices() || [];
@@ -96,14 +101,30 @@
     var males = ko.filter(isMale);
     var females = ko.filter(isFemale);
     var rest = ko.filter(function (v) { return !isMale(v) && !isFemale(v); });
-    // 성별 풀이 비면 rest(중립)→그래도 없으면 전체 ko 로 대체하며 순환 배정
-    function pick(pool, i) { var p = (pool && pool.length) ? pool : (rest.length ? rest : ko); return p[i % p.length]; }
-    voices.daepyo = pick(males, 0);   // 45세 남
-    voices.gdev   = pick(males, 1);   // 35세 남
-    voices.gchk   = pick(females, 0); // 28세 여
-    voices.gdi    = pick(females, 1); // 26세 여
-    voices.abang  = pick(rest.length ? rest : ko, 0); // 자문위원(중립·들뜸)
-    voices._narr  = ko[0]; // 해설자
+
+    function byName(pats) {
+      for (var i = 0; i < pats.length; i++) {
+        for (var j = 0; j < ko.length; j++) {
+          var s = (ko[j].name || "") + " " + (ko[j].voiceURI || "");
+          if (pats[i].test(s)) return ko[j];
+        }
+      }
+      return null;
+    }
+    var mIdx = 0, fIdx = 0;
+    ROLES.forEach(function (r) {
+      var c = CAST[r];
+      var v = byName(c.vpref || []);       // ① CEO 지정 성우
+      if (v) { voices[r] = v; voiceOk[r] = true; return; }
+      var pool = c.gender === "F" ? females : males;   // ② 성별 맞는 음성
+      if (pool.length) {
+        voices[r] = pool[(c.gender === "F" ? fIdx++ : mIdx++) % pool.length];
+        voiceOk[r] = true; return;
+      }
+      voices[r] = (rest.length ? rest : ko)[0];        // ③ 대체 — wide 로 구분
+      voiceOk[r] = false;
+    });
+    voices._narr = byName([/sunhi|선히/i, /heami|해미/i]) || (females.length ? females[0] : ko[0]);
   }
 
   // 읽기 좋게 다듬기 — 따옴표·괄호·이모지·화살표·도형기호 제거
@@ -210,11 +231,13 @@
       u.pitch = NARR.pitch; u.rate = NARR.rate * rate; u.volume = NARR.vol;
       if (voices._narr) u.voice = voices._narr;
     } else if (cast) {
-      u.pitch = cast.pitch; u.rate = cast.rate * rate; u.volume = 1;
+      // 지정 성우/성별 음성을 못 받았으면 wide(넓은 높낮이)로 멤버를 구분한다
+      var basePitch = (voiceOk[it.role] === false && cast.wide) ? cast.wide : cast.pitch;
+      u.pitch = basePitch; u.rate = cast.rate * rate; u.volume = 1;
       if (voices[it.role]) u.voice = voices[it.role];
       if (it.kind === "who") { u.rate = cast.rate * rate * 1.05; u.volume = 0.9; }
       if (it.kind === "think" && actMode) { // 속마음 = 낮고 느리게, 작게
-        u.pitch = Math.max(0.1, cast.pitch - 0.18); u.rate = cast.rate * rate * 0.86; u.volume = 0.62;
+        u.pitch = Math.max(0.1, basePitch - 0.18); u.rate = cast.rate * rate * 0.86; u.volume = 0.62;
       }
     } else {
       u.pitch = 1; u.rate = rate; u.volume = 1;
