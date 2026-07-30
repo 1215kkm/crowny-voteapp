@@ -3,6 +3,29 @@
 (function () {
   "use strict";
 
+  // 회의 시작 경쾌한 소리 — Web Audio 로 그때그때 합성(외부 파일·인터넷 불필요). 클릭 제스처 안에서 호출.
+  var _actx = null;
+  function playStartChime() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!_actx) _actx = new AC();
+      if (_actx.state === "suspended") _actx.resume();
+      var t0 = _actx.currentTime;
+      var notes = [523.25, 659.25, 783.99, 1046.50]; // 도-미-솔-도 상승(밝고 경쾌)
+      notes.forEach(function (f, i) {
+        var o = _actx.createOscillator(), g = _actx.createGain();
+        o.type = "triangle"; o.frequency.value = f;
+        var t = t0 + i * 0.085;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        o.connect(g); g.connect(_actx.destination);
+        o.start(t); o.stop(t + 0.24);
+      });
+    } catch (e) { /* 소리 실패해도 회의는 진행 */ }
+  }
+
   var CREATOR_THREADS = "kkm450815";
   // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
@@ -907,6 +930,7 @@
     awaitingNew = false;
 
     running = true;
+    playStartChime(); // 회의 시작 — 경쾌한 소리
     var orig = runBtn.textContent;
     runBtn.disabled = true;
     runBtn.textContent = "강팀 회의 중…";

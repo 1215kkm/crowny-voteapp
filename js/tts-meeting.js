@@ -79,14 +79,31 @@
     return act;
   }
 
-  // 한국어 음성 확보 — 여러 개면 멤버별로 서로 다른 음성 배정
+  // 목소리 성별 힌트 — 기기마다 이름이 달라 완벽하진 않지만 최대한 매칭
+  var VMALE = /injoon|injun|hyun|minsu|male|man\b|남성|남자|\b남\b/i;
+  var VFEMALE = /heami|yuna|sunhi|seoyeon|jimin|nari|female|woman|여성|여자|\b여\b/i;
+  var isMale = function (v) { var s = (v.name || "") + " " + (v.voiceURI || ""); return VMALE.test(s); };
+  var isFemale = function (v) { var s = (v.name || "") + " " + (v.voiceURI || ""); return VFEMALE.test(s); };
+
+  // 한국어 음성 확보 — 성별에 맞춰 멤버별로 '가능한 한 다른' 목소리 배정
+  // 남성 멤버(강대표·강개발)=남성 음성, 여성 멤버(강체크·강디)=여성 음성, 아뱅=남는 것.
+  // 실제 음성이 1~2개뿐인 기기가 많으므로, 목소리가 겹쳐도 CAST 의 pitch/rate 로 확실히 구분된다.
   function loadVoices() {
     if (!supported()) return;
     var all = window.speechSynthesis.getVoices() || [];
     var ko = all.filter(function (v) { return /^ko/i.test(v.lang || ""); });
     if (!ko.length) return;
-    ROLES.forEach(function (r, idx) { voices[r] = ko[idx % ko.length]; });
-    voices._narr = ko[0];
+    var males = ko.filter(isMale);
+    var females = ko.filter(isFemale);
+    var rest = ko.filter(function (v) { return !isMale(v) && !isFemale(v); });
+    // 성별 풀이 비면 rest(중립)→그래도 없으면 전체 ko 로 대체하며 순환 배정
+    function pick(pool, i) { var p = (pool && pool.length) ? pool : (rest.length ? rest : ko); return p[i % p.length]; }
+    voices.daepyo = pick(males, 0);   // 45세 남
+    voices.gdev   = pick(males, 1);   // 35세 남
+    voices.gchk   = pick(females, 0); // 28세 여
+    voices.gdi    = pick(females, 1); // 26세 여
+    voices.abang  = pick(rest.length ? rest : ko, 0); // 자문위원(중립·들뜸)
+    voices._narr  = ko[0]; // 해설자
   }
 
   // 읽기 좋게 다듬기 — 따옴표·괄호·이모지·화살표·도형기호 제거
@@ -227,6 +244,7 @@
     on = false; paused = false; curBtnEl = null;
     var prev = document.querySelector(".tts-now"); if (prev) prev.classList.remove("tts-now");
     sync();
+    if (bar) bar.style.display = "none"; // 재생 끝나면 바 숨김
   }
   function halt() {
     if (timer) { clearTimeout(timer); timer = null; }
@@ -251,6 +269,7 @@
     // 누른 줄이 발언이면 바로 ■(정지)로 보이게
     curBtnEl = (from && from.querySelector && from.querySelector(".tw-ttsbtn")) ? from : null;
     on = true; paused = false; sync();
+    if (bar) bar.style.display = "flex"; // 재생 시작 → 음성 컨트롤 바 표시(스크롤 따라다님)
     setTimeout(function () { speakAt(s); }, 60);
   }
   function toggle() {
@@ -324,7 +343,7 @@
       ensureBar();
       injectButtons();
       sync();
-      bar.style.display = "flex";
+      bar.style.display = "none"; // 바는 재생 중에만 — 줄앞 ▶ 로 시작
     },
     stop: stop,
     supported: supported
