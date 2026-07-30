@@ -79,6 +79,7 @@ const SYSTEM_PROMPT = `너는 '강팀'이라는 5명짜리 한국어 AI 팀의 �
 회의 규칙:
 - 사용자의 앱/상황을 읽고 '구현'과 '홍보마케팅' 두 관점으로 회의.
 - 전원 찬성 금지(최소 1명은 반대·의문). 각 발언 1~2문장.
+- 안건에 이미지가 첨부돼 있으면(스크린샷·기획안·손그림·화면 등), 멤버들이 그 이미지를 **실제로 보고** 구체적으로 언급하며 회의하라("올려주신 화면 보니 위쪽 버튼이 눈에 안 띄네요" 식). 이미지 내용을 지어내 추측하지 말고 보이는 그대로만 반영하고, 관련 발언은 강디·강개발·강체크가 나눠 맡아라.
 - **어린이에게 설명하듯 아주 쉽고 친근하게 말하라.** 초등학생도 한 번에 알아듣는 말투로, 어려운 개념은 쉬운 비유로 풀어라. 처음 보는 낯선 사람이 읽어도 설명 없이 이해되게:
   · 업계·개발 은어 금지 — '판을 뒤집다', '진짜 구멍', '오염', '클라(클라이언트)', '콘솔', '붙이다(추가하다)', '던지다', '태우다' 같은 표현 대신 누구나 아는 보통 말로 풀어 써라.
   · 어려운 전문용어는 꼭 필요할 때만, 바로 뒤에 괄호로 쉬운 풀이. (예: "API(다른 프로그램과 연결하는 창구)")
@@ -147,13 +148,18 @@ function stripFences(html) {
 }
 
 // ── Claude (기본) ─────────────────────────────────────────────────
-async function runMeetingClaude(userText, apiKey) {
+async function runMeetingClaude(userText, apiKey, images) {
   const client = new Anthropic({ apiKey });
+  const content = [];
+  (images || []).forEach((im) => {
+    content.push({ type: "image", source: { type: "base64", media_type: im.media_type, data: im.data } });
+  });
+  content.push({ type: "text", text: `[회의 안건]\n${userText}` });
   const response = await client.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: MAX_OUTPUT_TOKENS,
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `[회의 안건]\n${userText}` }],
+    messages: [{ role: "user", content: content }],
   });
   const text = response.content
     .filter((b) => b.type === "text")
@@ -163,11 +169,16 @@ async function runMeetingClaude(userText, apiKey) {
 }
 
 // ── Gemini (폴백) ─────────────────────────────────────────────────
-async function runMeetingGemini(userText, apiKey, grounded) {
+async function runMeetingGemini(userText, apiKey, grounded, images) {
   const url = `${GEMINI_API}/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+  const parts = [];
+  (images || []).forEach((im) => {
+    parts.push({ inlineData: { mimeType: im.media_type, data: im.data } });
+  });
+  parts.push({ text: `[회의 안건]\n${userText}` });
   const body = {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    contents: [{ parts: [{ text: `[회의 안건]\n${userText}` }] }],
+    contents: [{ parts: parts }],
     generationConfig: {
       temperature: 0.9,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
@@ -201,6 +212,17 @@ exports.runMeeting = onRequest(
     const prev = String((req.body && req.body.prev) || "").trim().slice(0, 1500);
     if (prev) prompt = "[이전 회의 요약]\n" + prev + "\n\n[이번 안건 — 이전 회의에 이어서]\n" + prompt;
 
+    // 첨부 이미지 (최대 3장) — base64로 받아 AI에게 그대로 전달, 저장은 안 함
+    const ALLOWED_IMG = { "image/jpeg": 1, "image/png": 1, "image/webp": 1, "image/gif": 1 };
+    let images = Array.isArray(req.body && req.body.images) ? req.body.images : [];
+    images = images
+      .filter((im) => im && ALLOWED_IMG[im.media_type] && typeof im.data === "string" && im.data.length > 0)
+      .slice(0, 3)
+      .map((im) => ({ media_type: im.media_type, data: im.data }));
+    // base64 총량 방어(장당 ~2.6MB base64 × 3 ≈ 8MB) — 요청 폭주·비용 폭탄 차단
+    const totalB64 = images.reduce((n, im) => n + im.data.length, 0);
+    if (totalB64 > 8 * 1024 * 1024) { res.status(413).json({ error: "images too large" }); return; }
+
     // App Check: 토큰 검증 실패 + enforce ON이면 차단 (스크립트 직접 호출 방지)
     const appCheckOk = await verifyAppCheck(req);
     if (!appCheckOk && await getAppCheckEnforce()) {
@@ -231,10 +253,10 @@ exports.runMeeting = onRequest(
     }
 
     const runners = provider === "claude"
-      ? [["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value())],
-         ["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded)]]
-      : [["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded)],
-         ["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value())]];
+      ? [["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value(), images)],
+         ["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded, images)]]
+      : [["gemini", () => runMeetingGemini(prompt, GEMINI_KEY.value(), grounded, images)],
+         ["claude", () => runMeetingClaude(prompt, ANTHROPIC_KEY.value(), images)]];
 
     let html = "";
     for (const [name, run] of runners) {
@@ -479,6 +501,18 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .cta{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;display:block;text-align:center;width:min(360px,88vw);background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff;font-weight:800;font-size:17px;text-decoration:none;padding:15px;border-radius:999px;box-shadow:0 10px 30px rgba(213,58,107,.45)}
 .wrap{padding-bottom:110px}
 .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:18px}
+.tw-ttsbtn{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;margin-right:6px;vertical-align:1px;border:none;cursor:pointer;padding:0;border-radius:50%;font-size:10px;line-height:1;color:#fff;background:linear-gradient(135deg,var(--acc1),var(--acc2));opacity:.55;transition:opacity .15s,transform .15s}
+.tw-ttsbtn:hover{opacity:1;transform:scale(1.12)}
+.tw-m-act:hover .tw-ttsbtn{opacity:.85}
+.tts-now{background:rgba(138,56,245,.10);box-shadow:-6px 0 0 0 var(--acc1);border-radius:4px}
+#tw-tts-bar{position:fixed;left:14px;bottom:80px;z-index:60;display:none;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 8px 26px rgba(16,24,40,.22)}
+#tw-tts-bar button{border:none;background:var(--acc1);color:#fff;border-radius:999px;width:38px;height:38px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+#tw-tts-bar button:hover{filter:brightness(1.1)}
+#tw-tts-bar button:disabled{opacity:.4;cursor:default}
+#tw-tts-bar button.wide{width:auto;padding:0 12px;font-size:13px}
+#tw-tts-bar button.on{background:linear-gradient(135deg,var(--acc1),var(--acc2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.65)}
+#tw-tts-hint{position:fixed;left:14px;bottom:128px;z-index:60;display:none;max-width:min(280px,68vw);background:#20293f;color:#fff;font-size:13px;line-height:1.45;padding:9px 13px;border-radius:10px;box-shadow:0 8px 26px rgba(16,24,40,.3)}
+@media print{.tw-ttsbtn,#tw-tts-bar,#tw-tts-hint{display:none!important}}
 </style></head><body>
 <div class="wrap"><div class="paper">
   <div class="lbl">강팀 회의록</div>
@@ -495,7 +529,10 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 </div>
 <a class="cta" href="${CTA_URL}">나도 강팀과 회의하기 →</a>
 <div class="foot">© 2026 Appter · 강팀 AI</div>
-</div></body></html>`;
+</div>
+<script src="https://crowny-appter.web.app/js/tts-meeting.js"></script>
+<script>document.addEventListener('DOMContentLoaded',function(){try{if(window.MeetingTTS){var p=document.querySelector('.paper');if(p)window.MeetingTTS.attach(p);}}catch(e){}});</script>
+</body></html>`;
     res.set("Cache-Control", "public, max-age=300");
     res.status(200).send(html);
   }
