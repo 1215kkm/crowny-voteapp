@@ -506,11 +506,11 @@ h1{font-size:23px;font-weight:800;line-height:1.3;margin:8px 0 4px;letter-spacin
 .tw-m-act:hover .tw-ttsbtn{opacity:.85}
 .tts-now{background:rgba(138,56,245,.10);box-shadow:-6px 0 0 0 var(--acc1);border-radius:4px}
 #tw-tts-bar{position:fixed;left:14px;bottom:80px;z-index:60;display:none;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 8px;box-shadow:0 8px 26px rgba(16,24,40,.22)}
-#tw-tts-bar button{border:none;background:var(--sub);color:var(--acc1);border-radius:999px;width:38px;height:38px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
-#tw-tts-bar button:hover{background:rgba(138,56,245,.12)}
-#tw-tts-bar button:disabled{opacity:.35;cursor:default}
+#tw-tts-bar button{border:none;background:var(--acc1);color:#fff;border-radius:999px;width:38px;height:38px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+#tw-tts-bar button:hover{filter:brightness(1.1)}
+#tw-tts-bar button:disabled{opacity:.4;cursor:default}
 #tw-tts-bar button.wide{width:auto;padding:0 12px;font-size:13px}
-#tw-tts-bar button.on{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#fff}
+#tw-tts-bar button.on{background:linear-gradient(135deg,var(--acc1),var(--acc2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.65)}
 #tw-tts-hint{position:fixed;left:14px;bottom:128px;z-index:60;display:none;max-width:min(280px,68vw);background:#20293f;color:#fff;font-size:13px;line-height:1.45;padding:9px 13px;border-radius:10px;box-shadow:0 8px 26px rgba(16,24,40,.3)}
 @media print{.tw-ttsbtn,#tw-tts-bar,#tw-tts-hint{display:none!important}}
 </style></head><body>
