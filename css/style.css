@@ -3068,12 +3068,16 @@ html[data-theme="dark"] .section-header h2 { color: var(--color-text); }
   background: rgba(138,56,245,0.1); border-radius: 999px; padding: 1px 8px; margin-right: 4px; }
 
 /* ── 회의록 음성 읽어주기(TTS) — index·admin 공용. 모달 위에 뜨도록 z-index 높게 ── */
-.tw-ttsbtn { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px;
+.tw-ttsbtn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
   margin-right: 6px; vertical-align: 1px; border: none; cursor: pointer; padding: 0; border-radius: 50%;
   font-size: 10px; line-height: 1; color: #fff; background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
-  opacity: .55; transition: opacity .15s, transform .15s; }
+  opacity: .78; transition: opacity .15s, transform .15s, box-shadow .15s; }
 .tw-ttsbtn:hover { opacity: 1; transform: scale(1.12); }
-.tw-m-act:hover .tw-ttsbtn { opacity: .85; }
+.tw-m-act:hover .tw-ttsbtn { opacity: 1; }
+/* 재생 중: 줄앞 버튼이 ⏹ 정지로 — 눈에 띄게 (누르면 멈춤) */
+.tw-ttsbtn.playing { opacity: 1; transform: scale(1.15); background: #d53a6b;
+  box-shadow: 0 0 0 3px rgba(213,58,107,.28); animation: ttsPulse 1.3s ease-in-out infinite; }
+@keyframes ttsPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(213,58,107,.28); } 50% { box-shadow: 0 0 0 5px rgba(213,58,107,.14); } }
 .tts-now { background: rgba(138,56,245,.10); box-shadow: -6px 0 0 0 var(--color-accent-start); border-radius: 4px; }
 #tw-tts-bar { position: fixed; left: 14px; bottom: 18px; z-index: 5000; display: none; align-items: center; gap: 5px;
   background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; padding: 6px 8px;

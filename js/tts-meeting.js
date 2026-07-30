@@ -44,6 +44,16 @@
 
   var Q = [], I = 0, on = false, paused = false, actMode = true, rate = 1.0;
   var voices = {}, primed = false, timer = null, root = null, bar = null, hintEl = null;
+  var curBtns = []; // 현재 회의록의 줄앞 ▶ 버튼들 (재생 중엔 ⏹ 정지로 바뀜)
+
+  // 재생 중이면 줄앞 버튼을 ⏹(정지)로, 아니면 ▶(재생)으로 — 보고 있는 줄에서 바로 멈출 수 있게
+  function setInlineState() {
+    for (var i = 0; i < curBtns.length; i++) {
+      var b = curBtns[i];
+      if (on) { b.textContent = "⏹"; b.title = "읽기 정지"; b.setAttribute("aria-label", "읽기 정지"); b.classList.add("playing"); }
+      else { b.textContent = "▶"; b.title = "여기서부터 읽어주기"; b.setAttribute("aria-label", "여기서부터 읽어주기"); b.classList.remove("playing"); }
+    }
+  }
 
   function supported() {
     return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
@@ -199,6 +209,7 @@
   }
 
   function sync() {
+    setInlineState(); // 줄앞 버튼(재생↔정지)도 함께 갱신
     if (!bar) return;
     var p = bar.querySelector(".tts-play"), s = bar.querySelector(".tts-stop");
     p.textContent = (on && !paused) ? "❚❚" : "▶";
@@ -275,7 +286,7 @@
     bar.querySelector(".tts-act").addEventListener("click", toggleAct);
   }
 
-  // 각 발언 앞에 ▶ — 그 줄부터 읽기
+  // 각 발언 앞에 ▶ — 그 줄부터 읽기 (재생 중엔 ⏹ 정지로 바뀌어, 누르면 멈춤)
   function injectButtons() {
     if (!root) return;
     root.querySelectorAll(".tw-m-act").forEach(function (el) {
@@ -285,9 +296,14 @@
       b.className = "tw-ttsbtn"; b.type = "button"; b.textContent = "▶";
       b.setAttribute("aria-label", "여기서부터 읽어주기");
       b.title = "여기서부터 읽어주기";
-      b.addEventListener("click", function (ev) { ev.stopPropagation(); start(el); });
+      b.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (on) stop();       // 읽는 중이면 어느 줄 버튼이든 정지
+        else start(el);       // 멈춰 있으면 이 줄부터 재생
+      });
       el.insertBefore(b, el.firstChild);
     });
+    curBtns = [].slice.call(root.querySelectorAll(".tw-ttsbtn"));
   }
 
   // 공개 API
