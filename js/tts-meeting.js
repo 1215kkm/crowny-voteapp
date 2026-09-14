@@ -2,7 +2,7 @@
 // 강팀 회의록 음성 읽어주기 (TTS) — Appter 판
 // · 브라우저 내장 음성(Web Speech API) 사용 — 인터넷·가입 불필요, 아이폰 사파리 지원
 // · 멤버마다 목소리 톤(높낮이·속도)을 다르게 → 연기하듯이
-// · (속마음)·지문은 낮고 느리게, 작게 = 연기. "(웃으며)" 같은 지시는 읽지 않고 말투로 표현
+// · 괄호 속마음은 읽지 않는다. "(웃으며)" 같은 짧은 지문도 소리로 읽지 않고 말투로만 표현
 // · 각 발언 앞 ▶ 를 누르면 그 줄부터 읽음
 // 사용법: MeetingTTS.attach(회의록루트엘리먼트)  — 렌더될 때마다 호출(재초기화 OK)
 //        MeetingTTS.stop()                      — 재생 중지·바 숨김
@@ -190,7 +190,7 @@
           if (!t4) return;
           var d = direction(t4);
           if (d) { act = mergeAct(act, d); if (d.pauseOnly) chunks.push({ kind: "pause", ms: d.pauseOnly }); }
-          else chunks.push({ kind: "think", text: t4 });
+          // 속마음(괄호 내용)은 소리로 읽지 않는다 — 작게 읽혀 거슬린다는 피드백
         }
         // <b>이름</b> 등 그 외 요소는 아래에서 따로 처리
       });
@@ -318,7 +318,7 @@
     actMode = !actMode;
     var b = bar.querySelector(".tts-act");
     b.classList.toggle("on", actMode);
-    hint(actMode ? "속마음·지문을 연기하듯 읽습니다 (낮고 느리게)" : "전부 같은 톤으로 읽습니다");
+    hint(actMode ? "(웃으며) 같은 지문을 말투로 연기합니다" : "전부 같은 톤으로 읽습니다");
   }
   function hint(msg, ms) {
     if (!hintEl) return;
@@ -335,7 +335,7 @@
       '<button type="button" class="tts-play" title="읽어주기">▶</button>' +
       '<button type="button" class="tts-stop" title="정지" disabled>■</button>' +
       '<button type="button" class="tts-speed wide" title="읽는 속도">1.0×</button>' +
-      '<button type="button" class="tts-act wide on" title="속마음·지문을 연기하듯 읽기">🎭</button>';
+      '<button type="button" class="tts-act wide on" title="지문을 말투로 연기하기">🎭</button>';
     hintEl = document.createElement("div");
     hintEl.id = "tw-tts-hint";
     document.body.appendChild(bar);
