@@ -3066,3 +3066,40 @@ html[data-theme="dark"] .section-header h2 { color: var(--color-text); }
 .contact-done-sub { font-size: 15px; color: var(--color-text-light); margin-top: 8px; }
 .tlog-who { display: inline-block; font-size: 0.72rem; font-weight: 700; color: var(--color-accent-start);
   background: rgba(138,56,245,0.1); border-radius: 999px; padding: 1px 8px; margin-right: 4px; }
+
+/* ── 회의록 음성 읽어주기(TTS) — index·admin 공용. 모달 위에 뜨도록 z-index 높게 ── */
+.tw-ttsbtn { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  margin-right: 6px; vertical-align: 1px; border: none; cursor: pointer; padding: 0; border-radius: 50%;
+  font-size: 10px; line-height: 1; color: #fff; background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  opacity: .78; transition: opacity .15s, transform .15s, box-shadow .15s; }
+.tw-ttsbtn:hover { opacity: 1; transform: scale(1.12); }
+.tw-m-act:hover .tw-ttsbtn { opacity: 1; }
+/* 재생 중: 줄앞 버튼이 ⏹ 정지로 — 눈에 띄게 (누르면 멈춤) */
+.tw-ttsbtn.playing { opacity: 1; transform: scale(1.15); background: #d53a6b;
+  box-shadow: 0 0 0 3px rgba(213,58,107,.28); animation: ttsPulse 1.3s ease-in-out infinite; }
+@keyframes ttsPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(213,58,107,.28); } 50% { box-shadow: 0 0 0 5px rgba(213,58,107,.14); } }
+.tts-now { background: rgba(138,56,245,.10); box-shadow: -6px 0 0 0 var(--color-accent-start); border-radius: 4px; }
+/* 음성 컨트롤 바 — 재생 중에만 표시(JS), position:fixed 라 스크롤 따라다님 */
+#tw-tts-bar { position: fixed; left: 14px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 5000; display: none; align-items: center; gap: 5px;
+  background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 999px; padding: 6px 8px;
+  box-shadow: 0 8px 26px rgba(16,24,40,.22); }
+#tw-tts-bar button { border: none; background: var(--color-accent-start); color: #fff; border-radius: 999px;
+  width: 38px; height: 38px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; }
+#tw-tts-bar button:hover { filter: brightness(1.1); }
+#tw-tts-bar button:disabled { opacity: .4; cursor: default; }
+#tw-tts-bar button.wide { width: auto; padding: 0 12px; font-size: 13px; }
+#tw-tts-bar button.on { background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.65); }
+#tw-tts-hint { position: fixed; left: 14px; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); z-index: 5000; display: none; max-width: min(280px, 68vw);
+  background: #20293f; color: #fff; font-size: 13px; line-height: 1.45; padding: 9px 13px; border-radius: 10px;
+  box-shadow: 0 8px 26px rgba(16,24,40,.3); }
+/* 모바일: 하단 중앙에 크게. '스레드 퍼가기' 스티키 바(≈60px) 위로 올려 안 겹치게 + 안전영역 */
+@media (max-width: 640px) {
+  #tw-tts-bar { left: 50%; right: auto; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    gap: 7px; padding: 8px 10px; }
+  #tw-tts-bar button { width: 46px; height: 46px; font-size: 17px; }
+  #tw-tts-bar button.wide { width: auto; padding: 0 15px; font-size: 14px; }
+  #tw-tts-hint { left: 50%; right: auto; transform: translateX(-50%); text-align: center;
+    bottom: calc(142px + env(safe-area-inset-bottom, 0px)); }
+}
+@media print { .tw-ttsbtn, #tw-tts-bar, #tw-tts-hint { display: none !important; } }

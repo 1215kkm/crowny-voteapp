@@ -3,6 +3,29 @@
 (function () {
   "use strict";
 
+  // 회의 시작 경쾌한 소리 — Web Audio 로 그때그때 합성(외부 파일·인터넷 불필요). 클릭 제스처 안에서 호출.
+  var _actx = null;
+  function playStartChime() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!_actx) _actx = new AC();
+      if (_actx.state === "suspended") _actx.resume();
+      var t0 = _actx.currentTime;
+      var notes = [523.25, 659.25, 783.99, 1046.50]; // 도-미-솔-도 상승(밝고 경쾌)
+      notes.forEach(function (f, i) {
+        var o = _actx.createOscillator(), g = _actx.createGain();
+        o.type = "triangle"; o.frequency.value = f;
+        var t = t0 + i * 0.085;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        o.connect(g); g.connect(_actx.destination);
+        o.start(t); o.stop(t + 0.24);
+      });
+    } catch (e) { /* 소리 실패해도 회의는 진행 */ }
+  }
+
   var CREATOR_THREADS = "kkm450815";
   // GitHub Pages(appter.co.kr) 등 Firebase 호스팅 밖에서는 /api/meeting rewrite가 없으므로 함수 URL을 직접 호출
   var MEETING_API = "https://us-central1-crowny-appter.cloudfunctions.net/runMeeting";
@@ -110,6 +133,101 @@
   var resultEl = document.getElementById("team-result");
 
   if (!rotor || !runBtn) return;
+
+  // ---- 이미지 첨부 (최대 3장, 저장 안 함 — 압축해 base64로 회의 요청에 실어 보냄) ----
+  var attachedImages = [];               // [{ media_type, data(base64), url(미리보기) }]
+  var IMG_MAX = 3;
+  var IMG_LONG_EDGE = 1568;              // Claude 권장 긴 변 — 넘으면 축소
+  var imgBtn = document.getElementById("tw-img-btn");
+  var imgInput = document.getElementById("tw-img-input");
+  var imgPreview = document.getElementById("tw-img-preview");
+
+  function updateImgBtn() {
+    if (!imgBtn) return;
+    var left = IMG_MAX - attachedImages.length;
+    imgBtn.disabled = left <= 0;
+    imgBtn.innerHTML = left <= 0
+      ? '🖼 이미지 3장 첨부됨'
+      : '🖼 이미지 첨부 <span class="tw-img-note">(최대 3장 · 강팀이 보고 회의해요)</span>';
+  }
+
+  function renderImgPreview() {
+    if (!imgPreview) return;
+    imgPreview.innerHTML = "";
+    attachedImages.forEach(function (im, idx) {
+      var box = document.createElement("div");
+      box.className = "tw-img-thumb";
+      var img = document.createElement("img");
+      img.src = im.url;
+      img.alt = "첨부 이미지 " + (idx + 1);
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "tw-img-del";
+      del.textContent = "×";
+      del.setAttribute("aria-label", "이미지 삭제");
+      del.addEventListener("click", function () {
+        attachedImages.splice(idx, 1);
+        renderImgPreview();
+        updateImgBtn();
+      });
+      box.appendChild(img);
+      box.appendChild(del);
+      imgPreview.appendChild(box);
+    });
+  }
+
+  function clearImages() {
+    attachedImages = [];
+    renderImgPreview();
+    updateImgBtn();
+    if (imgInput) imgInput.value = "";
+  }
+
+  // 파일 → 긴 변 1568px JPEG base64 로 축소 (원본 그대로 안 보냄 — 용량·비용 절약)
+  function compressToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error("read fail")); };
+      reader.onload = function () {
+        var image = new Image();
+        image.onerror = function () { reject(new Error("decode fail")); };
+        image.onload = function () {
+          var w = image.naturalWidth, h = image.naturalHeight;
+          var scale = Math.min(1, IMG_LONG_EDGE / Math.max(w, h));
+          var cw = Math.max(1, Math.round(w * scale));
+          var ch = Math.max(1, Math.round(h * scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(image, 0, 0, cw, ch);
+          var dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          var comma = dataUrl.indexOf(",");
+          resolve({ media_type: "image/jpeg", data: dataUrl.slice(comma + 1), url: dataUrl });
+        };
+        image.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (imgBtn && imgInput) {
+    imgBtn.addEventListener("click", function () { imgInput.click(); });
+    imgInput.addEventListener("change", async function () {
+      var files = Array.prototype.slice.call(imgInput.files || []);
+      for (var i = 0; i < files.length; i++) {
+        if (attachedImages.length >= IMG_MAX) break;
+        if (!/^image\//.test(files[i].type)) continue;
+        try {
+          var im = await compressToBase64(files[i]);
+          attachedImages.push(im);
+        } catch (e) { /* 이 파일만 건너뜀 */ }
+      }
+      imgInput.value = "";           // 같은 파일 다시 선택 가능하게
+      renderImgPreview();
+      updateImgBtn();
+    });
+    updateImgBtn();
+  }
 
   // ---- 큐브 플립 ----
   if (toAppter) toAppter.addEventListener("click", function () { rotor.classList.add("show-appter"); });
@@ -420,7 +538,11 @@
         "--color-text-light": "#667085", "--color-accent-start": "#8a38f5", "--color-accent-end": "#d53a6b"
       };
       for (var k in light) pad.style.setProperty(k, light[k]);
-      pad.appendChild(body.cloneNode(true));
+      var capClone = body.cloneNode(true);
+      // 읽어주기 흔적(▶ 버튼·현재 줄 강조)은 저장 이미지에 안 나오게 제거
+      capClone.querySelectorAll(".tw-ttsbtn").forEach(function (b) { b.remove(); });
+      capClone.querySelectorAll(".tts-now").forEach(function (e) { e.classList.remove("tts-now"); });
+      pad.appendChild(capClone);
       document.body.appendChild(pad);
       var SCALE = 2;
       return window.html2canvas(pad, { scale: SCALE, backgroundColor: "#ffffff", useCORS: true })
@@ -630,6 +752,13 @@
       });
     });
     bindHistoryClicks();
+    // 읽어주기(TTS) — 회의록 본문에 ▶ 버튼·컨트롤 바 붙임
+    try {
+      if (window.MeetingTTS) {
+        var ttsBody = resultEl.querySelector(".tw-result-body");
+        if (ttsBody) window.MeetingTTS.attach(ttsBody);
+      }
+    } catch (e) {}
     resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     // 이미지 미리 캡처 → 준비되면 이미지 저장 버튼 활성화 (모바일은 제스처 안에서 즉시 공유 가능해짐)
     preCapturedBlob = null;
@@ -801,6 +930,7 @@
     awaitingNew = false;
 
     running = true;
+    playStartChime(); // 회의 시작 — 경쾌한 소리
     var orig = runBtn.textContent;
     runBtn.disabled = true;
     runBtn.textContent = "강팀 회의 중…";
@@ -830,6 +960,9 @@
         }
         var payload = { prompt: prompt, ref: myRefId(), useSearch: useSearch };
         if (continueCtx && continueCtx.prev) payload.prev = continueCtx.prev; // 이어서 회의
+        if (attachedImages.length) {
+          payload.images = attachedImages.map(function (im) { return { media_type: im.media_type, data: im.data }; });
+        }
         var res = await fetch(MEETING_API, {
           method: "POST",
           headers: headers,
@@ -865,6 +998,7 @@
     } finally {
       stopLoading();
       running = false;
+      clearImages(); // 첨부 이미지 비움 (한 회의당 1회만 사용)
       endContinue(); // 이어서 모드 종료 (placeholder 복원)
       renderQuota();
       refreshSearchCredits(); // 검색권 차감 반영
